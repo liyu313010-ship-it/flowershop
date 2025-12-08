@@ -648,9 +648,11 @@ public class AdminController : ControllerBase
                 var oldStatus = order.Status;
                 order.Status = request.Status;
                 order.UpdatedAt = DateTime.UtcNow;
-                if (!string.IsNullOrWhiteSpace(request.Note))
+                var note = (request.Note ?? request.Reason ?? string.Empty).Trim();
+                if (note.Length > 480) note = note.Substring(0, 480);
+                if (!string.IsNullOrEmpty(note))
                 {
-                    order.Message = request.Note;
+                    order.Message = note;
                 }
 
                 if (request.Status == "shipped")
@@ -670,7 +672,7 @@ public class AdminController : ControllerBase
                     NewStatus = request.Status,
                     OperatorId = null,
                     OperatorName = operatorName,
-                    Note = request.Note,
+                    Note = note,
                     CreatedAt = DateTime.UtcNow
                 });
 

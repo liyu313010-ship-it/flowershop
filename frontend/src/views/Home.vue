@@ -310,6 +310,7 @@
                   </svg>
                 </button>
                 <button 
+                  v-if="!userStore.isAdmin"
                   @click.stop="toggleFavorite(product)"
                   class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
                   :class="isFavorite(product) ? 'text-red-500' : 'text-gray-700'"
@@ -872,7 +873,12 @@ const stopReviewsPolling = () => {
 }
 
 const handleVisibilityReview = () => {
-  if (!document.hidden) fetchReviews()
+  if (document.hidden) {
+    stopReviewsPolling()
+  } else {
+    fetchReviews()
+    startReviewsPolling()
+  }
 }
 
 const goToReviewDetail = async (review) => {
@@ -1267,6 +1273,12 @@ onUnmounted(() => {
   stopReviewsPolling()
   document.removeEventListener('visibilitychange', handleVisibilityReview)
 })
+
+if (import.meta && import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    stopReviewsPolling()
+  })
+}
 
 // 方法
 const goToProduct = async (productId) => {

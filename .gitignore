@@ -73,6 +73,9 @@ ehthumbs.db
 # Uploads
 **/uploads/
 
+# Frontend assets
+前端素材图库/
+
 # Build outputs
 *.dll
 *.exe

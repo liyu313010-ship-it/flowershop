@@ -7,7 +7,7 @@ import router from '@/router'
 const runtimeBase = (typeof window !== 'undefined') ? (window.localStorage.getItem('apiBaseUrl') || '') : ''
 const envBase = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE) ? import.meta.env.VITE_API_BASE : ''
 const api = axios.create({
-  baseURL: (runtimeBase || envBase || 'http://localhost:5002/api'),
+  baseURL: (runtimeBase || envBase || '/api'),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -57,8 +57,9 @@ api.interceptors.response.use(
   },
   (error) => {
     const isSilent = !!(error && error.config && error.config.silent)
-    if (/ERR_ABORTED/i.test(error?.message || '')) {
-      return Promise.reject(error)
+    const isAborted = /ERR_ABORTED/i.test(error?.message || '') || error?.code === 'ERR_CANCELED'
+    if (isAborted) {
+      return Promise.resolve({ aborted: true })
     }
     // 只在开发环境输出详细的错误日志；静默请求不输出控制台错误
     if (import.meta.env.DEV && !isSilent) {
@@ -125,7 +126,7 @@ api.interceptors.response.use(
     // 简单重试机制：网络错误或 500 时重试 2 次
     const config = error.config || {}
     config.__retryCount = config.__retryCount || 0
-    const shouldRetry = (!error.response) || (error.response && error.response.status >= 500)
+    const shouldRetry = (!error.response && !isAborted) || (error.response && error.response.status >= 500)
     if (shouldRetry && config.__retryCount < 2) {
       config.__retryCount += 1
       return new Promise((resolve) => setTimeout(resolve, 300 * config.__retryCount)).then(() => api(config))

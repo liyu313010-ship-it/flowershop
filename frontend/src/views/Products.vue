@@ -84,15 +84,14 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="product in filteredProducts" :key="product.id" class="card group cursor-pointer relative">
                   <div class="relative overflow-hidden rounded-xl">
-                    <div class="w-full h-64 bg-gray-50 overflow-hidden relative">
-                      <img 
-                        :src="product.image" 
-                        :alt="product.name"
-                        class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
-                        @error="onProductImageError"
-                      />
-                    </div>
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
+                    <SmartImage
+                      :src="product.image"
+                      :alt="product.name"
+                      ratio="auto"
+                      strategy="auto"
+                      class="w-full h-64"
+                    />
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items中心 justify-center space-x-2 z-30 pointer-events-auto">
                       <button 
                         @click.stop="quickView(product)"
                         class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
@@ -114,6 +113,7 @@
                         </svg>
                       </button>
                       <button 
+                        v-if="!userStore.isAdmin"
                         @click.stop="toggleFavorite(product)"
                         class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
                         :class="isFavorite(product) ? 'text-red-500' : 'text-gray-700'"
@@ -612,3 +612,4 @@ const onProductImageError = (e) => {
   }
 }
 </style>
+import SmartImage from '@/components/common/SmartImage.vue'

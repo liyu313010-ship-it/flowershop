@@ -89,7 +89,7 @@
                   +
                 </button>
               </div>
-              <p v-if="quantity > (product.stock || 0)" class="mt-1 text-sm text-red-600">
+              <p v-if="Number.isFinite(product.stock) && quantity > product.stock" class="mt-1 text-sm text-red-600">
                 库存不足，请选择更少的数量
               </p>
             </div>
@@ -111,7 +111,7 @@
               <button 
                 @click="addToCart"
                 class="w-full btn-primary"
-                :disabled="addingToCart || product.stock <= 0 || quantity > (product.stock || 0)"
+                :disabled="addingToCart || (Number.isFinite(product.stock) && (product.stock <= 0 || quantity > product.stock))"
               >
                 {{ addingToCart ? '添加中...' : (product.stock <= 0 ? '缺货' : '加入购物车') }}
               </button>
@@ -119,7 +119,7 @@
               <button 
                 @click="buyNow"
                 class="w-full btn-secondary"
-                :disabled="product.stock <= 0 || quantity > (product.stock || 0)"
+                :disabled="Number.isFinite(product.stock) && (product.stock <= 0 || quantity > product.stock)"
               >
                 {{ product.stock <= 0 ? '缺货' : '立即购买' }}
               </button>
@@ -252,7 +252,7 @@ const validateQuantity = () => {
     quantity.value = 1
   }
   // 确保不超过库存
-  if (product.value.stock > 0 && quantity.value > product.value.stock) {
+  if (Number.isFinite(product.value.stock) && product.value.stock > 0 && quantity.value > product.value.stock) {
     quantity.value = product.value.stock
   }
 }
@@ -265,12 +265,12 @@ const addToCart = async () => {
     return
   }
   // 前端库存检查
-  if (product.value.stock <= 0) {
+  if (Number.isFinite(product.value.stock) && product.value.stock <= 0) {
     notifyError('抱歉，该商品暂时缺货')
     return
   }
   
-  if (quantity.value > product.value.stock) {
+  if (Number.isFinite(product.value.stock) && quantity.value > product.value.stock) {
     notifyError(`抱歉，库存不足。当前库存：${product.value.stock}`)
     quantity.value = product.value.stock
     return
@@ -321,6 +321,7 @@ const loadProduct = async () => {
     const productId = route.params.id
     const response = await productService.getProductById(productId)
     const data = response?.data || response || {}
+    const stockVal = Number((data.Stock ?? data.stock ?? 0))
     product.value = {
       id: data.Id || data.id || 0,
       name: data.Name || data.name || '',
@@ -331,7 +332,7 @@ const loadProduct = async () => {
       thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
       isHot: data.IsHot || data.isHot || false,
       isNew: data.IsNew || data.isNew || false,
-      stock: data.Stock || data.stock || 0,
+      stock: Number.isFinite(stockVal) ? stockVal : 0,
       details: {
         material: (data.Details?.Material) || (data.details?.material) || '',
         packaging: (data.Details?.Packaging) || (data.details?.packaging) || '',

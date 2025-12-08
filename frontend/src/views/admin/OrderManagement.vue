@@ -292,14 +292,14 @@
                   <tr v-for="item in (selectedOrder.orderItems || selectedOrder.items)" :key="item.id" class="border-t">
                     <td class="px-4 py-2">
                       <div class="flex items-center">
-                        <img 
-                          :src="item.productImage || item.image || '/images/product-placeholder.svg'" 
-                          :alt="item.productName || item.name" 
-                          class="w-12 h-12 object-cover rounded"
-                          @error="handleImageError"
-                        >
+                        <div class="w-12 h-12">
+                          <SmartImage :src="item.productImage || item.image || '/images/product-placeholder.svg'" :alt="item.productName || item.name" ratio="auto" strategy="auto" />
+                        </div>
                         <div class="ml-3">
                           <div class="text-sm font-medium">{{ item.productName || item.name }}</div>
+                          <div class="text-xs" :class="(item.stock !== undefined && item.quantity > item.stock) ? 'text-red-600' : 'text-gray-500'">
+                            库存：{{ getItemStockText(item) }}
+                          </div>
                           <div class="text-xs text-gray-500">{{ item.description || '精美花卉' }}</div>
                         </div>
                       </div>
@@ -405,10 +405,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { getAvatarUrl } from '@/utils/avatar.js'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import adminService from '@/services/adminService.js'
+import { productService } from '@/services/product'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 计算统计数据
@@ -515,7 +516,7 @@ const fetchOrders = async () => {
 // 更新统计数据
 const updateStatistics = () => {
   statistics.value.totalOrders = orders.value.length
-  statistics.value.pendingOrders = orders.value.filter(order => order.status === 'pending').length
+  statistics.value.pendingOrders = orders.value.filter(order => order.status === 'processing').length
   statistics.value.completedOrders = orders.value.filter(order => order.status === 'delivered').length
   statistics.value.totalRevenue = orders.value
     .filter(order => order.status !== 'cancelled')
@@ -542,6 +543,12 @@ const viewOrder = async (order) => {
       user: detailedOrder.user || {},
       address: detailedOrder.address || {}
     }
+    try {
+      const ids = (selectedOrder.value.orderItems || []).map(x => x.productId || x.ProductId).filter(Boolean)
+      const details = await Promise.all(ids.map(async pid => { try { const r = await productService.getProductById(pid); const p = r?.data || r; return { pid, stock: Number(p?.Stock ?? p?.stock ?? 0) } } catch { return { pid, stock: undefined } } }))
+      const stocks = Object.fromEntries(details.map(d => [d.pid, d.stock]))
+      selectedOrder.value.orderItems = (selectedOrder.value.orderItems || []).map(it => ({ ...it, stock: stocks[it.productId || it.ProductId] }))
+    } catch {}
 
     // 若订单未包含收货地址，则尝试从用户默认地址补全
     try {
@@ -621,6 +628,38 @@ const stopPolling = () => {
   }
 }
 
+let detailTimer = null
+const ORDER_DETAIL_POLL_MS = 5000
+const startDetailPolling = (orderId) => {
+  stopDetailPolling()
+  detailTimer = setInterval(async () => {
+    try {
+      const res = await adminService.getAdminOrderById(orderId)
+      const d = res?.data || res
+      if (d) {
+        selectedOrder.value = {
+          ...selectedOrder.value,
+          ...d,
+          orderItems: d.orderItems || d.items || [],
+          user: d.user || {},
+          address: d.address || {}
+        }
+        try {
+          const ids = (selectedOrder.value.orderItems || []).map(x => x.productId || x.ProductId).filter(Boolean)
+          const details = await Promise.all(ids.map(async pid => { try { const r = await productService.getProductById(pid); const p = r?.data || r; return { pid, stock: Number(p?.Stock ?? p?.stock ?? 0) } } catch { return { pid, stock: undefined } } }))
+          const stocks = Object.fromEntries(details.map(d => [d.pid, d.stock]))
+          selectedOrder.value.orderItems = (selectedOrder.value.orderItems || []).map(it => ({ ...it, stock: stocks[it.productId || it.ProductId] }))
+        } catch {}
+      }
+      const hist = await adminService.getLatestOrderHistory(orderId)
+      latestHistory.value = hist?.data || hist || latestHistory.value
+    } catch {}
+  }, ORDER_DETAIL_POLL_MS)
+}
+const stopDetailPolling = () => {
+  if (detailTimer) { clearInterval(detailTimer); detailTimer = null }
+}
+
 // 订单状态更新后的处理函数 - 确保与用户端同步
 const handleOrderStatusChange = async (orderId, newStatus, note) => {
   try {
@@ -628,7 +667,8 @@ const handleOrderStatusChange = async (orderId, newStatus, note) => {
     loading.value = true
     
     // 调用更新订单状态的API
-    await adminService.updateOrderStatus(orderId, newStatus, note)
+    const safeNote = (note || '').trim().slice(0, 480)
+    await adminService.updateOrderStatus(orderId, newStatus, safeNote)
     
     // 立即刷新订单列表，确保用户端能看到最新状态
     await fetchOrders()
@@ -701,12 +741,12 @@ const submitProcess = async () => {
   if (actionLock.value) return
   try {
     actionLock.value = true
-    await handleOrderStatusChange(processTargetOrder.value.id, 'processing', processForm.value.note || '')
+    await handleOrderStatusChange(processTargetOrder.value.id, 'processing', (processForm.value.note || '').trim().slice(0, 480))
     if (processForm.value.shipNow) {
       // 自动补充默认快递公司与模拟单号
       const carrier = (processForm.value.carrier || '顺丰').trim()
       const tracking = (processForm.value.tracking || generateTrackingNo()).trim()
-      const note = [`快递公司：${carrier}`, `单号：${tracking}`, processForm.value.note || ''].filter(Boolean).join('；')
+      const note = [`快递公司：${carrier}`, `单号：${tracking}`, (processForm.value.note || '').trim()].filter(Boolean).join('；').slice(0, 480)
       await handleOrderStatusChange(processTargetOrder.value.id, 'shipped', note)
     }
     showProcessModal.value = false
@@ -763,7 +803,7 @@ const rejectOrder = async (orderId) => {
         return true
       }
     })
-    await adminService.updateOrderStatus(orderId, 'cancelled', value.trim())
+    await adminService.updateOrderStatus(orderId, 'cancelled', value.trim().slice(0, 480))
     await fetchOrders()
     ElMessage.success('已拒绝发货并同步到用户订单')
   } catch (error) {
@@ -792,7 +832,7 @@ const submitReject = async () => {
     actionLock.value = true
     const reason = (rejectForm.value.reason || '').trim()
     if (!reason) { ElMessage.warning('请填写拒绝发货的理由'); actionLock.value = false; return }
-    await adminService.updateOrderStatus(rejectTargetOrder.value.id, 'cancelled', reason)
+    await adminService.updateOrderStatus(rejectTargetOrder.value.id, 'cancelled', reason.slice(0, 480))
     await fetchOrders()
     ElMessage.success('已拒绝发货并同步到用户订单')
     showRejectModal.value = false
@@ -849,6 +889,12 @@ onMounted(() => {
 // 组件卸载时清除定时器
 onUnmounted(() => {
   stopPolling()
+  stopDetailPolling()
+})
+
+watch(() => showOrderDetail.value, (v) => {
+  if (v && selectedOrder.value?.id) startDetailPolling(selectedOrder.value.id)
+  else stopDetailPolling()
 })
 
 const getStatusClass = (status) => {
@@ -923,3 +969,8 @@ const handleAvatarError = (event) => {
 }
 </style>
 
+const getItemStockText = (item) => {
+  const s = item?.stock
+  if (s === undefined || s === null || Number.isNaN(Number(s))) return '未知'
+  return Number(s)
+}
