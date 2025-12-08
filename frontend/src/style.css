@@ -1,0 +1,128 @@
+/* 欢雨鲜花网站全局样式 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 自定义基础样式 */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 4rem;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-pink-100 via-white to-pink-50 min-h-screen;
+  }
+}
+
+/* 自定义组件样式 */
+@layer components {
+  /* 按钮样式 */
+  .btn-primary {
+    @apply bg-gradient-to-r from-huanyu-pink-500 to-huanyu-pink-600 hover:from-huanyu-pink-600 hover:to-huanyu-pink-700 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+  }
+  
+  .btn-secondary {
+    @apply bg-white hover:bg-huanyu-pink-50 text-huanyu-pink-600 border-2 border-huanyu-pink-300 font-medium py-2 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+  }
+  
+  /* 卡片样式 */
+  .card {
+    @apply bg-white/80 backdrop-blur-md rounded-xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border border-huanyu-pink-100;
+  }
+  
+  /* 输入框样式 */
+  .input-field {
+    @apply w-full px-4 py-2 border-2 border-huanyu-pink-200 rounded-lg focus:border-huanyu-pink-500 focus:outline-none focus:ring-2 focus:ring-huanyu-pink-200 transition-colors duration-200 bg-white/70 backdrop-blur-sm;
+  }
+  
+  /* 导航链接样式 */
+  .nav-link {
+    @apply text-gray-600 hover:text-huanyu-pink-600 font-medium transition-colors duration-200;
+  }
+  
+  .nav-link-active {
+    @apply text-huanyu-pink-600 font-semibold;
+  }
+}
+
+/* 自定义工具类 */
+@layer utilities {
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(236, 72, 153, 0.1);
+  }
+  
+  .pink-glow {
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+  }
+  
+  .pink-gradient-text {
+    background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* 响应式图片容器 */
+.img-container {
+  @apply w-full h-48 object-cover;
+}
+
+/* 通用图片完整显示规则 */
+img.object-cover {
+  object-fit: contain !important;
+}
+
+/* 购物车徽章 */
+.cart-badge {
+  @apply absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center;
+}
+
+/* 商品卡片悬停效果修复 */
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1 !important;
+}
+
+.card .absolute {
+  pointer-events: auto;
+}
+
+/* 确保悬停按钮在图片之上 */
+.card .relative {
+  position: relative;
+  z-index: 1;
+}
+
+.card .absolute.inset-0 {
+  z-index: 30 !important;
+  pointer-events: auto !important;
+}
+
+/* 强制显示悬停按钮用于调试 */
+.card:hover .absolute.inset-0 {
+  opacity: 1 !important;
+  visibility: visible !important;
+}

@@ -1,0 +1,1846 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>HuanyuFlowerShop</name>
+    </assembly>
+    <members>
+        <member name="M:HuanyuFlowerShop.Controllers.CartsController.GetCart">
+            <summary>
+            获取当前用户的购物车商品列表
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.CartsController.AddToCart(HuanyuFlowerShop.DTOs.AddToCartDto)">
+            <summary>
+            添加商品到购物车
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.CartsController.UpdateCartItem(System.Int32,HuanyuFlowerShop.DTOs.UpdateCartItemDto)">
+            <summary>
+            更新购物车商品数量
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.CartsController.RemoveFromCart(System.Int32)">
+            <summary>
+            从购物车移除商品
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.CartsController.ClearCart">
+            <summary>
+            清空购物车
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.CartsController.GetCurrentUserId">
+            <summary>
+            获取当前认证用户的ID
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.FavoriteController.GetCurrentUserId">
+            <summary>
+            获取当前用户ID
+            </summary>
+            <returns>用户ID</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.FavoriteController.AddFavorite(HuanyuFlowerShop.DTOs.AddFavoriteDto)">
+            <summary>
+            添加收藏
+            </summary>
+            <param name="dto">添加收藏请求</param>
+            <returns>操作结果</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.FavoriteController.RemoveFavorite(System.Int32)">
+            <summary>
+            移除收藏
+            </summary>
+            <param name="productId">商品ID</param>
+            <returns>操作结果</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.FavoriteController.CheckFavorite(System.Int32)">
+            <summary>
+            检查是否已收藏
+            </summary>
+            <param name="productId">商品ID</param>
+            <returns>收藏状态</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.FavoriteController.GetFavorites(System.Int32,System.Int32)">
+            <summary>
+            获取用户收藏列表
+            </summary>
+            <param name="page">页码，默认为1</param>
+            <param name="pageSize">每页数量，默认为10</param>
+            <returns>收藏列表</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.GetOrders">
+            <summary>
+            获取当前用户的订单列表
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.GetOrder(System.Int32)">
+            <summary>
+            获取订单详情
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.CreateOrder(HuanyuFlowerShop.DTOs.CreateOrderDto)">
+            <summary>
+            创建新订单
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.CancelOrder(System.Int32)">
+            <summary>
+            取消订单
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.GetOrderStats">
+            <summary>
+            获取用户订单统计信息
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.GetOrderStatusHistory(System.Int32)">
+            <summary>
+            获取订单状态历史
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.UpdateOrderStatus(System.Int32,HuanyuFlowerShop.Controllers.UpdateOrderStatusRequest)">
+            <summary>
+            更新订单状态
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrdersController.GetCurrentUserId">
+            <summary>
+            获取当前认证用户的ID
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrderStatusHistoryController.#ctor(HuanyuFlowerShop.Services.IOrderStatusHistoryService)">
+            <summary>
+            构造函数
+            </summary>
+            <param name="orderStatusHistoryService">订单状态历史服务</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrderStatusHistoryController.UpdateOrderStatus(System.Int32,HuanyuFlowerShop.DTOs.UpdateOrderStatusRequest)">
+            <summary>
+            更新订单状态
+            </summary>
+            <param name="orderId">订单ID</param>
+            <param name="request">更新请求</param>
+            <returns>更新结果</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrderStatusHistoryController.GetOrderStatusHistory(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            获取订单状态历史
+            </summary>
+            <param name="orderId">订单ID</param>
+            <param name="pageIndex">页码</param>
+            <param name="pageSize">每页记录数</param>
+            <returns>订单状态历史列表</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.OrderStatusHistoryController.GetLatestOrderStatus(System.Int32)">
+            <summary>
+            获取最新订单状态
+            </summary>
+            <param name="orderId">订单ID</param>
+            <returns>最新的订单状态历史记录</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProductReviewController.GetProductReviews(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            获取指定产品的评价列表
+            </summary>
+            <param name="productId">产品ID</param>
+            <param name="pageNumber">页码，默认1</param>
+            <param name="pageSize">每页数量，默认10</param>
+            <returns>评价列表响应</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProductReviewController.GetAverageRating(System.Int32)">
+            <summary>
+            获取指定产品的平均评分
+            </summary>
+            <param name="productId">产品ID</param>
+            <returns>平均评分</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProductReviewController.CreateReview(HuanyuFlowerShop.DTOs.CreateProductReviewRequest)">
+            <summary>
+            创建产品评价（需要登录）
+            </summary>
+            <param name="request">创建评价请求</param>
+            <returns>创建的评价</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProductReviewController.UpdateReview(System.Int32,HuanyuFlowerShop.DTOs.UpdateProductReviewRequest)">
+            <summary>
+            更新产品评价（需要登录）
+            </summary>
+            <param name="reviewId">评价ID</param>
+            <param name="request">更新评价请求</param>
+            <returns>更新后的评价</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProductReviewController.DeleteReview(System.Int32)">
+            <summary>
+            删除产品评价（需要登录）
+            </summary>
+            <param name="reviewId">评价ID</param>
+            <returns>删除结果</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProductReviewController.GetUserReviewForProduct(System.Int32)">
+            <summary>
+            获取当前用户对指定产品的评价
+            </summary>
+            <param name="productId">产品ID</param>
+            <returns>用户的评价</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProductReviewController.GetAllReviews(System.Int32,System.Int32)">
+            <summary>
+            获取所有评价（用于首页展示）
+            </summary>
+            <param name="pageNumber">页码，默认1</param>
+            <param name="pageSize">每页数量，默认10</param>
+            <returns>评价列表</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProfileController.GetProfile">
+            <summary>
+            获取当前用户资料
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProfileController.UpdateProfile(HuanyuFlowerShop.DTOs.UpdateUserDto)">
+            <summary>
+            更新当前用户资料
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ProfileController.ChangePassword(HuanyuFlowerShop.DTOs.ChangePasswordDto)">
+            <summary>
+            更改用户密码
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.GetProductReviews(System.Int32)">
+            <summary>
+            获取产品的评价列表
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.GetReview(System.Int32)">
+            <summary>
+            获取评价详情
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.CreateReview(HuanyuFlowerShop.DTOs.CreateReviewDto)">
+            <summary>
+            创建新评价
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.UpdateReview(System.Int32,HuanyuFlowerShop.DTOs.UpdateReviewDto)">
+            <summary>
+            更新评价
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.DeleteReview(System.Int32)">
+            <summary>
+            删除评价
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.GetAverageProductRating(System.Int32)">
+            <summary>
+            获取产品的平均评分
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.GetProductReviewCount(System.Int32)">
+            <summary>
+            获取产品的评价数量
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.HasUserReviewedProduct(System.Int32)">
+            <summary>
+            检查当前用户是否已评价产品
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Controllers.ReviewsController.GetCurrentUserId">
+            <summary>
+            获取当前认证用户的ID
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Data.ApplicationDbContext">
+            <summary>
+            应用程序数据库上下文
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Data.Migrations.AddProductReviewTable">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Data.Migrations.AddProductReviewTable.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Data.Migrations.AddProductReviewTable.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Data.Migrations.AddProductReviewTable.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.AddressDto">
+            <summary>
+            地址数据传输对象
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.CreateAddressDto">
+            <summary>
+            创建地址的请求对象
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.UpdateAddressDto">
+            <summary>
+            更新地址的请求对象
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.ChangePasswordDto">
+            <summary>
+            修改密码DTO
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.AddFavoriteDto">
+            <summary>
+            收藏商品请求DTO
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.FavoriteDto">
+            <summary>
+            收藏商品响应DTO
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.FavoriteListResponseDto">
+            <summary>
+            收藏商品列表响应DTO
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto">
+            <summary>
+            订单状态历史DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto.Id">
+            <summary>
+            历史记录ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto.OrderId">
+            <summary>
+            订单ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto.OrderNumber">
+            <summary>
+            订单号
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto.Status">
+            <summary>
+            订单状态
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto.Reason">
+            <summary>
+            状态变更原因
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto.Operator">
+            <summary>
+            操作人
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryDto.CreatedAt">
+            <summary>
+            创建时间
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.UpdateOrderStatusRequest">
+            <summary>
+            更新订单状态请求DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.UpdateOrderStatusRequest.Status">
+            <summary>
+            订单状态
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.UpdateOrderStatusRequest.Reason">
+            <summary>
+            状态变更原因
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.UpdateOrderStatusRequest.Operator">
+            <summary>
+            操作人
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.OrderStatusHistoryListResponse">
+            <summary>
+            订单状态历史列表响应DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryListResponse.Items">
+            <summary>
+            订单状态历史列表
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.OrderStatusHistoryListResponse.TotalCount">
+            <summary>
+            总记录数
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.PaymentStatusRequest">
+            <summary>
+            支付状态请求模型
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.PaymentMethodRequest">
+            <summary>
+            支付方式请求模型
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.VerifyPaymentRequest">
+            <summary>
+            验证支付请求模型
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.PaymentRequest">
+            <summary>
+            创建支付请求模型
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.PaymentVerificationRequest">
+            <summary>
+            验证支付请求模型（服务层使用）
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.PaymentResult">
+            <summary>
+            支付结果响应模型
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.ProductReviewDto">
+            <summary>
+            产品评价DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewDto.Id">
+            <summary>
+            评价ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewDto.ProductId">
+            <summary>
+            产品ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewDto.UserName">
+            <summary>
+            用户名
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewDto.Rating">
+            <summary>
+            评分
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewDto.Comment">
+            <summary>
+            评价内容
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewDto.CreatedAt">
+            <summary>
+            创建时间
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.CreateProductReviewRequest">
+            <summary>
+            创建产品评价请求DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.CreateProductReviewRequest.ProductId">
+            <summary>
+            产品ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.CreateProductReviewRequest.Rating">
+            <summary>
+            评分（1-5）
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.CreateProductReviewRequest.Comment">
+            <summary>
+            评价内容
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.UpdateProductReviewRequest">
+            <summary>
+            更新产品评价请求DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.UpdateProductReviewRequest.Rating">
+            <summary>
+            评分（1-5）
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.UpdateProductReviewRequest.Comment">
+            <summary>
+            评价内容
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.ProductReviewListResponse">
+            <summary>
+            产品评价列表响应DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.Items">
+            <summary>
+            评价列表
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.TotalCount">
+            <summary>
+            总记录数
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.AverageRating">
+            <summary>
+            平均评分
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.FiveStarCount">
+            <summary>
+            5星评价数量
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.FourStarCount">
+            <summary>
+            4星评价数量
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.ThreeStarCount">
+            <summary>
+            3星评价数量
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.TwoStarCount">
+            <summary>
+            2星评价数量
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductReviewListResponse.OneStarCount">
+            <summary>
+            1星评价数量
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.ProductSearchDto">
+            <summary>
+            商品搜索和过滤条件DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.Keyword">
+            <summary>
+            搜索关键词
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.CategoryId">
+            <summary>
+            分类ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.MinPrice">
+            <summary>
+            最小价格
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.MaxPrice">
+            <summary>
+            最大价格
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.Size">
+            <summary>
+            尺寸筛选
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.Material">
+            <summary>
+            材质筛选
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.Occasion">
+            <summary>
+            场合筛选
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.InStockOnly">
+            <summary>
+            是否只显示有库存的商品
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.FeaturedOnly">
+            <summary>
+            是否只显示推荐商品
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.SortBy">
+            <summary>
+            排序方式: price_asc, price_desc, newest, sales
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.Page">
+            <summary>
+            页码
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.ProductSearchDto.PageSize">
+            <summary>
+            每页数量
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.DTOs.PagedResult`1">
+            <summary>
+            分页结果DTO
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.PagedResult`1.Items">
+            <summary>
+            数据列表
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.PagedResult`1.TotalCount">
+            <summary>
+            总记录数
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.PagedResult`1.PageSize">
+            <summary>
+            每页数量
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.PagedResult`1.Page">
+            <summary>
+            当前页码
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.PagedResult`1.TotalPages">
+            <summary>
+            总页数
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.PagedResult`1.HasPrevious">
+            <summary>
+            是否有上一页
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.DTOs.PagedResult`1.HasNext">
+            <summary>
+            是否有下一页
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.Address">
+            <summary>
+            地址实体类
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.AuditLog">
+            <summary>
+            审计日志实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.Id">
+            <summary>
+            主键ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.UserId">
+            <summary>
+            用户ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.Action">
+            <summary>
+            操作类型
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.Resource">
+            <summary>
+            资源类型
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.ResourceId">
+            <summary>
+            资源ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.Details">
+            <summary>
+            详细信息
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.IPAddress">
+            <summary>
+            IP地址
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.AuditLog.CreatedAt">
+            <summary>
+            创建时间
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.CartItem">
+            <summary>
+            购物车项目实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.CartItem.Price">
+            <summary>
+            添加到购物车时的商品价格（防止商品价格变动影响购物车）
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.Category">
+            <summary>
+            鲜花分类实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Category.SortOrder">
+            <summary>
+            排序顺序
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Category.IsActive">
+            <summary>
+            是否启用
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.Favorite">
+            <summary>
+            用户收藏商品实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Favorite.UserId">
+            <summary>
+            用户ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Favorite.ProductId">
+            <summary>
+            商品ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Favorite.CreatedAt">
+            <summary>
+            收藏时间
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.Order">
+            <summary>
+            订单实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.Status">
+            <summary>
+            订单状态：pending(待处理), processing(处理中), shipped(已发货), delivered(已送达), cancelled(已取消)
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.TotalAmount">
+            <summary>
+            订单总金额
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.Subtotal">
+            <summary>
+            商品总金额
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.ShippingFee">
+            <summary>
+            配送费用
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.DiscountAmount">
+            <summary>
+            订单优惠金额
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.CouponCode">
+            <summary>
+            应用的优惠码
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.RecipientName">
+            <summary>
+            收货人姓名
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.RecipientPhone">
+            <summary>
+            收货人电话
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.DeliveryAddress">
+            <summary>
+            收货地址
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.DeliveryTime">
+            <summary>
+            配送时间要求
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.Message">
+            <summary>
+            留言
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.PaymentMethod">
+            <summary>
+            支付方式：cod(货到付款), online(在线支付)
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.PaymentStatus">
+            <summary>
+            支付状态：unpaid(未支付), paid(已支付), refunded(已退款), partial_refunded(部分退款)
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.PaymentReference">
+            <summary>
+            支付参考号
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.PaidAmount">
+            <summary>
+            已支付金额
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.PaidAt">
+            <summary>
+            支付时间
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.RefundedAmount">
+            <summary>
+            退款金额
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Order.PaymentExpiresAt">
+            <summary>
+            支付过期时间
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.OrderItem">
+            <summary>
+            订单项目实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderItem.UnitPrice">
+            <summary>
+            下单时的商品单价
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderItem.Subtotal">
+            <summary>
+            小计金额
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.OrderStatusHistory">
+            <summary>
+            订单状态历史实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderStatusHistory.OrderId">
+            <summary>
+            订单ID
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderStatusHistory.OldStatus">
+            <summary>
+            变更前状态
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderStatusHistory.NewStatus">
+            <summary>
+            变更后状态
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderStatusHistory.OperatorId">
+            <summary>
+            操作人ID（系统管理员ID）
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderStatusHistory.OperatorName">
+            <summary>
+            操作人名称
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderStatusHistory.Note">
+            <summary>
+            备注信息
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.OrderStatusHistory.CreatedAt">
+            <summary>
+            状态变更时间
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.Product">
+            <summary>
+            鲜花商品实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Product.ProductReviews">
+            <summary>
+            产品评价集合
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Product.Stock">
+            <summary>
+            库存数量
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Product.IsFeatured">
+            <summary>
+            是否推荐到首页
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Product.IsActive">
+            <summary>
+            是否上架
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Product.SalesCount">
+            <summary>
+            销售数量
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.Product.CategoryId">
+            <summary>
+            分类ID
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.ReduceStock(System.Int32)">
+            <summary>
+            减少库存
+            </summary>
+            <param name="quantity">要减少的数量</param>
+            <returns>是否成功减少库存</returns>
+            <exception cref="T:System.ArgumentException">当数量小于等于0时抛出</exception>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.HasEnoughStock(System.Int32)">
+            <summary>
+            检查库存是否充足
+            </summary>
+            <param name="quantity">需要的数量</param>
+            <returns>库存是否充足</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.UpdatePrice(System.Decimal)">
+            <summary>
+            更新价格
+            </summary>
+            <param name="newPrice">新价格</param>
+            <exception cref="T:System.ArgumentException">当价格小于等于0时抛出</exception>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.AddStock(System.Int32)">
+            <summary>
+            增加库存
+            </summary>
+            <param name="quantity">要增加的数量</param>
+            <exception cref="T:System.ArgumentException">当数量小于等于0时抛出</exception>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.SetAsFeatured">
+            <summary>
+            设置为推荐商品
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.UnsetFeatured">
+            <summary>
+            取消推荐状态
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.Activate">
+            <summary>
+            上架商品
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.Deactivate">
+            <summary>
+            下架商品
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.GetStatusDescription">
+            <summary>
+            获取商品状态描述
+            </summary>
+            <returns>商品状态描述</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Entities.Product.CanBePurchased(System.Int32)">
+            <summary>
+            检查是否可以购买
+            </summary>
+            <param name="quantity">购买数量</param>
+            <returns>是否可以购买</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.ProductReview">
+            <summary>
+            产品评价实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.ProductReview.IsDeleted">
+            <summary>
+            是否已删除
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Entities.User">
+            <summary>
+            用户实体类
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.User.Phone">
+            <summary>
+            用户电话号码
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.User.ProductReviews">
+            <summary>
+            用户评价集合
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.User.Role">
+            <summary>
+            用户角色：admin(管理员) 或 user(普通用户)
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.User.Status">
+            <summary>
+            账户状态：active(活跃) 或 inactive(禁用)
+            </summary>
+        </member>
+        <member name="P:HuanyuFlowerShop.Entities.User.LastLoginAt">
+            <summary>
+            上次登录时间
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.BusinessException">
+            <summary>
+            业务异常基类
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.InsufficientStockException">
+            <summary>
+            库存不足异常
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.ProductNotFoundException">
+            <summary>
+            产品不存在异常
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.UserNotFoundException">
+            <summary>
+            用户不存在异常
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.OrderNotFoundException">
+            <summary>
+            订单不存在异常
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.InvalidOperationException">
+            <summary>
+            无效操作异常
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.UnauthorizedException">
+            <summary>
+            权限不足异常
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Exceptions.EntityNotFoundException">
+            <summary>
+            实体未找到异常
+            当尝试访问不存在的实体时抛出
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Exceptions.EntityNotFoundException.#ctor">
+            <summary>
+            初始化新的实体未找到异常实例
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Exceptions.EntityNotFoundException.#ctor(System.String)">
+            <summary>
+            使用指定的错误消息初始化新的实体未找到异常实例
+            </summary>
+            <param name="message">描述错误的消息</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Exceptions.EntityNotFoundException.#ctor(System.String,System.Exception)">
+            <summary>
+            使用指定的错误消息和对导致此异常的内部异常的引用初始化新的实体未找到异常实例
+            </summary>
+            <param name="message">描述错误的消息</param>
+            <param name="innerException">导致当前异常的异常</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Exceptions.EntityNotFoundException.#ctor(System.String,System.Object)">
+            <summary>
+            使用指定的实体类型和ID初始化新的实体未找到异常实例
+            </summary>
+            <param name="entityType">实体类型名称</param>
+            <param name="id">实体ID</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAddressService.GetUserAddressesAsync(System.Int32)">
+            <summary>
+            获取用户的所有地址
+            </summary>
+            <param name="userId">用户ID</param>
+            <returns>地址列表</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAddressService.GetAddressByIdAsync(System.Int32,System.Int32)">
+            <summary>
+            根据ID获取地址
+            </summary>
+            <param name="addressId">地址ID</param>
+            <param name="userId">用户ID</param>
+            <returns>地址信息</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAddressService.GetDefaultAddressAsync(System.Int32)">
+            <summary>
+            获取用户的默认地址
+            </summary>
+            <param name="userId">用户ID</param>
+            <returns>默认地址信息</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAddressService.CreateAddressAsync(HuanyuFlowerShop.DTOs.CreateAddressDto,System.Int32)">
+            <summary>
+            创建新地址
+            </summary>
+            <param name="createAddressDto">创建地址的请求数据</param>
+            <param name="userId">用户ID</param>
+            <returns>创建的地址信息</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAddressService.UpdateAddressAsync(System.Int32,HuanyuFlowerShop.DTOs.UpdateAddressDto,System.Int32)">
+            <summary>
+            更新地址信息
+            </summary>
+            <param name="addressId">地址ID</param>
+            <param name="updateAddressDto">更新地址的请求数据</param>
+            <param name="userId">用户ID</param>
+            <returns>更新后的地址信息</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAddressService.DeleteAddressAsync(System.Int32,System.Int32)">
+            <summary>
+            删除地址
+            </summary>
+            <param name="addressId">地址ID</param>
+            <param name="userId">用户ID</param>
+            <returns></returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAddressService.SetDefaultAddressAsync(System.Int32,System.Int32)">
+            <summary>
+            设置默认地址
+            </summary>
+            <param name="addressId">地址ID</param>
+            <param name="userId">用户ID</param>
+            <returns>更新后的默认地址信息</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Interfaces.IAuditLogService">
+            <summary>
+            审计日志服务接口
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IAuditLogService.LogAsync(System.Nullable{System.Int32},System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            记录审计日志
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="action">操作类型</param>
+            <param name="resource">资源类型</param>
+            <param name="resourceId">资源ID</param>
+            <param name="details">详细信息</param>
+            <param name="ipAddress">IP地址</param>
+        </member>
+        <member name="T:HuanyuFlowerShop.Interfaces.ICacheService">
+            <summary>
+            缓存服务接口
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICacheService.GetAsync``1(System.String)">
+            <summary>
+            从缓存中获取数据
+            </summary>
+            <typeparam name="T">数据类型</typeparam>
+            <param name="key">缓存键</param>
+            <returns>缓存的数据，如果不存在则返回null</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICacheService.SetAsync``1(System.String,``0,System.Nullable{System.TimeSpan})">
+            <summary>
+            将数据存入缓存
+            </summary>
+            <typeparam name="T">数据类型</typeparam>
+            <param name="key">缓存键</param>
+            <param name="value">要缓存的数据</param>
+            <param name="expiry">过期时间，如果为null则使用默认过期时间</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICacheService.RemoveAsync(System.String)">
+            <summary>
+            移除缓存项
+            </summary>
+            <param name="key">缓存键</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICacheService.ExistsAsync(System.String)">
+            <summary>
+            检查缓存项是否存在
+            </summary>
+            <param name="key">缓存键</param>
+            <returns>缓存项是否存在</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICacheService.RemoveByPatternAsync(System.String)">
+            <summary>
+            根据模式移除缓存项
+            </summary>
+            <param name="pattern">缓存键模式</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICacheService.ClearAsync">
+            <summary>
+            清空所有缓存
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICacheService.GetExpiryAsync(System.String)">
+            <summary>
+            获取缓存项的过期时间
+            </summary>
+            <param name="key">缓存键</param>
+            <returns>过期时间，如果不存在则返回null</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Interfaces.ICartService">
+            <summary>
+            购物车服务接口
+            提供购物车相关的核心功能
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICartService.GetCartItemsAsync(System.Int32)">
+            <summary>
+            获取用户的购物车商品列表
+            </summary>
+            <param name="userId">用户ID</param>
+            <returns>购物车商品列表</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICartService.AddToCartAsync(System.Int32,HuanyuFlowerShop.DTOs.AddToCartDto)">
+            <summary>
+            添加商品到购物车
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="addToCartDto">添加购物车的数据</param>
+            <returns>添加的购物车商品</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICartService.UpdateCartItemAsync(System.Int32,System.Int32,HuanyuFlowerShop.DTOs.UpdateCartItemDto)">
+            <summary>
+            更新购物车商品数量
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="cartItemId">购物车商品ID</param>
+            <param name="updateCartItemDto">更新的数据</param>
+            <returns>更新后的购物车商品</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICartService.RemoveFromCartAsync(System.Int32,System.Int32)">
+            <summary>
+            从购物车移除商品
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="cartItemId">购物车商品ID</param>
+            <returns>移除是否成功</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.ICartService.ClearCartAsync(System.Int32)">
+            <summary>
+            清空购物车
+            </summary>
+            <param name="userId">用户ID</param>
+            <returns>清空是否成功</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Interfaces.IPaymentService">
+            <summary>
+            支付服务接口
+            提供支付相关的核心功能，包括支付创建、验证、退款等
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IPaymentService.CreatePaymentAsync(System.Int32,System.Int32,System.String)">
+            <summary>
+            创建支付
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="orderId">订单ID</param>
+            <param name="paymentMethod">支付方式</param>
+            <returns>支付结果</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IPaymentService.VerifyPaymentAsync(System.Int32,System.Int32,System.String)">
+            <summary>
+            验证支付
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="orderId">订单ID</param>
+            <param name="paymentReference">支付参考号</param>
+            <returns>验证结果</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IPaymentService.CancelPaymentAsync(System.Int32,System.Int32)">
+            <summary>
+            取消支付
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="orderId">订单ID</param>
+            <returns>取消结果</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IPaymentService.GetPaymentStatusAsync(System.Int32,System.Int32)">
+            <summary>
+            查询支付状态
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="orderId">订单ID</param>
+            <returns>支付状态信息</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IPaymentService.GeneratePaymentLinkAsync(System.Int32,System.Int32)">
+            <summary>
+            生成支付链接
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="orderId">订单ID</param>
+            <returns>支付链接和支付参考号</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Interfaces.IProductReviewService">
+            <summary>
+            产品评价服务接口
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.CreateReviewAsync(System.Int32,HuanyuFlowerShop.DTOs.CreateProductReviewRequest)">
+            <summary>
+            创建产品评价
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="request">创建请求</param>
+            <returns>创建的评价</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.UpdateReviewAsync(System.Int32,System.Int32,HuanyuFlowerShop.DTOs.UpdateProductReviewRequest)">
+            <summary>
+            更新产品评价
+            </summary>
+            <param name="reviewId">评价ID</param>
+            <param name="userId">用户ID</param>
+            <param name="request">更新请求</param>
+            <returns>更新后的评价</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.DeleteReviewAsync(System.Int32,System.Int32)">
+            <summary>
+            删除产品评价
+            </summary>
+            <param name="reviewId">评价ID</param>
+            <param name="userId">用户ID</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.GetUserReviewForProductAsync(System.Int32,System.Int32)">
+            <summary>
+            获取用户对特定产品的评价
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="productId">产品ID</param>
+            <returns>评价信息，如无则返回null</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.GetProductReviewsAsync(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            获取产品评价列表
+            </summary>
+            <param name="productId">产品ID</param>
+            <param name="pageIndex">页码</param>
+            <param name="pageSize">每页数量</param>
+            <returns>评价列表响应</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.GetUserProductReviewAsync(System.Int32,System.Int32)">
+            <summary>
+            获取用户对产品的评价
+            </summary>
+            <param name="productId">产品ID</param>
+            <param name="userId">用户ID</param>
+            <returns>用户评价</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.GetProductAverageRatingAsync(System.Int32)">
+            <summary>
+            获取产品平均评分
+            </summary>
+            <param name="productId">产品ID</param>
+            <returns>平均评分</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IProductReviewService.GetAllReviewsAsync(System.Int32,System.Int32)">
+            <summary>
+            获取所有评价（用于首页展示）
+            </summary>
+            <param name="pageIndex">页码</param>
+            <param name="pageSize">每页数量</param>
+            <returns>评价列表</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Interfaces.IRateLimiter">
+            <summary>
+            速率限制器接口
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IRateLimiter.TryAllowRequest(System.String)">
+            <summary>
+            检查请求是否允许
+            </summary>
+            <param name="key">客户端标识键</param>
+            <returns>是否允许请求</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IRateLimiter.SetLimit(System.Int32)">
+            <summary>
+            设置速率限制规则
+            </summary>
+            <param name="requestsPerMinute">每分钟允许的请求数</param>
+        </member>
+        <member name="T:HuanyuFlowerShop.Interfaces.IUnitOfWork">
+            <summary>
+            工作单元接口
+            用于管理事务和数据库操作的一致性
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IUnitOfWork.SaveChangesAsync">
+            <summary>
+            保存所有更改到数据库
+            </summary>
+            <returns>受影响的行数</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IUnitOfWork.BeginTransactionAsync">
+            <summary>
+            开始事务
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IUnitOfWork.CommitTransactionAsync">
+            <summary>
+            提交事务
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Interfaces.IUnitOfWork.RollbackTransactionAsync">
+            <summary>
+            回滚事务
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Middleware.AuditLogMiddleware">
+            <summary>
+            审计日志中间件
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Middleware.RateLimitingMiddleware">
+            <summary>
+            速率限制中间件
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Migrations.InitialMySQLMigration">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.InitialMySQLMigration.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.InitialMySQLMigration.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.InitialMySQLMigration.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:HuanyuFlowerShop.Migrations.MySQLCleanMigration">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.MySQLCleanMigration.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.MySQLCleanMigration.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.MySQLCleanMigration.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:HuanyuFlowerShop.Migrations.AddPaymentFieldsToOrder">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.AddPaymentFieldsToOrder.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.AddPaymentFieldsToOrder.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:HuanyuFlowerShop.Migrations.AddPaymentFieldsToOrder.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:HuanyuFlowerShop.Repositories.UnitOfWork">
+            <summary>
+            工作单元实现类
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Repositories.UnitOfWork.SaveChangesAsync">
+            <summary>
+            保存所有更改到数据库
+            </summary>
+            <returns>受影响的行数</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Repositories.UnitOfWork.BeginTransactionAsync">
+            <summary>
+            开始事务
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Repositories.UnitOfWork.CommitTransactionAsync">
+            <summary>
+            提交事务
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Repositories.UnitOfWork.RollbackTransactionAsync">
+            <summary>
+            回滚事务
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Repositories.UnitOfWork.Dispose">
+            <summary>
+            释放资源
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Repositories.UnitOfWork.Dispose(System.Boolean)">
+            <summary>
+            释放资源的具体实现
+            </summary>
+            <param name="disposing">是否正在释放托管资源</param>
+        </member>
+        <member name="T:HuanyuFlowerShop.Services.AuditLogService">
+            <summary>
+            审计日志服务实现
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.AuthService.ClearUserCache(System.Int32,System.String)">
+            <summary>
+            清除用户相关缓存
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="username">用户名</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.AuthService.ChangePasswordAsync(System.Int32,HuanyuFlowerShop.DTOs.ChangePasswordDto)">
+            <summary>
+            修改用户密码
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="changePasswordDto">密码修改信息</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.CategoryService.ClearCategoryCaches">
+            <summary>
+            清除分类相关缓存
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.IFavoriteService.AddFavoriteAsync(System.Int32,System.Int32)">
+            <summary>
+            添加收藏
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="productId">商品ID</param>
+            <returns>是否添加成功</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.IFavoriteService.RemoveFavoriteAsync(System.Int32,System.Int32)">
+            <summary>
+            移除收藏
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="productId">商品ID</param>
+            <returns>是否移除成功</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.IFavoriteService.IsProductFavoritedAsync(System.Int32,System.Int32)">
+            <summary>
+            检查是否已收藏
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="productId">商品ID</param>
+            <returns>是否已收藏</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.IFavoriteService.GetUserFavoritesAsync(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            获取用户收藏列表
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="page">页码</param>
+            <param name="pageSize">每页数量</param>
+            <returns>收藏列表</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Services.IOrderStatusHistoryService">
+            <summary>
+            订单状态历史服务接口
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.IOrderStatusHistoryService.UpdateOrderStatusAsync(System.Int32,HuanyuFlowerShop.DTOs.UpdateOrderStatusRequest)">
+            <summary>
+            更新订单状态
+            </summary>
+            <param name="orderId">订单ID</param>
+            <param name="request">更新请求</param>
+            <returns>是否更新成功</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.IOrderStatusHistoryService.GetOrderStatusHistoryAsync(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            获取订单状态历史
+            </summary>
+            <param name="orderId">订单ID</param>
+            <param name="pageIndex">页码</param>
+            <param name="pageSize">每页记录数</param>
+            <returns>订单状态历史列表</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.IOrderStatusHistoryService.GetLatestOrderStatusAsync(System.Int32)">
+            <summary>
+            获取最新订单状态
+            </summary>
+            <param name="orderId">订单ID</param>
+            <returns>最新的订单状态历史记录</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Services.MemoryCacheService">
+            <summary>
+            内存缓存服务实现
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.GetAsync``1(System.String)">
+            <summary>
+            从缓存中获取数据
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.SetAsync``1(System.String,``0,System.Nullable{System.TimeSpan})">
+            <summary>
+            将数据存入缓存
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.RemoveAsync(System.String)">
+            <summary>
+            移除缓存项
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.ExistsAsync(System.String)">
+            <summary>
+            检查缓存项是否存在
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.RemoveByPatternAsync(System.String)">
+            <summary>
+            根据模式移除缓存项
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.ClearAsync">
+            <summary>
+            清空所有缓存
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.GetExpiryAsync(System.String)">
+            <summary>
+            获取缓存项的过期时间
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.MemoryCacheService.OnEviction(System.Object,System.Object,Microsoft.Extensions.Caching.Memory.EvictionReason,System.Object)">
+            <summary>
+            缓存项被移除时的回调
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Services.MemoryRateLimiter">
+            <summary>
+            基于内存的速率限制器实现
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.OrderService.CompanyRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(物流公司|快递公司)[：:]\\s*([^；,，\\n\\r]+)</code><br/>
+            Options:<br/>
+            <code>RegexOptions.Compiled</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ 1st capture group.<br/>
+                ○ Match with 2 alternative expressions.<br/>
+                    ○ Match the string "物流公司".<br/>
+                    ○ Match the string "快递公司".<br/>
+            ○ Match a character in the set [:\uFF1A].<br/>
+            ○ Match a whitespace character greedily any number of times.<br/>
+            ○ 2nd capture group.<br/>
+                ○ Match a character in the set [^\n\r,\uFF0C\uFF1B] atomically at least once.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.OrderService.TrackingRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(运单号|单号)[：:]\\s*([A-Za-z0-9-]+)</code><br/>
+            Options:<br/>
+            <code>RegexOptions.Compiled</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ 1st capture group.<br/>
+                ○ Match with 2 alternative expressions.<br/>
+                    ○ Match the string "运单号".<br/>
+                    ○ Match the string "单号".<br/>
+            ○ Match a character in the set [:\uFF1A].<br/>
+            ○ Match a whitespace character atomically any number of times.<br/>
+            ○ 2nd capture group.<br/>
+                ○ Match a character in the set [-0-9A-Za-z] atomically at least once.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="T:HuanyuFlowerShop.Services.OrderStatusHistoryService">
+            <summary>
+            订单状态历史服务实现
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.OrderStatusHistoryService.#ctor(HuanyuFlowerShop.Data.ApplicationDbContext)">
+            <summary>
+            构造函数
+            </summary>
+            <param name="context">数据库上下文</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.OrderStatusHistoryService.UpdateOrderStatusAsync(System.Int32,HuanyuFlowerShop.DTOs.UpdateOrderStatusRequest)">
+            <summary>
+            更新订单状态
+            </summary>
+            <param name="orderId">订单ID</param>
+            <param name="request">更新请求</param>
+            <returns>是否更新成功</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.OrderStatusHistoryService.GetOrderStatusHistoryAsync(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            获取订单状态历史
+            </summary>
+            <param name="orderId">订单ID</param>
+            <param name="pageIndex">页码</param>
+            <param name="pageSize">每页记录数</param>
+            <returns>订单状态历史列表</returns>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.OrderStatusHistoryService.GetLatestOrderStatusAsync(System.Int32)">
+            <summary>
+            获取最新订单状态
+            </summary>
+            <param name="orderId">订单ID</param>
+            <returns>最新的订单状态历史记录</returns>
+        </member>
+        <member name="T:HuanyuFlowerShop.Services.ProductReviewService">
+            <summary>
+            产品评价服务实现
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.ProductReviewService.#ctor(HuanyuFlowerShop.Data.ApplicationDbContext)">
+            <summary>
+            构造函数
+            </summary>
+            <param name="context">数据库上下文</param>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.ProductReviewService.CreateReviewAsync(System.Int32,HuanyuFlowerShop.DTOs.CreateProductReviewRequest)">
+            <summary>
+            创建产品评价
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.ProductReviewService.UpdateReviewAsync(System.Int32,System.Int32,HuanyuFlowerShop.DTOs.UpdateProductReviewRequest)">
+            <summary>
+            更新产品评价
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.ProductReviewService.DeleteReviewAsync(System.Int32,System.Int32)">
+            <summary>
+            删除产品评价
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.ProductReviewService.GetProductReviewsAsync(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            获取产品评价列表
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.ProductReviewService.GetAllReviewsAsync(System.Int32,System.Int32)">
+            <summary>
+            获取所有评价（用于首页展示）
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Services.UserService.ClearUserCache(System.Int32,System.String)">
+            <summary>
+            清除用户相关缓存
+            </summary>
+            <param name="userId">用户ID</param>
+            <param name="username">用户名</param>
+        </member>
+        <member name="T:HuanyuFlowerShop.Validators.CreateProductDtoValidator">
+            <summary>
+            创建产品DTO验证器
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Validators.CreateProductDtoValidator.BeAValidUrl(System.String)">
+            <summary>
+            验证URL格式
+            </summary>
+        </member>
+        <member name="T:HuanyuFlowerShop.Validators.UpdateProductDtoValidator">
+            <summary>
+            更新产品DTO验证器
+            </summary>
+        </member>
+        <member name="M:HuanyuFlowerShop.Validators.UpdateProductDtoValidator.BeAValidUrl(System.String)">
+            <summary>
+            验证URL格式
+            </summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.CompanyRegex_0">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the CompanyRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.CompanyRegex_0.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CompanyRegex_0.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.CompanyRegex_0.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CompanyRegex_0.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.CompanyRegex_0.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CompanyRegex_0.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CompanyRegex_0.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.CompanyRegex_0.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.TrackingRegex_1">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the TrackingRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.TrackingRegex_1.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.TrackingRegex_1.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.TrackingRegex_1.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.TrackingRegex_1.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.TrackingRegex_1.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.TrackingRegex_1.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.TrackingRegex_1.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.TrackingRegex_1.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.Utilities">
+            <summary>Helper methods used by generated <see cref="T:System.Text.RegularExpressions.Regex"/>-derived implementations.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout">
+            <summary>Default timeout value set in <see cref="T:System.AppContext"/>, or <see cref="F:System.Text.RegularExpressions.Regex.InfiniteMatchTimeout"/> if none was set.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_hasTimeout">
+            <summary>Whether <see cref="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout"/> is non-infinite.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_20FF03FEFFFF07FEFFFF07">
+            <summary>Supports searching for characters in or not in "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_indexOfString_公司_Ordinal">
+            <summary>Supports searching for the string "公司".</summary>
+        </member>
+    </members>
+</doc>
