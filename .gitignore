@@ -85,3 +85,4 @@ ehthumbs.db
 *.md
 !README.md
 !README.*.md
+!Gitee部署与使用指南.md
