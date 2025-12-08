@@ -484,7 +484,15 @@ const getEmailVerifiedText = (u) => {
     // 格式化日期
     const formatDate = (dateString) => {
       if (!dateString) return '未设置'
-      return new Date(dateString).toLocaleDateString('zh-CN')
+      try {
+        return new Date(dateString).toLocaleString('zh-CN', {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit',
+          timeZone: 'Asia/Shanghai'
+        })
+      } catch {
+        return new Date(dateString).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })
+      }
     }
 
 // 获取统计数据

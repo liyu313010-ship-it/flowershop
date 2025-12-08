@@ -114,7 +114,7 @@
                 style="object-fit: cover; background: black;"
                 controls
                 playsinline
-                preload="none"
+                preload="metadata"
                 @loadedmetadata="onVideoLoaded"
                 @ended="videoEnded"
                 @error="onVideoError"
@@ -126,7 +126,7 @@
                 @touchstart="handleMobileVideoPlay"
                 @touchend.prevent="preventDoubleTapZoom">
                 <!-- 使用本地视频文件 -->
-                <source src="/videos/2.mp4" type="video/mp4">
+                <source :src="heroVideoPath" type="video/mp4">
                 <p>您的浏览器不支持视频播放</p>
               </video>
               
@@ -940,7 +940,13 @@ const deleteReview = async (review) => {
 
 const formatReviewDate = (val) => {
   if (!val) return ''
-  try { return new Date(val).toLocaleString('zh-CN') } catch { return '' }
+  try {
+    return new Date(val).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      timeZone: 'Asia/Shanghai'
+    })
+  } catch { return '' }
 }
 
 // 加载分类数据

@@ -194,7 +194,15 @@ const currentOrder = ref(null)
 // 方法
 const formatDate = (dateString) => {
   if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('zh-CN')
+  try {
+    return new Date(dateString).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Shanghai'
+    })
+  } catch {
+    return new Date(dateString).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  }
 }
 
 const getStatusClass = (status) => {

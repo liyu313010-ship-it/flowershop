@@ -50,7 +50,16 @@ const userName = ref('')
 const avatar = ref('')
 
 const goBack = () => { router.back() }
-const formatDate = (val) => { try { return new Date(val).toLocaleString('zh-CN') } catch { return '' } }
+const formatDate = (val) => {
+  if (!val) return ''
+  try {
+    return new Date(val).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      timeZone: 'Asia/Shanghai'
+    })
+  } catch { return '' }
+}
 const goToProduct = async (pid) => { try { await router.push(`/product/${pid}`) } catch { window.location.href = `/product/${pid}` } }
 
 const canDelete = () => {

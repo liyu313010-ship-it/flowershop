@@ -76,7 +76,7 @@
                 <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">VIP</span>
               </div>
               <p class="text-gray-600 mb-4">{{ userInfo?.email || userInfo?.Email || '未设置' }}</p>
-              <p class="text-gray-600 mb-4">性别：{{ getGenderText(userInfo?.gender || '') }}</p>
+              <p class="text-gray-600 mb-4">性别：{{ getGenderText(userInfo?.gender || userInfo?.Gender || '') }}</p>
               <div class="flex justify-center space-x-4">
                 <span :class="['px-3 py-1 rounded-full text-sm', getRoleClass(userInfo?.role || '')]">
                   {{ getRoleText(userInfo?.role || '') }}
@@ -1027,7 +1027,7 @@ const getRoleClass = (role) => {
 
 const getGenderText = (gender) => {
   if (!gender) return '未设置'
-  const m = { male: '男', female: '女', other: '其他' }
+  const m = { male: '男', female: '女', other: '其他', 男: '男', 女: '女', 其他: '其他' }
   return m[gender] || '未设置'
 }
 

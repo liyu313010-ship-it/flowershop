@@ -20,14 +20,16 @@ const orderApi = {
   },
 
   // 更新订单状态
-  updateOrderStatus: async (orderId, status) => {
+  updateOrderStatus: async (orderId, status, note = '') => {
     // 确保orderId是数字类型
     const numericOrderId = parseInt(orderId)
     if (isNaN(numericOrderId)) {
       throw new Error('无效的订单ID')
     }
     
-    const response = await api.put(`/admin/orders/${numericOrderId}/status`, { status })
+    const payload = { status }
+    if (note && note.trim()) { payload.note = note; payload.reason = note }
+    const response = await api.put(`/admin/orders/${numericOrderId}/status`, payload)
     // 明确返回成功标志，确保前端能正确识别
     return {
       success: true,

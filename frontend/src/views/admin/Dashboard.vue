@@ -326,12 +326,14 @@ const getStatusText = (status) => {
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Shanghai'
+    })
+  } catch { return '' }
 }
 
 const viewOrder = (orderId) => {
