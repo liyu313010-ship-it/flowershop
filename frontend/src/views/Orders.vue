@@ -259,21 +259,22 @@ const cancelOrder = async (orderId) => {
 }
 
 const payOrder = async (order) => {
-  // 模拟支付过程
-  try {
-    // 这里可以添加实际的支付逻辑
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // 直接调用orderService更新订单状态为已支付
-    await orderService.updateOrderStatus(order.id, 'paid')
-    await loadOrders()
-    notifySuccess('支付成功')
-    setBanner('支付成功', 'success')
-  } catch (error) {
-    notifyError('支付失败')
-    setBanner('支付失败', 'error')
+    // 模拟支付过程
+    try {
+      // 这里可以添加实际的支付逻辑
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
+      // 调用正确的方法更新支付状态为已支付
+      await orderService.updatePaymentStatus(order.id, { paymentStatus: 'paid', paymentMethod: 'online' })
+      await loadOrders()
+      notifySuccess('支付成功')
+      setBanner('支付成功', 'success')
+    } catch (error) {
+      console.error('支付失败:', error)
+      notifyError('支付失败')
+      setBanner('支付失败', 'error')
+    }
   }
-}
 
 // 确认收货函数
   const confirmReceipt = async (orderId) => {
