@@ -31,6 +31,7 @@ node_modules/
 .DS_Store
 *.local
 /dist/
+frontend/dist/
 *.local
 vite.config.js.timestamp-*
 
