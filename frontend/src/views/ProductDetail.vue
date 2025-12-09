@@ -143,24 +143,21 @@
           </div>
 
           <!-- 商品详情 -->
-          <div class="border-t pt-6">
+          <div class="border-t pt-4">
             <h3 class="text-lg font-semibold mb-4">商品详情</h3>
             <div class="space-y-3 text-gray-600">
               <div class="flex">
-                <span class="font-medium w-24">花材：</span>
-                <span>{{ product.details.material }}</span>
+                <span class="font-medium w-20">商品规格：</span>
+                <span>{{ product.size }}</span>
               </div>
               <div class="flex">
-                <span class="font-medium w-24">包装：</span>
-                <span>{{ product.details.packaging }}</span>
+                <span class="font-medium w-24">花材/包装：</span>
+                <span>{{ product.material }}</span>
               </div>
+              
               <div class="flex">
-                <span class="font-medium w-24">保鲜期：</span>
-                <span>{{ product.details.shelfLife }}</span>
-              </div>
-              <div class="flex">
-                <span class="font-medium w-24">适合场合：</span>
-                <span>{{ product.details.occasions }}</span>
+                <span class="font-medium w-26">适合场合：</span>
+                <span>{{ product.occasion }}</span>
               </div>
             </div>
           </div>
@@ -231,7 +228,10 @@ const product = ref({
     packaging: '',
     shelfLife: '',
     occasions: ''
-  }
+  },
+  material: '',
+  occasion: '',
+  size: ''
 })
 
 const increaseQuantity = () => {
@@ -336,9 +336,11 @@ const loadProduct = async () => {
       details: {
         material: (data.Details?.Material) || (data.details?.material) || '',
         packaging: (data.Details?.Packaging) || (data.details?.packaging) || '',
-        shelfLife: (data.Details?.ShelfLife) || (data.details?.shelfLife) || '',
-        occasions: (data.Details?.Occasions) || (data.details?.occasions) || ''
-      }
+        shelfLife: (data.Details?.ShelfLife) || (data.details?.shelfLife) || ''
+      },
+      material: data.Material || data.material || '',
+      occasion: data.Occasion || data.occasion || '',
+      size: data.Size || data.size || ''
     }
     try {
       const token = localStorage.getItem('token')

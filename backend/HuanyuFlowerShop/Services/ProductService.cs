@@ -102,6 +102,24 @@ namespace HuanyuFlowerShop.Services
                     .Select(g => new { ProductId = g.Key, Qty = g.Sum(x => x.Quantity) })
                     .ToDictionaryAsync(x => x.ProductId, x => x.Qty);
 
+                var popularityCounts = await _context.Favorites
+                    .GroupBy(f => f.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
+                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
+
+                // 搜索结果的受欢迎度按收藏数量统计
+                var searchPopularity = await _context.Favorites
+                    .Where(f => products.Select(p => p.Id).Contains(f.ProductId))
+                    .GroupBy(f => f.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
+                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
+
+                var ratingStats = await _context.ProductReviews
+                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
+                    .GroupBy(r => r.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
+                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
+
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -113,6 +131,9 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = soldCounts.TryGetValue(p.Id, out var sc1) && sc1 > 0 ? sc1 : p.SalesCount,
+                    Popularity = popularityCounts.TryGetValue(p.Id, out var pop1) ? pop1 : 0,
+                    AverageRating = ratingStats.TryGetValue(p.Id, out var rs1) ? Math.Round(rs1.Avg, 1) : 0,
+                    ReviewCount = ratingStats.TryGetValue(p.Id, out var rs1b) ? rs1b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -178,6 +199,14 @@ namespace HuanyuFlowerShop.Services
                     .Where(oi => oi.ProductId == productId && _context.Orders.Where(o => o.Status == "delivered" || o.Status == "shipped").Select(o => o.Id).Contains(oi.OrderId))
                     .SumAsync(oi => (int?)oi.Quantity) ?? 0;
 
+                var favoriteCnt = await _context.Favorites.CountAsync(f => f.ProductId == productId);
+
+                var ratingStats1 = await _context.ProductReviews
+                    .Where(r => !r.IsDeleted && r.ProductId == productId)
+                    .GroupBy(r => r.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
+                    .FirstOrDefaultAsync();
+
                 var productDto = new ProductDto
                 {
                     Id = product.Id,
@@ -189,6 +218,9 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = product.IsFeatured,
                     IsActive = product.IsActive,
                     SalesCount = deliveredQty > 0 ? deliveredQty : product.SalesCount,
+                    Popularity = favoriteCnt,
+                    AverageRating = ratingStats1 != null ? Math.Round(ratingStats1.Avg, 1) : 0,
+                    ReviewCount = ratingStats1?.Cnt ?? 0,
                     Size = product.Size ?? string.Empty,
                     Material = product.Material ?? string.Empty,
                     Occasion = product.Occasion ?? string.Empty,
@@ -266,6 +298,17 @@ namespace HuanyuFlowerShop.Services
                     .Select(g => new { ProductId = g.Key, Qty = g.Sum(x => x.Quantity) })
                     .ToDictionaryAsync(x => x.ProductId, x => x.Qty);
 
+                var popularityCounts2 = await _context.Favorites
+                    .GroupBy(f => f.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
+                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
+
+                var ratingStats2 = await _context.ProductReviews
+                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
+                    .GroupBy(r => r.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
+                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
+
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -277,6 +320,9 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = soldCounts2.TryGetValue(p.Id, out var sc2) && sc2 > 0 ? sc2 : p.SalesCount,
+                    Popularity = popularityCounts2.TryGetValue(p.Id, out var pop2) ? pop2 : 0,
+                    AverageRating = ratingStats2.TryGetValue(p.Id, out var rs2) ? Math.Round(rs2.Avg, 1) : 0,
+                    ReviewCount = ratingStats2.TryGetValue(p.Id, out var rs2b) ? rs2b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -336,6 +382,17 @@ namespace HuanyuFlowerShop.Services
                     .Take(8)
                     .ToListAsync();
 
+                var popularityCounts3 = await _context.Favorites
+                    .GroupBy(f => f.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
+                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
+
+                var ratingStats3 = await _context.ProductReviews
+                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
+                    .GroupBy(r => r.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
+                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
+
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -347,6 +404,9 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = p.SalesCount,
+                    Popularity = popularityCounts3.TryGetValue(p.Id, out var pop3) ? pop3 : 0,
+                    AverageRating = ratingStats3.TryGetValue(p.Id, out var rs3) ? Math.Round(rs3.Avg, 1) : 0,
+                    ReviewCount = ratingStats3.TryGetValue(p.Id, out var rs3b) ? rs3b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -379,7 +439,7 @@ namespace HuanyuFlowerShop.Services
         /// </summary>
         /// <param name="searchDto">搜索条件</param>
         /// <returns>分页搜索结果</returns>
-        public async Task<PagedResult<ProductDto>> SearchProductsAsync(ProductSearchDto searchDto)
+        public async Task<HuanyuFlowerShop.DTOs.PagedResult<ProductDto>> SearchProductsAsync(ProductSearchDto searchDto)
         {
             try
             {
@@ -477,7 +537,20 @@ namespace HuanyuFlowerShop.Services
                     .Take(searchDto.PageSize)
                     .ToListAsync();
                 
+                // 受欢迎度（收藏数）
+                var searchPopularity = await _context.Favorites
+                    .Where(f => products.Select(p => p.Id).Contains(f.ProductId))
+                    .GroupBy(f => f.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
+                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
+
                 // 转换为DTO
+                var ratingStats4 = await _context.ProductReviews
+                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
+                    .GroupBy(r => r.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
+                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
+
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -489,6 +562,9 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = p.SalesCount,
+                    Popularity = searchPopularity.TryGetValue(p.Id, out var pop) ? pop : 0,
+                    AverageRating = ratingStats4.TryGetValue(p.Id, out var rs4) ? Math.Round(rs4.Avg, 1) : 0,
+                    ReviewCount = ratingStats4.TryGetValue(p.Id, out var rs4b) ? rs4b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -504,7 +580,7 @@ namespace HuanyuFlowerShop.Services
                 }).ToList();
                 
                 // 返回分页结果
-                var result = new PagedResult<ProductDto>
+                var result = new HuanyuFlowerShop.DTOs.PagedResult<ProductDto>
                 {
                     Items = productDtos,
                     TotalCount = totalCount,
@@ -554,6 +630,17 @@ namespace HuanyuFlowerShop.Services
                     .Select(g => new { ProductId = g.Key, Qty = g.Sum(x => x.Quantity) })
                     .ToDictionaryAsync(x => x.ProductId, x => x.Qty);
 
+                var popularityCounts4 = await _context.Favorites
+                    .GroupBy(f => f.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
+                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
+
+                var ratingStats5 = await _context.ProductReviews
+                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
+                    .GroupBy(r => r.ProductId)
+                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
+                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
+
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -565,6 +652,9 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = soldCounts3.TryGetValue(p.Id, out var sc3) && sc3 > 0 ? sc3 : p.SalesCount,
+                    Popularity = popularityCounts4.TryGetValue(p.Id, out var pop4) ? pop4 : 0,
+                    AverageRating = ratingStats5.TryGetValue(p.Id, out var rs5) ? Math.Round(rs5.Avg, 1) : 0,
+                    ReviewCount = ratingStats5.TryGetValue(p.Id, out var rs5b) ? rs5b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -644,7 +734,8 @@ namespace HuanyuFlowerShop.Services
                     Occasion = createProductDto.Occasion,
                     CategoryId = createProductDto.CategoryId.Value,
                     CreatedAt = DateTime.UtcNow,
-                    SalesCount = 0
+                    SalesCount = 0,
+                    Popularity = 0
                 };
                 
                 _context.Products.Add(product);
@@ -663,6 +754,7 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = product.IsFeatured,
                     IsActive = product.IsActive,
                     SalesCount = product.SalesCount,
+                    Popularity = await _context.Favorites.CountAsync(f => f.ProductId == product.Id),
                     Size = product.Size ?? string.Empty,
                     Material = product.Material ?? string.Empty,
                     Occasion = product.Occasion ?? string.Empty,
@@ -744,6 +836,7 @@ namespace HuanyuFlowerShop.Services
                 if (updateProductDto.Stock.HasValue) product.Stock = updateProductDto.Stock.Value;
                 if (updateProductDto.IsFeatured.HasValue) product.IsFeatured = updateProductDto.IsFeatured.Value;
                 if (updateProductDto.IsActive.HasValue) product.IsActive = updateProductDto.IsActive.Value;
+                if (updateProductDto.Popularity.HasValue) product.Popularity = updateProductDto.Popularity.Value;
                 if (updateProductDto.Size != null) product.Size = updateProductDto.Size;
                 if (updateProductDto.Material != null) product.Material = updateProductDto.Material;
                 if (updateProductDto.Occasion != null) product.Occasion = updateProductDto.Occasion;
@@ -779,6 +872,7 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = product.IsFeatured,
                     IsActive = product.IsActive,
                     SalesCount = product.SalesCount,
+                    Popularity = await _context.Favorites.CountAsync(f => f.ProductId == product.Id),
                     Size = product.Size ?? string.Empty,
                     Material = product.Material ?? string.Empty,
                     Occasion = product.Occasion ?? string.Empty,

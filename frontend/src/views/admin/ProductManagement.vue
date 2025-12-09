@@ -249,6 +249,33 @@
                 <span class="text-sm font-medium text-gray-700">设为推荐产品</span>
               </label>
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">尺寸/规格</label>
+              <input 
+                v-model="productForm.size"
+                type="text"
+                placeholder="如：小束/中束/大束 或 30cm"
+                class="w-full border rounded-lg px-3 py-2"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">材质</label>
+              <input 
+                v-model="productForm.material"
+                type="text"
+                placeholder="如：鲜花、保鲜花、礼盒材质"
+                class="w-full border rounded-lg px-3 py-2"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">适用场合</label>
+              <input 
+                v-model="productForm.occasion"
+                type="text"
+                placeholder="如：生日/表白/探望/开业"
+                class="w-full border rounded-lg px-3 py-2"
+              >
+            </div>
           </div>
           
           <div class="mt-4">
@@ -355,7 +382,10 @@ const productForm = reactive({
   imagePreview: '',
   status: 'active',
   isFeatured: false,
-  isActive: true
+  isActive: true,
+  size: '',
+  material: '',
+  occasion: ''
 })
 
 const products = ref([])
@@ -528,7 +558,10 @@ const editProduct = async (product) => {
       imagePreview: productData.imageUrl,
       status: productData.isActive ? 'active' : 'inactive',
       isFeatured: productData.isFeatured,
-      isActive: productData.isActive
+      isActive: productData.isActive,
+      size: productData.size || productData.Size || '',
+      material: productData.material || productData.Material || '',
+      occasion: productData.occasion || productData.Occasion || ''
     })
     showEditModal.value = true
   } catch (err) {
@@ -563,7 +596,10 @@ const saveProduct = async () => {
       stock: productForm.stock,
       imageUrl: productForm.image,
       isFeatured: productForm.isFeatured,
-      isActive: productForm.status === 'active'
+      isActive: productForm.status === 'active',
+      size: productForm.size,
+      material: productForm.material,
+      occasion: productForm.occasion
     }
     if (!productData.categoryId) {
       error.value = '请选择分类'
@@ -616,7 +652,10 @@ const closeModal = () => {
     imagePreview: '',
     status: 'active',
     isFeatured: false,
-    isActive: true
+    isActive: true,
+    size: '',
+    material: '',
+    occasion: ''
   })
   // 清除文件输入
   if (imageFileInput.value) {

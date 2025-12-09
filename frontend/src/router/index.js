@@ -29,6 +29,7 @@ const UserManagement = () => import('@/views/admin/UserManagement.vue')
 const StatsReport = () => import('@/views/admin/StatsReport.vue')
 const CouponManagement = () => import('@/views/admin/CouponManagement.vue')
 const ReviewManagement = () => import('@/views/admin/ReviewManagement.vue')
+const MessageCenter = () => import('@/views/admin/MessageCenter.vue')
 
 const Cart = () => import('@/views/Cart.vue')
 import Orders from '@/views/Orders.vue'
@@ -193,6 +194,16 @@ const routes = [
     component: CouponManagement,
     meta: { 
       title: '优惠券管理 - 欢雨鲜花',
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
+    path: '/admin/messages',
+    name: 'MessageCenter',
+    component: MessageCenter,
+    meta: { 
+      title: '消息中心 - 欢雨鲜花',
       requiresAuth: true,
       requiresAdmin: true
     }

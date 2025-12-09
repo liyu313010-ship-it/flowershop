@@ -16,6 +16,8 @@ using FluentValidation.AspNetCore;
 using FluentValidation;
 using HuanyuFlowerShop.Validators;
 using HuanyuFlowerShop;
+using Microsoft.AspNetCore.SignalR;
+using HuanyuFlowerShop.Hubs;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -134,6 +136,10 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
     builder.Services.AddScoped<IOrderStatusHistoryService, OrderStatusHistoryService>();
         builder.Services.AddScoped<IAuditLogService, AuditLogService>();
         builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
+            builder.Services.AddScoped<IChatService, ChatService>();
+
+// 注册SignalR服务
+builder.Services.AddSignalR();
 
 
 // 注册Category仓储
@@ -147,9 +153,7 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 var app = builder.Build();
 
-// 配置服务器监听所有网络接口
-  app.Urls.Add("http://0.0.0.0:5002");
-app.Urls.Add("http://localhost:5002");
+// 使用默认或环境变量配置的地址（ASPNETCORE_URLS）以避免重复绑定
 
 // 初始化数据库 - 暂时禁用迁移，因为表已存在
 using (var scope = app.Services.CreateScope())
@@ -162,6 +166,42 @@ using (var scope = app.Services.CreateScope())
     {
         // 自动应用迁移
         context.Database.Migrate();
+        // 开发环境下若迁移缺失，安全创建聊天相关表
+        try
+        {
+            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Conversations` (
+                `Id` INT NOT NULL AUTO_INCREMENT,
+                `UserId` INT NOT NULL,
+                `AdminId` INT NOT NULL,
+                `LastMessage` TEXT NULL,
+                `LastMessageTime` DATETIME NULL,
+                `UnreadCount` INT NOT NULL DEFAULT 0,
+                `CreatedAt` DATETIME NOT NULL,
+                `UpdatedAt` DATETIME NOT NULL,
+                PRIMARY KEY (`Id`),
+                INDEX `IX_Conversations_UserId` (`UserId`),
+                INDEX `IX_Conversations_AdminId` (`AdminId`),
+                CONSTRAINT `FK_Conversations_Users_UserId` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+                CONSTRAINT `FK_Conversations_Users_AdminId` FOREIGN KEY (`AdminId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Messages` (
+                `Id` INT NOT NULL AUTO_INCREMENT,
+                `SenderId` INT NOT NULL,
+                `ReceiverId` INT NOT NULL,
+                `Content` TEXT NOT NULL,
+                `MessageType` VARCHAR(20) NOT NULL,
+                `IsRead` TINYINT(1) NOT NULL DEFAULT 0,
+                `CreatedAt` DATETIME NOT NULL,
+                `UpdatedAt` DATETIME NOT NULL,
+                PRIMARY KEY (`Id`),
+                INDEX `IX_Messages_SenderId` (`SenderId`),
+                INDEX `IX_Messages_ReceiverId` (`ReceiverId`),
+                CONSTRAINT `FK_Messages_Users_SenderId` FOREIGN KEY (`SenderId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+                CONSTRAINT `FK_Messages_Users_ReceiverId` FOREIGN KEY (`ReceiverId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        catch { }
     }
     else
     {
@@ -219,12 +259,49 @@ using (var scope = app.Services.CreateScope())
                 CONSTRAINT `FK_UserCoupons_Coupons_CouponId` FOREIGN KEY (`CouponId`) REFERENCES `Coupons` (`Id`) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
+            // 聊天相关表（如果不存在）
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Conversations` (
+                    `Id` INT NOT NULL AUTO_INCREMENT,
+                    `UserId` INT NOT NULL,
+                    `AdminId` INT NOT NULL,
+                    `LastMessage` TEXT NULL,
+                    `LastMessageTime` DATETIME NULL,
+                    `UnreadCount` INT NOT NULL DEFAULT 0,
+                    `CreatedAt` DATETIME NOT NULL,
+                    `UpdatedAt` DATETIME NOT NULL,
+                    PRIMARY KEY (`Id`),
+                    INDEX `IX_Conversations_UserId` (`UserId`),
+                    INDEX `IX_Conversations_AdminId` (`AdminId`),
+                    CONSTRAINT `FK_Conversations_Users_UserId` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+                    CONSTRAINT `FK_Conversations_Users_AdminId` FOREIGN KEY (`AdminId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Messages` (
+                    `Id` INT NOT NULL AUTO_INCREMENT,
+                    `SenderId` INT NOT NULL,
+                    `ReceiverId` INT NOT NULL,
+                    `Content` TEXT NOT NULL,
+                    `MessageType` VARCHAR(20) NOT NULL,
+                    `IsRead` TINYINT(1) NOT NULL DEFAULT 0,
+                    `CreatedAt` DATETIME NOT NULL,
+                    `UpdatedAt` DATETIME NOT NULL,
+                    PRIMARY KEY (`Id`),
+                    INDEX `IX_Messages_SenderId` (`SenderId`),
+                    INDEX `IX_Messages_ReceiverId` (`ReceiverId`),
+                    CONSTRAINT `FK_Messages_Users_SenderId` FOREIGN KEY (`SenderId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
+                    CONSTRAINT `FK_Messages_Users_ReceiverId` FOREIGN KEY (`ReceiverId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            }
+            catch { }
+
             // 安全添加Addresses表的缺失列
-        try
-        {
-            context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PhoneNumber` varchar(20) NOT NULL DEFAULT ''");
-        }
-        catch { }
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PhoneNumber` varchar(20) NOT NULL DEFAULT ''");
+            }
+            catch { }
         try
         {
             context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PostalCode` varchar(20) NULL");
@@ -259,7 +336,7 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
     var csp = app.Environment.IsDevelopment()
-        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:5173 http://127.0.0.1:5173 http://localhost:* ws://localhost:5173"
+        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:5173 http://127.0.0.1:5173 http://localhost:5176 http://127.0.0.1:5176 http://localhost:* ws://localhost:5173 ws://localhost:5176"
         : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'";
     context.Response.Headers.Append("Content-Security-Policy", csp);
     await next();
@@ -304,5 +381,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 添加SignalR Hub路由
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

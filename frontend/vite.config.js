@@ -11,18 +11,24 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // 允许外部访问
-    port: 5173,
+    port: 5174,
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5002',
+        target: 'http://localhost:5003',
         changeOrigin: true,
         secure: false
       },
       '/uploads': {
-        target: 'http://localhost:5002',
+        target: 'http://localhost:5003',
         changeOrigin: true,
         secure: false
+      },
+      '/hubs': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+        secure: false,
+        ws: true
       }
     },
     // 确保静态资源处理正确

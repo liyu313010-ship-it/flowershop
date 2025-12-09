@@ -152,13 +152,23 @@ export const productService = {
   },
   
   // 获取所有评价（管理员功能）
-  async getAllReviews(params = {}) {
-    try {
-      const response = await api.get(`/ProductReview/all`, { params, silent: true })
-      return response
-    } catch (error) {
-      throw error
+  // 在短时间内对同一参数的并发调用进行去重，缓解 429
+  async getAllReviews(params = {}, opts = {}) {
+    const now = Date.now()
+    const key = JSON.stringify(params || {})
+    productService.__reviewsInflight = productService.__reviewsInflight || new Map()
+    const entry = productService.__reviewsInflight.get(key)
+    if (entry && (now - entry.ts) < 1500) {
+      return entry.promise
     }
+    const p = api.get(`/ProductReview/all`, { params, silent: true, signal: opts.signal }).finally(() => {
+      // 仅在完成后清理，避免内存泄漏
+      setTimeout(() => {
+        productService.__reviewsInflight && productService.__reviewsInflight.delete(key)
+      }, 0)
+    })
+    productService.__reviewsInflight.set(key, { promise: p, ts: now })
+    return p
   },
 
   // 添加商品评价

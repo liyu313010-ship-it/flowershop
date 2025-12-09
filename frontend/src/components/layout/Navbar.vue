@@ -123,6 +123,21 @@
                 <span v-if="badgeCounts.admin > 0" class="badge-dot">{{ badgeCounts.admin > 99 ? '99+' : badgeCounts.admin }}</span>
               </router-link>
               <router-link 
+                v-if="userStore.isAdmin"
+                to="/admin/messages" 
+                class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
+              >
+                收到的消息
+                <span v-if="chatStore.unreadCount > 0" class="badge-dot">{{ chatStore.unreadCount > 99 ? '99+' : chatStore.unreadCount }}</span>
+              </router-link>
+              <button 
+                v-if="!userStore.isAdmin"
+                @click="showContactAdminModal = true"
+                class="w-full text-left block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600"
+              >
+                联系管理员
+              </button>
+              <router-link 
                 to="/profile" 
                 class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
                 @click="ackBadge('profile')"
@@ -211,6 +226,22 @@
           >
             购物车
           </router-link>
+          <button 
+            v-if="userStore.isLoggedIn && !userStore.isAdmin"
+            @click="showContactAdminModal = true; showMobileMenu = false"
+            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 text-left"
+          >
+            联系管理员
+          </button>
+          <router-link 
+            v-if="userStore.isLoggedIn && userStore.isAdmin"
+            to="/admin/messages" 
+            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
+            @click="showMobileMenu = false"
+          >
+            收到的消息
+            <span v-if="chatStore.unreadCount > 0" class="badge-dot">{{ chatStore.unreadCount > 99 ? '99+' : chatStore.unreadCount }}</span>
+          </router-link>
           <router-link 
             to="/about" 
             class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
@@ -241,26 +272,49 @@
       </div>
     </div>
   </nav>
+
+  <!-- 联系管理员弹窗 -->
+  <ContactAdminModal 
+    :is-visible="showContactAdminModal"
+    @close="showContactAdminModal = false"
+  />
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
+import { useChatStore } from '@/stores/chat'
 import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
 import { categoryService } from '@/services/category'
 import orderService from '@/services/orderService'
 import api from '@/services/api'
+import ContactAdminModal from '@/components/common/ContactAdminModal.vue'
 
 // 响应式数据
 const showMobileMenu = ref(false)
 const navbarCategories = ref([])
+const showContactAdminModal = ref(false)
 
 // 路由和状态管理
 const router = useRouter()
 const userStore = useUserStore()
 const cartStore = useCartStore()
+const chatStore = useChatStore()
+
+// 监听用户登录状态变化，连接或断开聊天连接
+watch(() => userStore.isLoggedIn, (isLoggedIn) => {
+  if (isLoggedIn) {
+    // 用户登录后连接聊天
+    chatStore.connectHub()
+    chatStore.initChat()
+  } else {
+    // 用户登出后断开聊天连接
+    chatStore.disconnectHub()
+    chatStore.reset()
+  }
+})
 
 // 计算属性 - 用户头像
 const userAvatar = computed(() => {

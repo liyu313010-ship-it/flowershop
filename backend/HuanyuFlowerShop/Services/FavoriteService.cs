@@ -6,14 +6,9 @@ using System.Threading.Tasks;
 
 namespace HuanyuFlowerShop.Services
 {
-    public class FavoriteService : IFavoriteService
+    public class FavoriteService(ApplicationDbContext context) : IFavoriteService
     {
-        private readonly ApplicationDbContext _context;
-
-        public FavoriteService(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        private readonly ApplicationDbContext _context = context;
 
         public async Task<bool> AddFavoriteAsync(int userId, int productId)
         {
@@ -44,6 +39,13 @@ namespace HuanyuFlowerShop.Services
 
             _context.Favorites.Add(favorite);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var count = await _context.Favorites.CountAsync(f => f.ProductId == productId);
+                await _context.Database.ExecuteSqlRawAsync("UPDATE Products SET Popularity = {0} WHERE Id = {1}", count, productId);
+            }
+            catch { }
             return true;
         }
 
@@ -59,6 +61,13 @@ namespace HuanyuFlowerShop.Services
 
             _context.Favorites.Remove(favorite);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var count = await _context.Favorites.CountAsync(f => f.ProductId == productId);
+                await _context.Database.ExecuteSqlRawAsync("UPDATE Products SET Popularity = {0} WHERE Id = {1}", count, productId);
+            }
+            catch { }
             return true;
         }
 

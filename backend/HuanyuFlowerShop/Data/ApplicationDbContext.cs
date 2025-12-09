@@ -28,6 +28,8 @@ namespace HuanyuFlowerShop.Data
         public DbSet<Coupon> Coupons { get; set; } = null!;
         public DbSet<UserCoupon> UserCoupons { get; set; } = null!;
         public DbSet<ProductRecommendation> ProductRecommendations { get; set; } = null!;
+        public DbSet<Message> Messages { get; set; } = null!;
+        public DbSet<Conversation> Conversations { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

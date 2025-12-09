@@ -241,7 +241,7 @@
     <el-dialog
       v-model="showPaymentModal"
       title="支付订单"
-      width="500px"
+      width="520px"
       :show-close="false"
       :close-on-click-modal="false"
     >
@@ -251,23 +251,49 @@
           <p class="text-gray-600">订单金额：<span class="text-pink-600 font-semibold text-lg">¥{{ orderTotal.toFixed(2) }}</span></p>
         </div>
         
-        <div class="flex justify-center space-x-8">
+        <div class="grid grid-cols-3 gap-4 px-4">
           <div 
-            class="flex flex-col items-center cursor-pointer"
-            :class="{ 'text-pink-500': paymentModalMethod === 'online' }"
-            @click="paymentModalMethod = 'online'"
+            class="border rounded-xl p-4 cursor-pointer transition-all flex flex-col items-center hover:shadow-md"
+            :class="{ 'border-pink-500 bg-pink-50': paymentModalMethod === 'alipay' }"
+            @click="paymentModalMethod = 'alipay'"
           >
-            <i class="fas fa-credit-card text-4xl mb-2"></i>
-            <span>在线支付</span>
+            <svg viewBox="0 0 48 48" class="w-12 h-12 mb-2">
+              <rect x="4" y="8" width="40" height="32" rx="6" fill="#1677ff"/>
+              <path d="M18 22h12M16 28c6 4 18 4 24 0" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <text x="24" y="20" text-anchor="middle" font-size="10" fill="white">ALIPAY</text>
+            </svg>
+            <span class="font-medium">支付宝</span>
           </div>
           <div 
-            class="flex flex-col items-center cursor-pointer"
-            :class="{ 'text-pink-500': paymentModalMethod === 'cod' }"
+            class="border rounded-xl p-4 cursor-pointer transition-all flex flex-col items-center hover:shadow-md"
+            :class="{ 'border-pink-500 bg-pink-50': paymentModalMethod === 'wechat' }"
+            @click="paymentModalMethod = 'wechat'"
+          >
+            <svg viewBox="0 0 48 48" class="w-12 h-12 mb-2">
+              <circle cx="20" cy="20" r="12" fill="#09bb07"/>
+              <circle cx="30" cy="28" r="12" fill="#09bb07"/>
+              <circle cx="16" cy="18" r="2" fill="white"/>
+              <circle cx="22" cy="18" r="2" fill="white"/>
+            </svg>
+            <span class="font-medium">微信支付</span>
+          </div>
+          <div 
+            class="border rounded-xl p-4 cursor-pointer transition-all flex flex-col items-center hover:shadow-md"
+            :class="{ 'border-pink-500 bg-pink-50': paymentModalMethod === 'cod' }"
             @click="paymentModalMethod = 'cod'"
           >
-            <i class="fas fa-money-bill-wave text-4xl mb-2"></i>
-            <span>货到付款</span>
+            <svg viewBox="0 0 48 48" class="w-12 h-12 mb-2" fill="none" stroke="#10b981">
+              <rect x="6" y="12" width="36" height="24" rx="6" stroke-width="2"/>
+              <path d="M12 24h12m0 0h12" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span class="font-medium">货到付款</span>
           </div>
+        </div>
+        
+        <div class="text-center mt-6 text-gray-700">
+          <span v-if="paymentModalMethod === 'alipay'">确认使用支付宝支付？</span>
+          <span v-else-if="paymentModalMethod === 'wechat'">确认使用微信支付？</span>
+          <span v-else>确认选择货到付款？</span>
         </div>
       </div>
       
@@ -394,7 +420,7 @@ const currentOrderId = ref(null)
 // 表单数据
 const orderNotes = ref('')
 const selectedPaymentMethod = ref('online')
-const paymentModalMethod = ref('online')
+const paymentModalMethod = ref('alipay')
 
 // 地址数据
 const addresses = ref([])
@@ -516,7 +542,7 @@ const submitOrder = async () => {
     }
 
     showPaymentModal.value = true
-    paymentModalMethod.value = selectedPaymentMethod.value
+    paymentModalMethod.value = selectedPaymentMethod.value === 'cod' ? 'cod' : 'alipay'
   } catch (error) {
     console.error('创建订单失败:', error)
     ElMessage.error('创建订单失败，请稍后重试')
@@ -533,14 +559,9 @@ const confirmPayment = async () => {
 
   processingPayment.value = true
   try {
-    // 模拟支付过程
     await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // 支付成功处理
     showPaymentModal.value = false
     showPaymentSuccess.value = true
-    
-    // 更新订单状态
     const paymentStatus = paymentModalMethod.value === 'cod' ? 'unpaid' : 'paid'
     await orderService.updateOrderStatus(currentOrderId.value, paymentStatus)
   } catch (error) {

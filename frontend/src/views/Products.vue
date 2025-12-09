@@ -84,14 +84,13 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="product in filteredProducts" :key="product.id" class="card group cursor-pointer relative">
                   <div class="relative overflow-hidden rounded-xl">
-                    <SmartImage
+                    <img
                       :src="product.image"
                       :alt="product.name"
-                      ratio="auto"
-                      strategy="auto"
-                      class="w-full h-64"
+                      class="w-full h-64 object-contain"
+                      @error="onProductImageError"
                     />
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items中心 justify-center space-x-2 z-30 pointer-events-auto">
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
                       <button 
                         @click.stop="quickView(product)"
                         class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
@@ -128,6 +127,20 @@
                   <div class="p-4">
                     <h3 class="font-semibold text-lg mb-2 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">{{ product.name }}</h3>
                     <AutoLinkText class="text-gray-600 text-sm mb-3 line-clamp-2" :text="product.description" />
+                    <div class="flex flex-wrap gap-3 text-xs text-gray-600 mb-3">
+                      <span v-if="product.size">规格：{{ product.size }}</span>
+                      <span v-if="product.material">材质：{{ product.material }}</span>
+                      <span v-if="product.occasion">适用场合：{{ product.occasion }}</span>
+                    </div>
+                    <div v-if="userStore.isAdmin" class="mb-3">
+                      <button @click.stop="toggleEdit(product)" class="px-3 py-1 border rounded text-sm">编辑规格</button>
+                    </div>
+                    <div v-if="showEditPanel[product.id]" class="space-y-2 mb-3">
+                      <input v-model="editFields[product.id].size" class="border rounded px-2 py-1 w-full" placeholder="尺寸/规格" />
+                      <input v-model="editFields[product.id].material" class="border rounded px-2 py-1 w-full" placeholder="材质" />
+                      <input v-model="editFields[product.id].occasion" class="border rounded px-2 py-1 w-full" placeholder="适用场合" />
+                      <button @click.stop="saveProductAttributes(product)" class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white px-3 py-1 rounded">保存</button>
+                    </div>
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center space-x-1">
                         <div class="flex text-yellow-400">
@@ -208,7 +221,7 @@ const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
 const userStore = useUserStore()
-const favoriteProducts = ref([])
+  const favoriteProducts = ref([])
 
 // 响应式数据
 const isLoading = ref(false)
@@ -221,8 +234,10 @@ const selectedCategories = ref([]) // 新增多选分类
 const selectedPriceRange = ref(null)
 
 // 数量选择与快速查看
-const showQuantitySelector = ref({})
-const productQuantities = ref({})
+  const showQuantitySelector = ref({})
+  const productQuantities = ref({})
+  const showEditPanel = ref({})
+  const editFields = ref({})
 
 // 初始空数组，将通过API填充
 categories.value = []
@@ -271,6 +286,10 @@ const selectCategory = async (categoryId) => {
           description: product.description || product.Description,
           price: product.price || product.Price || 0,
           image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
+          size: product.size || product.Size || '',
+          material: product.material || product.Material || '',
+          occasion: product.occasion || product.Occasion || '',
+          popularity: product.popularity || product.Popularity || 0,
           categoryId: (() => {
             const val = product.categoryId ?? product.CategoryId
             const num = Number(val)
@@ -325,7 +344,47 @@ const quickView = (product) => {
   router.push(`/product/${product.id}`)
 }
 
-//
+const toggleEdit = (product) => {
+  const id = product.id
+  showEditPanel.value[id] = !showEditPanel.value[id]
+  if (!editFields.value[id]) {
+    editFields.value[id] = {
+      size: product.size || '',
+      material: product.material || '',
+      occasion: product.occasion || ''
+    }
+  }
+}
+
+const saveProductAttributes = async (product) => {
+  const id = product.id
+  const payload = {
+    Size: editFields.value[id]?.size || '',
+    Material: editFields.value[id]?.material || '',
+    Occasion: editFields.value[id]?.occasion || ''
+  }
+  try {
+    const res = await productService.updateProduct(id, payload)
+    const ok = !!res
+    if (ok) {
+      const idx = products.value.findIndex(p => p.id === id)
+      if (idx !== -1) {
+        products.value[idx] = {
+          ...products.value[idx],
+          size: payload.Size,
+          material: payload.Material,
+          occasion: payload.Occasion
+        }
+      }
+      showEditPanel.value[id] = false
+      notifySuccess('已保存')
+    } else {
+      notifyError('保存失败')
+    }
+  } catch (e) {
+    notifyError('保存失败')
+  }
+}
 
 const handleAddToCart = async (product) => {
   const token = localStorage.getItem('token')
@@ -378,6 +437,10 @@ const loadAllData = async () => {
         description: product.description || product.Description,
         price: product.price || product.Price || 0,
         image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
+        size: product.size || product.Size || '',
+        material: product.material || product.Material || '',
+        occasion: product.occasion || product.Occasion || '',
+        popularity: product.popularity || product.Popularity || 0,
         categoryId: (() => {
           const val = product.categoryId ?? product.CategoryId
           const num = Number(val)
@@ -482,10 +545,14 @@ const toggleFavorite = async (product) => {
     if (isFavorite(product)) {
       await favoriteService.remove(product.id)
       favoriteProducts.value = favoriteProducts.value.filter(id => id !== product.id)
+      const idx = products.value.findIndex(p => p.id === product.id)
+      if (idx !== -1) { products.value[idx].popularity = Math.max(0, (products.value[idx].popularity || 0) - 1) }
       notifySuccess('已取消收藏')
     } else {
       await favoriteService.add(product.id)
       favoriteProducts.value.push(product.id)
+      const idx = products.value.findIndex(p => p.id === product.id)
+      if (idx !== -1) { products.value[idx].popularity = (products.value[idx].popularity || 0) + 1 }
       notifySuccess('已添加收藏')
     }
   } catch (e) {
@@ -494,7 +561,7 @@ const toggleFavorite = async (product) => {
 }
 
 const onProductImageError = (e) => {
-  e.target.src = '/src/assets/default-product.png'
+  e.target.src = '/images/product-placeholder.svg'
 }
 
 //
@@ -612,4 +679,3 @@ const onProductImageError = (e) => {
   }
 }
 </style>
-import SmartImage from '@/components/common/SmartImage.vue'

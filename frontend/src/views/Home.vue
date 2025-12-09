@@ -290,7 +290,7 @@
               <!-- 悬停操作按钮 -->
               <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
                 <button 
-                  @click.stop="goToProduct(product.id)"
+                  @click.stop="quickView(product)"
                   class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
                   title="快速查看"
                 >
@@ -309,6 +309,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                   </svg>
                 </button>
+                
                 <button 
                   v-if="!userStore.isAdmin"
                   @click.stop="toggleFavorite(product)"
@@ -331,11 +332,11 @@
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center space-x-1">
                   <div class="flex text-yellow-400">
-                    <svg v-for="i in 5" :key="i" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <svg v-for="i in 5" :key="i" class="w-4 h-4" :class="(product.averageRating || 0) >= i ? 'opacity-100' : 'opacity-30'" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
                   </div>
-                  <span class="text-sm text-gray-500">(4.8)</span>
+                  <span class="text-sm text-gray-500">({{ (product.averageRating || 0).toFixed(1) }})</span>
                 </div>
                 <span class="text-sm text-gray-500">已售 {{ product.salesCount || 0 }}</span>
               </div>
@@ -447,7 +448,7 @@
                 </div>
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
                   <button 
-                    @click.stop="goToProduct(product.id)"
+                    @click.stop="quickView(product)"
                     class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
                     title="快速查看"
                   >
@@ -464,6 +465,17 @@
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                  </button>
+                  <button 
+                    v-if="!userStore.isAdmin"
+                    @click.stop="toggleFavorite(product)"
+                    class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
+                    :class="isFavorite(product) ? 'text-red-500' : 'text-gray-700'"
+                    title="收藏"
+                  >
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
                   </button>
                 </div>
@@ -580,12 +592,12 @@
           <div v-for="review in visibleReviews" :key="review.id" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition">
             <div class="flex items-center mb-4">
               <!-- 用户头像 -->
-              <div 
-                :style="{ backgroundImage: `url(${review.avatar})` }" 
+              <img 
+                :src="review.avatar"
                 :alt="review.userName"
-                class="w-12 h-12 bg-center bg-cover rounded-full mr-3 ring-2 ring-huanyu-pink-200"
+                class="w-12 h-12 rounded-full mr-3 ring-2 ring-huanyu-pink-200 object-cover"
                 @error="handleAvatarError"
-              ></div>
+              />
               <div>
                 <h4 class="font-semibold">{{ review.userName }}</h4>
                 <div class="flex text-yellow-400">
@@ -681,7 +693,7 @@
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
               </svg>
             </div>
-            <span class="text-gray-600">4.8分</span>
+            <span class="text-gray-600">{{ (quickViewProduct.averageRating || 0).toFixed(1) }}分</span>
             <span class="text-gray-400">|</span>
             <span class="text-gray-600">已售 {{ quickViewProduct.salesCount || 0 }} 件</span>
           </div>
@@ -769,6 +781,8 @@
     </div>
   </div>
   
+  
+
   </div>
   </PageTransition>
 </template>
@@ -781,13 +795,15 @@ import { useCartStore } from '@/stores/cart'
 import { useProductStore } from '@/stores/product'
 import { useUserStore } from '@/stores/user'
 import { productService } from '@/services/product'
+ 
 import { recommendationService } from '@/services/recommendation'
 import { favoriteService } from '@/services/favorite'
-import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
+import { getAvatarUrl, handleAvatarError, getProductImageUrl } from '@/utils/avatar.js'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
 import AutoLinkText from '@/components/AutoLinkText.vue'
 import api from '@/services/api'
+import adminService from '@/services/adminService'
 
 // 路由和状态管理
 const router = useRouter()
@@ -819,47 +835,41 @@ const visibleRecommended = computed(() => (recommendedProducts.value || []).slic
 const reviews = ref([])
 const REVIEW_POLL_MS = 600000
 let reviewsPoll = null
+const lastReviewsFetchAt = ref(0)
+let reviewsFetching = false
+let reviewsController = null
  
 // 直接使用store中的categories，不创建本地副本
 
-// 获取所有评价
+// 获取所有评价（去重与防抖）
 const fetchReviews = async () => {
+  if (reviewsFetching) return
+  const now = Date.now()
+  if (now - lastReviewsFetchAt.value < 1200) return
+  reviewsFetching = true
   try {
-    const response = await api.get('/ProductReview/all', { params: { pageSize: 10 }, silent: true })
-    
-    // 处理不同的响应格式
-    let reviewList = []
-    if (Array.isArray(response)) {
-      reviewList = response
-    } else if (response.data && Array.isArray(response.data)) {
-      reviewList = response.data
-    } else if (response.data && response.data.Items) {
-      // 处理 ProductReviewListResponse 格式
-      reviewList = response.data.Items
-    }
-    
-    if (reviewList.length > 0) {
-      // 为每个评价添加avatar属性，并统一字段名
-      reviews.value = reviewList.map(review => ({
-        ...review,
-        // 统一字段名，后端返回的是 UserName (大写开头)，前端使用 userName (小写开头)
-        userName: review.UserName || review.userName,
-        // 确保评论内容存在
-        comment: review.Comment || review.comment || '',
-        // 确保评分存在
-        rating: review.Rating || review.rating || 0,
-        // 添加头像
-        avatar: getAvatarUrl(review.Avatar || review.avatar || review.UserName || review.userName || ''),
-        id: review.Id || review.id,
-        userId: review.UserId || review.userId,
-        productId: review.ProductId || review.productId,
-        createdAt: review.CreatedAt || review.createdAt,
-        updatedAt: review.UpdatedAt || review.updatedAt
-      }))
-    }
-  } catch (error) {
-    // 清空评价列表，不使用默认虚拟数据
+    if (reviewsController) { try { reviewsController.abort() } catch {} }
+    reviewsController = new AbortController()
+    const response = await productService.getAllReviews({ pageSize: 10 }, { signal: reviewsController.signal })
+    const data = response?.data || response || []
+    const reviewList = Array.isArray(data) ? data : (data.Items || [])
+    reviews.value = (reviewList || []).map(review => ({
+      ...review,
+      userName: review.UserName || review.userName,
+      comment: review.Comment || review.comment || '',
+      rating: review.Rating || review.rating || 0,
+      avatar: getAvatarUrl(review.Avatar || review.avatar || review.UserName || review.userName || ''),
+      id: review.Id || review.id,
+      userId: review.UserId || review.userId,
+      productId: review.ProductId || review.productId,
+      createdAt: review.CreatedAt || review.createdAt,
+      updatedAt: review.UpdatedAt || review.updatedAt
+    }))
+  } catch {
     reviews.value = []
+  } finally {
+    lastReviewsFetchAt.value = Date.now()
+    reviewsFetching = false
   }
 }
 
@@ -870,13 +880,18 @@ const startReviewsPolling = () => {
 
 const stopReviewsPolling = () => {
   if (reviewsPoll) { clearInterval(reviewsPoll); reviewsPoll = null }
+  if (reviewsController) { try { reviewsController.abort() } catch {} }
 }
 
 const handleVisibilityReview = () => {
   if (document.hidden) {
     stopReviewsPolling()
   } else {
-    fetchReviews()
+    // 防抖：避免在快速切换焦点时触发多次
+    const now = Date.now()
+    if (now - lastReviewsFetchAt.value > 1500) {
+      fetchReviews()
+    }
     startReviewsPolling()
   }
 }
@@ -1029,10 +1044,12 @@ const loadFeaturedProducts = async () => {
         name: product.Name || product.name || '未命名商品',
         description: product.Description || product.description || '暂无描述',
         price: product.Price || product.price || 0,
-        image: imageUrl,
+        image: getProductImageUrl(imageUrl),
         isHot: (product.SalesCount || product.salesCount || 0) > 10,
         isNew: product.CreatedAt ? new Date(product.CreatedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) : false,
         salesCount: product.SalesCount || product.salesCount || 0,
+        averageRating: product.AverageRating || product.averageRating || 0,
+        reviewCount: product.ReviewCount || product.reviewCount || 0,
         // 添加额外字段用于完整展示
         originalPrice: null, // 可以根据需要从数据库映射
         isActive: product.IsActive || product.isActive || true,
@@ -1061,7 +1078,7 @@ const loadRecommendedProducts = async () => {
     }
     const items = res?.data || res || []
     const ids = items.map(i => i.productId || i.ProductId || i.id || i.Id).filter(Boolean)
-    const details = await Promise.all(ids.map(async (id) => {
+        const details = await Promise.all(ids.map(async (id) => {
       try {
         const r = await productService.getProductById(id)
         const p = r?.data || r
@@ -1070,13 +1087,16 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
-          salesCount: p.SalesCount || p.salesCount || 0
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
+          salesCount: p.SalesCount || p.salesCount || 0,
+          popularity: p.Popularity || p.popularity || 0,
+          averageRating: p.AverageRating || p.averageRating || 0,
+          reviewCount: p.ReviewCount || p.reviewCount || 0
         }
       } catch { return null }
     }))
     const list = details.filter(Boolean)
-    if (list.length > 0) {
+  if (list.length > 0) {
       recommendedProducts.value = list
   } else {
     // 回退到管理员设置的首页推荐/特色商品
@@ -1088,8 +1108,11 @@ const loadRecommendedProducts = async () => {
         name: p.Name || p.name || '未命名商品',
         description: p.Description || p.description || '暂无描述',
         price: p.Price || p.price || 0,
-        image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
-        salesCount: p.SalesCount || p.salesCount || 0
+        image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
+        salesCount: p.SalesCount || p.salesCount || 0,
+        popularity: p.Popularity || p.popularity || 0,
+        averageRating: p.AverageRating || p.averageRating || 0,
+        reviewCount: p.ReviewCount || p.reviewCount || 0
       }))
     } else {
       const h = await productService.getHomeProducts()
@@ -1101,7 +1124,10 @@ const loadRecommendedProducts = async () => {
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
-          salesCount: p.SalesCount || p.salesCount || 0
+          salesCount: p.SalesCount || p.salesCount || 0,
+          popularity: p.Popularity || p.popularity || 0,
+          averageRating: p.AverageRating || p.averageRating || 0,
+          reviewCount: p.ReviewCount || p.reviewCount || 0
         }))
       } else {
         const all = await productService.getProducts({ Page: 1, PageSize: 12 })
@@ -1111,8 +1137,11 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
-          salesCount: p.SalesCount || p.salesCount || 0
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
+          salesCount: p.SalesCount || p.salesCount || 0,
+          popularity: p.Popularity || p.popularity || 0,
+          averageRating: p.AverageRating || p.averageRating || 0,
+          reviewCount: p.ReviewCount || p.reviewCount || 0
         }))
       }
     }
@@ -1128,7 +1157,10 @@ const loadRecommendedProducts = async () => {
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
-          salesCount: p.SalesCount || p.salesCount || 0
+          salesCount: p.SalesCount || p.salesCount || 0,
+          popularity: p.Popularity || p.popularity || 0,
+          averageRating: p.AverageRating || p.averageRating || 0,
+          reviewCount: p.ReviewCount || p.reviewCount || 0
         }))
         return
       }
@@ -1141,7 +1173,10 @@ const loadRecommendedProducts = async () => {
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
-          salesCount: p.SalesCount || p.salesCount || 0
+          salesCount: p.SalesCount || p.salesCount || 0,
+          popularity: p.Popularity || p.popularity || 0,
+          averageRating: p.AverageRating || p.averageRating || 0,
+          reviewCount: p.ReviewCount || p.reviewCount || 0
         }))
         return
       }
@@ -1152,13 +1187,31 @@ const loadRecommendedProducts = async () => {
         name: p.Name || p.name || '未命名商品',
         description: p.Description || p.description || '暂无描述',
         price: p.Price || p.price || 0,
-        image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
-        salesCount: p.SalesCount || p.salesCount || 0
+        image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
+        salesCount: p.SalesCount || p.salesCount || 0,
+        popularity: p.Popularity || p.popularity || 0,
+        averageRating: p.AverageRating || p.averageRating || 0,
+        reviewCount: p.ReviewCount || p.reviewCount || 0
       }))
     } catch {
       recommendedProducts.value = []
     }
   }
+
+  try {
+    const rankingRes = await adminService.getProductSalesRanking(100)
+    const ranking = rankingRes?.data || rankingRes || []
+    const salesMap = new Map((Array.isArray(ranking) ? ranking : []).map(r => [
+      r.productId || r.ProductId || r.id || r.Id,
+      r.salesCount || r.SalesCount || 0
+    ]))
+    if (salesMap.size > 0) {
+      recommendedProducts.value = (recommendedProducts.value || []).map(p => ({
+        ...p,
+        salesCount: salesMap.has(p.id) ? salesMap.get(p.id) : (p.salesCount || 0)
+      }))
+    }
+  } catch {}
 }
 
 // 英雄区域背景加载处理
@@ -1224,46 +1277,44 @@ const useDefaultVideoBackground = () => {
 // 组件挂载时加载数据
 onMounted(async () => {
   // 设置超时以确保即使图片加载失败也能显示内容
-  setTimeout(() => {
-    if (isLoading.value) {
-      isLoading.value = false
-    }
-  }, 3000)
-  
+  setTimeout(() => { if (isLoading.value) { isLoading.value = false } }, 3000)
+
   try {
-    await Promise.all([
-      loadCategories(),
-      loadFeaturedProducts(),
-      loadRecommendedProducts(),
-      fetchReviews()
-    ])
-    startReviewsPolling()
+    await loadCategories()
+    await loadFeaturedProducts()
+    // 延迟加载推荐与评价，降低并发峰值
+    const schedule = (fn, ms) => {
+      if ('requestIdleCallback' in window) {
+        // @ts-ignore
+        requestIdleCallback(() => setTimeout(fn, 0), { timeout: ms })
+      } else {
+        setTimeout(fn, ms)
+      }
+    }
+    schedule(() => { loadRecommendedProducts() }, 400)
+    schedule(() => { fetchReviews(); startReviewsPolling() }, 800)
+
     document.addEventListener('visibilitychange', handleVisibilityReview)
+
     try {
       const token = localStorage.getItem('token')
       if (token) {
         const favRes = await favoriteService.list(1, 100)
         const items = favRes?.data || favRes || []
-        favoriteProducts.value = items
-          .map(i => i.productId || i.ProductId || i.id || i.Id)
-          .filter(Boolean)
+        favoriteProducts.value = items.map(i => i.productId || i.ProductId || i.id || i.Id).filter(Boolean)
       } else {
         favoriteProducts.value = []
       }
-    } catch (e) {}
+    } catch {}
   } catch (error) {
     console.error('Failed to load initial data:', error)
   }
-  
+
   // 添加移动端滚动优化
   if (typeof window !== 'undefined') {
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('touchend', preventDoubleTapZoom, { passive: false })
-    
-    // 尝试自动播放视频（在用户交互后）
-    nextTick(() => {
-      playHeroVideo()
-    })
+    nextTick(() => { playHeroVideo() })
   }
 })
 
@@ -1332,6 +1383,7 @@ const productQuantities = ref({})
 const favoriteProducts = ref([])
 const quickViewProduct = ref(null)
 const showQuickViewModal = ref(false)
+ 
 
 const retryVideoLoad = () => {
   videoDimensions.value = null
@@ -1614,10 +1666,14 @@ const toggleFavorite = async (product) => {
     if (index > -1) {
       await favoriteService.remove(product.id)
       favoriteProducts.value.splice(index, 1)
+      const idx = recommendedProducts.value.findIndex(p => p.id === product.id)
+      if (idx !== -1) { recommendedProducts.value[idx].popularity = Math.max(0, (recommendedProducts.value[idx].popularity || 0) - 1) }
       showNotification('已取消收藏', 'info')
     } else {
       await favoriteService.add(product.id)
       favoriteProducts.value.push(product.id)
+      const idx = recommendedProducts.value.findIndex(p => p.id === product.id)
+      if (idx !== -1) { recommendedProducts.value[idx].popularity = (recommendedProducts.value[idx].popularity || 0) + 1 }
       showNotification('已添加到收藏', 'success')
     }
   } catch (e) {
@@ -1634,6 +1690,8 @@ const closeQuickView = () => {
   showQuickViewModal.value = false
   quickViewProduct.value = null
 }
+
+ 
 
 const showNotification = (message, type = 'info') => {
   // 创建通知元素
@@ -1747,7 +1805,7 @@ const handleProductImageError = (event, product) => {
   if (featuredProducts.value.length > 0) {
     const index = featuredProducts.value.findIndex(p => p.id === product.id)
     if (index !== -1) {
-      featuredProducts.value[index].image = '/images/default-product.svg'
+      featuredProducts.value[index].image = '/images/product-placeholder.svg'
     }
   }
 }
@@ -1757,7 +1815,7 @@ const handleQuickViewImageError = (event) => {
   console.warn('快速查看模态框中的图片加载失败，使用默认图片')
   // 更新quickViewProduct对象中的image属性，使用默认图片
   if (quickViewProduct.value) {
-    quickViewProduct.value.image = '/images/default-product.svg'
+    quickViewProduct.value.image = '/images/product-placeholder.svg'
   }
 }
 </script>

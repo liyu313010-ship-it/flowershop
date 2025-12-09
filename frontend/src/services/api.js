@@ -62,7 +62,8 @@ api.interceptors.response.use(
       return Promise.resolve({ aborted: true })
     }
     // 只在开发环境输出详细的错误日志；静默请求不输出控制台错误
-    if (import.meta.env.DEV && !isSilent) {
+    const statusForLog = error.response?.status
+    if (import.meta.env.DEV && !isSilent && !isAborted && statusForLog !== 429) {
       console.error('[API错误]', {
         message: error.message,
         config: { ...error.config, headers: error.config?.headers ? { ...error.config.headers, Authorization: 'Bearer ***' } : undefined },
@@ -76,6 +77,34 @@ api.interceptors.response.use(
     
     if (error.response) {
       switch (error.response.status) {
+        case 429: {
+          const cfg = error.config || {}
+          cfg.__retryCount = cfg.__retryCount || 0
+          // 读取 Retry-After 头；支持秒或HTTP日期
+          const ra = error.response.headers?.['retry-after'] || error.response.headers?.['Retry-After']
+          let delayMs = 0
+          if (ra) {
+            const seconds = Number(ra)
+            if (!Number.isNaN(seconds)) {
+              delayMs = Math.max(0, seconds * 1000)
+            } else {
+              const until = Date.parse(ra)
+              if (!Number.isNaN(until)) delayMs = Math.max(0, until - Date.now())
+            }
+          }
+          // 退避与抖动：若无头，使用指数退避
+          if (!delayMs || delayMs <= 0) {
+            delayMs = Math.min(5000, 500 * Math.pow(2, cfg.__retryCount)) + Math.floor(Math.random() * 200)
+          }
+          if (cfg.__retryCount < 3) {
+            cfg.__retryCount += 1
+            // 重试请求标记为静默，避免弹窗与控制台噪音
+            cfg.silent = true
+            return new Promise((resolve) => setTimeout(resolve, delayMs)).then(() => api(cfg))
+          }
+          if (!isSilent) notifyError('请求过于频繁，请稍后再试')
+          return Promise.reject(error)
+        }
         case 401:
           // 未授权：静默请求不触发跳转，避免导航中断导致的 ERR_ABORTED
           if (isSilent) {
@@ -129,6 +158,7 @@ api.interceptors.response.use(
     const shouldRetry = (!error.response && !isAborted) || (error.response && error.response.status >= 500)
     if (shouldRetry && config.__retryCount < 2) {
       config.__retryCount += 1
+      config.silent = true
       return new Promise((resolve) => setTimeout(resolve, 300 * config.__retryCount)).then(() => api(config))
     }
     return Promise.reject(error)

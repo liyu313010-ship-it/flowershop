@@ -20,31 +20,21 @@ namespace HuanyuFlowerShop.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductsController : ControllerBase
+    public class ProductsController(IProductService productService, ILogger<ProductsController> logger) : ControllerBase
     {
         /// <summary>
         /// 商品服务接口
         /// 提供商品相关的业务逻辑
         /// </summary>
-        private readonly IProductService _productService;
+        private readonly IProductService _productService = productService;
         
         /// <summary>
         /// 日志记录器
         /// 用于记录API请求和响应日志
         /// </summary>
-        private readonly ILogger<ProductsController> _logger;
+        private readonly ILogger<ProductsController> _logger = logger;
 
-        /// <summary>
-        /// 构造函数
-        /// 注入商品服务和日志记录器
-        /// </summary>
-        /// <param name="productService">商品服务</param>
-        /// <param name="logger">日志记录器</param>
-        public ProductsController(IProductService productService, ILogger<ProductsController> logger)
-        {
-            _productService = productService;
-            _logger = logger;
-        }
+        
 
         /// <summary>
         /// 获取所有商品列表
@@ -154,7 +144,7 @@ namespace HuanyuFlowerShop.Controllers
         /// <param name="searchDto">搜索条件</param>
         /// <returns>分页搜索结果</returns>
         [HttpGet("search")]
-        public async Task<ActionResult<PagedResult<ProductDto>>> SearchProducts([FromQuery] ProductSearchDto searchDto)
+        public async Task<ActionResult<HuanyuFlowerShop.DTOs.PagedResult<ProductDto>>> SearchProducts([FromQuery] ProductSearchDto searchDto)
         {
             _logger.LogInformation("开始搜索商品，关键词: {Keyword}", searchDto.Keyword);
             
