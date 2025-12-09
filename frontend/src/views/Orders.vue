@@ -164,6 +164,74 @@
         </div>
       </div>
     </div>
+
+    <!-- 支付方式选择模态框 -->
+    <div v-if="showPaymentModal" class="modal-overlay" @click.self="closePaymentModal">
+      <div class="payment-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ paymentStep === 1 ? '选择支付方式' : paymentStep === 2 ? '支付处理中' : '支付结果' }}</h3>
+          <button v-if="paymentStep === 1" class="action-btn secondary" @click="closePaymentModal">关闭</button>
+        </div>
+        
+        <div class="modal-body">
+          <!-- 步骤1: 选择支付方式 -->
+          <div v-if="paymentStep === 1" class="payment-methods">
+            <div class="order-summary mb-6">
+              <h4>订单信息</h4>
+              <p class="text-sm text-gray-600 mb-2">订单号: {{ selectedOrder?.orderNumber || selectedOrder?.id }}</p>
+              <p class="text-lg font-bold text-primary">支付金额: ¥{{ (selectedOrder?.finalAmount || selectedOrder?.totalAmount || 0).toFixed(2) }}</p>
+            </div>
+            
+            <h4 class="mb-3">选择支付方式</h4>
+            <div class="payment-method-list">
+              <div 
+                v-for="method in paymentMethods" 
+                :key="method.value"
+                @click="selectedPaymentMethod = method.value"
+                :class="['payment-method-item', { 'active': selectedPaymentMethod === method.value }]"
+              >
+                <div class="payment-method-icon">
+                  <i :class="['fab', method.icon, 'text-2xl']"></i>
+                </div>
+                <div class="payment-method-info">
+                  <div class="payment-method-name">{{ method.label }}</div>
+                  <div class="payment-method-desc text-sm text-gray-500">安全快捷的支付方式</div>
+                </div>
+                <div class="payment-method-select">
+                  <i v-if="selectedPaymentMethod === method.value" class="fas fa-check-circle text-primary"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 步骤2: 支付处理中 -->
+          <div v-if="paymentStep === 2" class="payment-processing">
+            <div class="loading-spinner"></div>
+            <h4 class="mt-4 mb-2">{{ selectedPaymentMethod === 'alipay' ? '正在跳转到支付宝支付...' : '正在跳转到微信支付...' }}</h4>
+            <p class="text-gray-600">请稍候，正在处理您的支付请求...</p>
+          </div>
+          
+          <!-- 步骤3: 支付结果 -->
+          <div v-if="paymentStep === 3" class="payment-result">
+            <div v-if="!paymentLoading" class="result-icon success">
+              <i class="fas fa-check-circle text-5xl text-green-500"></i>
+            </div>
+            <div v-else class="result-icon error">
+              <i class="fas fa-times-circle text-5xl text-red-500"></i>
+            </div>
+            <h4 class="mt-4 mb-2">{{ !paymentLoading ? '支付成功！' : '支付失败！' }}</h4>
+            <p class="text-gray-600 mb-4">{{ !paymentLoading ? '您的订单已支付成功，正在跳转...' : '支付过程中发生错误，请重试。' }}</p>
+          </div>
+        </div>
+        
+        <div class="modal-footer" v-if="paymentStep === 1">
+          <button class="action-btn primary" @click="handlePayment" :disabled="paymentLoading">
+            <i v-if="paymentLoading" class="fas fa-spinner fa-spin mr-2"></i>
+            立即支付
+          </button>
+        </div>
+      </div>
+    </div>
   </PageTransition>
 </template>
 
@@ -190,6 +258,17 @@ const setBanner = (msg, type = 'info') => { bannerMessage.value = msg; bannerTyp
 const showOrderReviewModal = ref(false)
 const currentOrderReviews = ref([])
 const currentOrder = ref(null)
+
+// 支付相关状态
+const showPaymentModal = ref(false)
+const selectedOrder = ref(null)
+const selectedPaymentMethod = ref('alipay') // 默认选择支付宝
+const paymentMethods = [
+  { value: 'alipay', label: '支付宝', icon: 'fa-alipay' },
+  { value: 'wechat', label: '微信支付', icon: 'fa-weixin' }
+]
+const paymentLoading = ref(false)
+const paymentStep = ref(1) // 1: 选择支付方式, 2: 支付中, 3: 支付结果
 
 // 方法
 const formatDate = (dateString) => {
@@ -258,23 +337,62 @@ const cancelOrder = async (orderId) => {
   setBanner('订单已取消', 'success')
 }
 
-const payOrder = async (order) => {
+const payOrder = (order) => {
+  // 显示支付方式选择模态框
+  selectedOrder.value = order
+  selectedPaymentMethod.value = 'alipay' // 默认选择支付宝
+  paymentStep.value = 1
+  showPaymentModal.value = true
+}
+
+// 处理支付
+const handlePayment = async () => {
+  if (!selectedOrder.value) return
+  
+  paymentLoading.value = true
+  paymentStep.value = 2 // 进入支付中步骤
+  
+  try {
     // 模拟支付过程
-    try {
-      // 这里可以添加实际的支付逻辑
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // 调用正确的方法更新支付状态为已支付
-      await orderService.updatePaymentStatus(order.id, { paymentStatus: 'paid', paymentMethod: 'online' })
-      await loadOrders()
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // 调用正确的方法更新支付状态为已支付
+    await orderService.updatePaymentStatus(selectedOrder.value.id, { 
+      paymentStatus: 'paid', 
+      paymentMethod: selectedPaymentMethod.value 
+    })
+    
+    paymentStep.value = 3 // 支付成功
+    await loadOrders()
+    
+    // 3秒后关闭模态框
+    setTimeout(() => {
+      closePaymentModal()
       notifySuccess('支付成功')
       setBanner('支付成功', 'success')
-    } catch (error) {
-      console.error('支付失败:', error)
+    }, 3000)
+  } catch (error) {
+    console.error('支付失败:', error)
+    paymentStep.value = 3 // 支付失败
+    
+    // 3秒后关闭模态框
+    setTimeout(() => {
+      closePaymentModal()
       notifyError('支付失败')
       setBanner('支付失败', 'error')
-    }
+    }, 3000)
+  } finally {
+    paymentLoading.value = false
   }
+}
+
+// 关闭支付模态框
+const closePaymentModal = () => {
+  showPaymentModal.value = false
+  selectedOrder.value = null
+  paymentStep.value = 1
+  paymentLoading.value = false
+}
 
 // 确认收货函数
   const confirmReceipt = async (orderId) => {
@@ -905,45 +1023,209 @@ onMounted(() => {
 .order-card:nth-child(3) { animation-delay: 0.3s; }
 .order-card:nth-child(4) { animation-delay: 0.4s; }
 .order-card:nth-child(5) { animation-delay: 0.5s; }
-</style>
-const showOrderReviewModal = ref(false)
-const currentOrderReviews = ref([])
-const currentOrder = ref(null)
+
+/* 支付模态框样式 */
 .modal-overlay {
   position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
 }
 
-.modal {
-  background: #fff;
+.payment-modal {
+  background: white;
   border-radius: 12px;
-  max-width: 800px;
-  width: 92%;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease-out;
 }
 
 .modal-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  align-items: center;
+  padding: 20px;
   border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #333;
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 24px;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 20px;
   border-top: 1px solid #eee;
+  background: #f8f9fa;
 }
+
+/* 支付方式选择样式 */
+.payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.order-summary {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.order-summary h4 {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.payment-method-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payment-method-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.payment-method-item:hover {
+  border-color: #4facfe;
+  background: #f0f9ff;
+}
+
+.payment-method-item.active {
+  border-color: #4facfe;
+  background: #e0f2fe;
+}
+
+.payment-method-icon {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+  margin-right: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.payment-method-info {
+  flex: 1;
+}
+
+.payment-method-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.payment-method-desc {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.payment-method-select {
+  width: 40px;
+  text-align: right;
+}
+
+/* 支付处理中样式 */
+.payment-processing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #4facfe;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 支付结果样式 */
+.payment-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.result-icon {
+  margin-bottom: 20px;
+}
+
+.result-icon.success {
+  color: #10b981;
+}
+
+.result-icon.error {
+  color: #ef4444;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .payment-modal {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .payment-method-item {
+    padding: 12px;
+  }
+  
+  .payment-method-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .payment-method-icon i {
+    font-size: 1.5rem;
+  }
+}
+</style>
