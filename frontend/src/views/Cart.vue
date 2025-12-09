@@ -79,7 +79,9 @@
                         class="quantity-btn"
                         title="减少数量"
                       >
-                        <i class="fas fa-minus"></i>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
                       </button>
                       <span class="quantity-display" :class="{ 'invalid-quantity': item.quantity > item.stock && item.stock > 0 }">
                         {{ item.quantity }}
@@ -90,7 +92,10 @@
                         class="quantity-btn"
                         title="增加数量"
                       >
-                        <i class="fas fa-plus"></i>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
                       </button>
                     </div>
                     <div v-if="item.quantity > item.stock && item.stock > 0" class="stock-warning">
