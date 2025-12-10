@@ -174,12 +174,10 @@
                         <button 
                           v-if="!userStore.isAdmin"
                           @click.stop="handleAddToCart(product)"
-                          class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white p-2 rounded-full transition-all transform hover:scale-110"
+                          class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white px-3 py-1 rounded-full transition-all transform hover:scale-105 text-sm"
                           title="加入购物车"
                         >
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                          </svg>
+                          加入购物车
                         </button>
                       </div>
                     </div>
@@ -393,15 +391,12 @@ const handleAddToCart = async (product) => {
     router.push('/auth')
     return
   }
-  if (!showQuantitySelector.value[product.id]) {
-    showQuantitySelector.value[product.id] = true
-    return
-  }
+  
   const quantity = getProductQuantity(product)
   try {
     const res = await cartStore.addToCart(product, quantity)
     if (res.success) {
-      showQuantitySelector.value[product.id] = false
+      showQuantitySelector.value[product.id] = true
       productQuantities.value[product.id] = 1
       notifySuccess('已加入购物车')
     } else {

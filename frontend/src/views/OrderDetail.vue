@@ -103,9 +103,9 @@
       <!-- 商品列表 -->
       <div class="items-card">
         <h3>商品清单</h3>
-        <div class="items-list">
+            <div class="items-list">
           <div v-for="item in order.orderItems" :key="item.id" class="order-item">
-            <img :src="item.productImage || '/placeholder-flower.jpg'" :alt="item.productName" class="item-image">
+            <img :src="getProductImageUrl(item.productImage || '')" :alt="item.productName" class="item-image">
             <div class="item-details">
               <h4>{{ item.productName }}</h4>
               <p class="item-price">单价：¥{{ item.unitPrice }}</p>
@@ -308,7 +308,7 @@
           </div>
           <div class="modal-body">
             <div class="review-item-info">
-              <img :src="currentReviewItem?.productImage || '/placeholder-flower.jpg'" :alt="currentReviewItem?.productName" class="review-item-image">
+              <img :src="getProductImageUrl(currentReviewItem?.productImage || '')" :alt="currentReviewItem?.productName" class="review-item-image">
               <h4>{{ currentReviewItem?.productName }}</h4>
             </div>
             <div class="form-group">
@@ -393,6 +393,7 @@ import userService from '@/services/userService'
 import { notifySuccess, notifyError } from '@/utils/notify'
 import { useUserStore } from '@/stores/user'
 import { getAvatarUrl } from '@/utils/avatar.js'
+import { getProductImageUrl } from '@/utils/avatar.js'
 
 const route = useRoute()
 const router = useRouter()

@@ -40,7 +40,7 @@
             <div v-else>
               <div v-for="item in cartStore.cartItems" :key="item.id" class="cart-item">
                 <div class="item-image">
-                  <img :src="item.productImage || '/placeholder-flower.jpg'" :alt="item.productName" @error="handleImageError" />
+                  <img :src="getProductImageUrl(item.productImage || '')" :alt="item.productName" @error="handleImageError" />
                   <div class="item-badges">
                     <span v-if="item.isHot" class="badge hot">热卖</span>
                     <span v-if="item.isNew" class="badge new">新品</span>
@@ -236,6 +236,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
 import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import { couponService } from '@/services/coupon'
+import { getProductImageUrl } from '@/utils/avatar.js'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -459,7 +460,7 @@ const useMyCoupon = (c) => {
 
 // 图片错误处理
 const handleImageError = (event) => {
-  event.target.src = '/placeholder-flower.jpg'
+  event.target.src = '/images/product-placeholder.svg'
 }
 </script>
 

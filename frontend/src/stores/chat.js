@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import chatService from '@/services/chat'
 import { useUserStore } from './user'
+import { notifyInfo } from '@/utils/notify'
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
@@ -65,10 +66,20 @@ export const useChatStore = defineStore('chat', {
     async fetchMessages(conversationId) {
       try {
         this.isLoading = true
-        const messages = await chatService.getMessages(conversationId)
-        const items = messages?.items || messages?.Items || []
-        this.messages = Array.isArray(items) ? items.map(m => ({ ...m, conversationId })) : []
-        // 标记会话为已读
+        const pageSize = 50
+        let page = 1
+        const all = []
+        while (true) {
+          const resp = await chatService.getMessages(conversationId, page, pageSize)
+          const list = resp?.items || resp?.Items || resp || []
+          const arr = Array.isArray(list) ? list : []
+          if (arr.length === 0) break
+          for (const m of arr) { all.push({ ...m, conversationId }) }
+          if (arr.length < pageSize) break
+          page += 1
+          if (page > 20) break
+        }
+        this.messages = all
         await this.markConversationAsRead(conversationId)
       } catch (error) {
         console.warn('获取消息列表失败:', error?.message || error)
@@ -90,15 +101,30 @@ export const useChatStore = defineStore('chat', {
         console.warn('获取管理员会话失败:', error?.message || error)
         this.error = error.message
         // 前端回退：创建本地占位会话，避免界面卡住
+        const userStore = useUserStore()
         const placeholder = {
-          id: 'mock-admin',
+          id: 0,
           title: '管理员客服',
           lastMessage: '您好，请留言，我们会尽快联系您',
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          adminId: 1, // 默认管理员ID
+          userId: userStore.user?.id || 0
         }
         this.currentConversation = placeholder
         // 消息列表为空
         this.messages = []
+        // 尝试从会话列表中找到已存在的管理员会话并加载历史
+        try {
+          await this.fetchConversations()
+          const conv = (this.conversations || []).find(c => {
+            const a = c.adminId ?? c.AdminId
+            return Number(a) === 1
+          })
+          if (conv && conv.id) {
+            this.currentConversation = conv
+            await this.fetchMessages(conv.id)
+          }
+        } catch {}
         return placeholder
       } finally {
         this.isLoading = false
@@ -116,7 +142,14 @@ export const useChatStore = defineStore('chat', {
         }
 
         const message = await chatService.sendMessage(messageData)
-        const data = { ...message, conversationId: this.currentConversation?.id }
+        // 使用后端返回的完整数据（包含正确的 conversationId）
+        const data = { ...message }
+        // 如果本地消息列表还是空的或者ID不匹配，确保我们使用后端返回的ConversationId
+        if (this.currentConversation && (this.currentConversation.id === 0 || !this.currentConversation.id)) {
+           // 更新当前会话ID，避免后续消息仍然使用 0
+           this.currentConversation.id = data.conversationId
+        }
+        
         this.messages.push(data)
         
         // 更新会话的最后消息
@@ -206,6 +239,7 @@ export const useChatStore = defineStore('chat', {
       // 更新未读计数
       if (!message.isRead && message.receiverId === useUserStore().user.id) {
         this.unreadCount += 1
+        try { notifyInfo('你有一条消息未读') } catch {}
       }
     },
 

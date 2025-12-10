@@ -133,9 +133,10 @@
               <button 
                 v-if="!userStore.isAdmin"
                 @click="showContactAdminModal = true"
-                class="w-full text-left block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600"
+                class="w-full text-left block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
               >
                 联系管理员
+                <span v-if="chatStore.unreadCount > 0" class="badge-dot">{{ chatStore.unreadCount > 99 ? '99+' : chatStore.unreadCount }}</span>
               </button>
               <router-link 
                 to="/profile" 

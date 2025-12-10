@@ -82,19 +82,24 @@ export const getDefaultAvatarUrl = () => {
  * @returns {string} 完整的产品图片URL
  */
 export const getProductImageUrl = (imagePath) => {
-  const timestamp = Date.now();
-  
   // 如果没有图片路径或无效，返回默认产品图片
   if (!imagePath || typeof imagePath !== 'string' || imagePath.trim() === '') {
     return '/images/product-placeholder.svg'
   }
 
-  // 如果已经是完整URL，添加时间戳防止缓存
+  // 如果是完整URL，优先将 uploads 路径标准化为相对路径以走代理
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    const timestampedUrl = imagePath.includes('?') 
-      ? `${imagePath}&t=${timestamp}` 
-      : `${imagePath}?t=${timestamp}`;
-    return timestampedUrl
+    try {
+      const url = new URL(imagePath)
+      const path = url.pathname || ''
+      if (/\/uploads\/products\//i.test(path)) {
+        let normalized = path.startsWith('/') ? path : `/${path}`
+        return normalized
+      }
+      return imagePath
+    } catch {
+      return imagePath
+    }
   }
 
   let normalizedPath = imagePath.trim()
@@ -114,12 +119,7 @@ export const getProductImageUrl = (imagePath) => {
     normalizedPath = `/uploads/products/${normalizedPath}`
   }
 
-  // 添加时间戳防止缓存
-  const timestampedPath = normalizedPath.includes('?') 
-    ? `${normalizedPath}&t=${timestamp}` 
-    : `${normalizedPath}?t=${timestamp}`;
-    
-  return timestampedPath
+  return normalizedPath
 }
 
 /**

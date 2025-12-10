@@ -1079,7 +1079,7 @@ public class AdminController : ControllerBase
                 }
 
                 // 创建上传目录
-                var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "products");
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "products");
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);

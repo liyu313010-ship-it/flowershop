@@ -125,7 +125,7 @@ export const productService = {
   // 获取商品评价
   async getProductReviews(productId, params = {}) {
     try {
-      const response = await api.get(`/ProductReview/product/${productId}`, { params })
+      const response = await api.get(`/productreview/product/${productId}`, { params })
       return response
     } catch (error) {
       throw error
@@ -135,7 +135,7 @@ export const productService = {
   // 获取当前用户对指定产品的评价
   async getUserReviewForProduct(productId) {
     try {
-      const response = await api.get(`/ProductReview/user/product/${productId}`)
+      const response = await api.get(`/productreview/user/product/${productId}`)
       return response
     } catch (error) {
       throw error
@@ -144,7 +144,7 @@ export const productService = {
 
   async getReviewById(reviewId) {
     try {
-      const response = await api.get(`/ProductReview/${reviewId}`, { silent: true })
+      const response = await api.get(`/productreview/${reviewId}`, { silent: true })
       return response
     } catch (error) {
       throw error
@@ -161,7 +161,7 @@ export const productService = {
     if (entry && (now - entry.ts) < 1500) {
       return entry.promise
     }
-    const p = api.get(`/ProductReview/all`, { params, silent: true, signal: opts.signal }).finally(() => {
+    const p = api.get(`/productreview/all`, { params, silent: true, signal: opts.signal }).finally(() => {
       // 仅在完成后清理，避免内存泄漏
       setTimeout(() => {
         productService.__reviewsInflight && productService.__reviewsInflight.delete(key)
@@ -180,7 +180,7 @@ export const productService = {
         Rating: reviewData.rating,
         Comment: reviewData.comment
       }
-      const response = await api.post(`/ProductReview`, formattedData)
+      const response = await api.post(`/productreview`, formattedData)
       return response
     } catch (error) {
       throw error
@@ -190,7 +190,7 @@ export const productService = {
   // 删除商品评价
   async deleteProductReview(reviewId) {
     try {
-      const response = await api.delete(`/ProductReview/${reviewId}`)
+      const response = await api.delete(`/productreview/${reviewId}`)
       return response
     } catch (error) {
       throw error

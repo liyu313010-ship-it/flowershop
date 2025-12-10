@@ -371,19 +371,14 @@
                   
                   <!-- 加入购物车按钮 - 仅对非管理员显示 -->
                   <button 
-                    v-if="!userStore.isAdmin"
-                    @click.stop="handleAddToCart(product)"
-                    class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white p-2 rounded-full transition-all transform hover:scale-110"
-                    :disabled="cartStore.loading"
-                    :title="showQuantitySelector[product.id] ? '确认添加' : '加入购物车'"
-                  >
-                    <svg v-if="!showQuantitySelector[product.id]" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                  </button>
+                  v-if="!userStore.isAdmin"
+                  @click.stop="handleAddToCart(product)"
+                  class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white px-3 py-1 rounded-full transition-all transform hover:scale-105 text-sm"
+                  :disabled="cartStore.loading"
+                  title="加入购物车"
+                >
+                  加入购物车
+                </button>
                 </div>
               </div>
             </div>
@@ -491,12 +486,10 @@
                   <button 
                     v-if="!userStore.isAdmin"
                     @click.stop="handleAddToCart(product)"
-                    class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white p-2 rounded-full transition-all transform hover:scale-110"
+                    class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white px-3 py-1 rounded-full transition-all transform hover:scale-105 text-sm"
                     :disabled="cartStore.loading"
                   >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
+                    加入购物车
                   </button>
                 </div>
               </div>
@@ -584,11 +577,11 @@
         </div>
         
         <!-- 评价卡片 -->
-        <div v-if="!reviews.length" class="text-center py-12 text-gray-500">
+        <div v-if="reviewsLoaded && !reviews.length" class="text-center py-12 text-gray-500">
           <div class="text-4xl mb-2">💬</div>
           <p>暂无评价</p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div v-if="reviews.length" class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div v-for="review in visibleReviews" :key="review.id" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition">
             <div class="flex items-center mb-4">
               <!-- 用户头像 -->
@@ -614,11 +607,7 @@
               <span class="px-2 py-0.5 bg-gray-100 rounded-full">产品ID: {{ review.productId || review.ProductId }}</span>
               <span class="px-2 py-0.5 bg-gray-100 rounded-full">时间: {{ formatReviewDate(review.createdAt) }}</span>
             </div>
-            <a href="#" @click.prevent="toggleReviewDetail(review)" class="mt-4 inline-block text-huanyu-pink-600 hover:text-huanyu-pink-700 hover:underline">查看评价详情</a>
-            <div v-if="activeReviewId === (review.id || review.Id)" class="mt-3 border-t pt-3">
-              <div class="text-sm text-gray-500 mb-2">{{ formatReviewDate(review.createdAt) }}</div>
-              <div class="text-gray-700">{{ activeReviewDetail?.Comment || activeReviewDetail?.comment || review.comment }}</div>
-            </div>
+            
           </div>
         </div>
         <div v-if="reviews.length > 3" class="text-center mt-6">
@@ -833,6 +822,7 @@ const recommendedProducts = ref([])
 const recommendedLimit = ref(4)
 const visibleRecommended = computed(() => (recommendedProducts.value || []).slice(0, recommendedLimit.value))
 const reviews = ref([])
+const reviewsLoaded = ref(false)
 const REVIEW_POLL_MS = 600000
 let reviewsPoll = null
 const lastReviewsFetchAt = ref(0)
@@ -848,12 +838,13 @@ const fetchReviews = async () => {
   if (now - lastReviewsFetchAt.value < 1200) return
   reviewsFetching = true
   try {
-    if (reviewsController) { try { reviewsController.abort() } catch {} }
-    reviewsController = new AbortController()
-    const response = await productService.getAllReviews({ pageSize: 10 }, { signal: reviewsController.signal })
-    const data = response?.data || response || []
-    const reviewList = Array.isArray(data) ? data : (data.Items || [])
-    reviews.value = (reviewList || []).map(review => ({
+    // 直接调用API获取真实评价数据
+    console.log('开始获取真实评价数据...');
+    
+    const data = await productService.getAllReviews();
+    console.log('获取到的评价数据:', data);
+    
+    reviews.value = (data || []).map(review => ({
       ...review,
       userName: review.UserName || review.userName,
       comment: review.Comment || review.comment || '',
@@ -864,12 +855,15 @@ const fetchReviews = async () => {
       productId: review.ProductId || review.productId,
       createdAt: review.CreatedAt || review.createdAt,
       updatedAt: review.UpdatedAt || review.updatedAt
-    }))
-  } catch {
+    }));
+    console.log('处理后的评价数据:', reviews.value);
+  } catch (error) {
+    console.error('获取评价失败:', error);
     reviews.value = []
   } finally {
     lastReviewsFetchAt.value = Date.now()
     reviewsFetching = false
+    reviewsLoaded.value = true
   }
 }
 
@@ -907,8 +901,6 @@ const goToReviewDetail = async (review) => {
   }
 }
 
-const activeReviewId = ref(null)
-const activeReviewDetail = ref(null)
 
 const showAllReviews = ref(false)
 const visibleReviews = computed(() => {
@@ -917,23 +909,7 @@ const visibleReviews = computed(() => {
 })
 const toggleShowAllReviews = () => { showAllReviews.value = !showAllReviews.value }
 
-const toggleReviewDetail = async (review) => {
-  const rid = review.id || review.Id
-  if (!rid) return
-  if (activeReviewId.value === rid) {
-    activeReviewId.value = null
-    activeReviewDetail.value = null
-    return
-  }
-  activeReviewId.value = rid
-  try {
-    const r = await productService.getReviewById(rid)
-    const d = r?.data || r
-    activeReviewDetail.value = d
-  } catch {
-    activeReviewDetail.value = null
-  }
-}
+// 已移除“查看评价详情”模块
 
 const canDeleteReview = (review) => {
   const uid = userStore.user?.id
@@ -1123,7 +1099,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0,
           popularity: p.Popularity || p.popularity || 0,
           averageRating: p.AverageRating || p.averageRating || 0,
@@ -1156,7 +1132,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0,
           popularity: p.Popularity || p.popularity || 0,
           averageRating: p.AverageRating || p.averageRating || 0,
@@ -1172,7 +1148,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0,
           popularity: p.Popularity || p.popularity || 0,
           averageRating: p.AverageRating || p.averageRating || 0,
@@ -1282,17 +1258,10 @@ onMounted(async () => {
   try {
     await loadCategories()
     await loadFeaturedProducts()
-    // 延迟加载推荐与评价，降低并发峰值
-    const schedule = (fn, ms) => {
-      if ('requestIdleCallback' in window) {
-        // @ts-ignore
-        requestIdleCallback(() => setTimeout(fn, 0), { timeout: ms })
-      } else {
-        setTimeout(fn, ms)
-      }
-    }
-    schedule(() => { loadRecommendedProducts() }, 400)
-    schedule(() => { fetchReviews(); startReviewsPolling() }, 800)
+    await loadRecommendedProducts()
+    // 直接调用获取评价数据，不使用延迟调度
+    await fetchReviews()
+    startReviewsPolling()
 
     document.addEventListener('visibilitychange', handleVisibilityReview)
 
@@ -1632,27 +1601,23 @@ const handleAddToCart = async (product) => {
     router.push('/auth')
     return
   }
-  if (!showQuantitySelector.value[product.id]) {
-    // 首次点击，显示数量选择器
+  
+  // 确认添加到购物车
+  const quantity = getProductQuantity(product)
+  const result = await cartStore.addToCart({
+    ...product,
+    quantity
+  })
+  
+  if (result.success) {
+    // 显示数量选择器
     showQuantitySelector.value[product.id] = true
-  } else {
-    // 确认添加到购物车
-    const quantity = getProductQuantity(product)
-    const result = await cartStore.addToCart({
-      ...product,
-      quantity
-    })
+    productQuantities.value[product.id] = 1
     
-    if (result.success) {
-      // 重置状态
-      showQuantitySelector.value[product.id] = false
-      productQuantities.value[product.id] = 1
-      
-      // 显示成功提示
-      showNotification('成功添加到购物车！', 'success')
-    } else {
-      showNotification(result.message, 'error')
-    }
+    // 显示成功提示
+    notifySuccess('成功添加到购物车！', 'success')
+  } else {
+    showNotification(result.message, 'error')
   }
 }
 

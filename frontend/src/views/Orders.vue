@@ -70,7 +70,7 @@
               <div class="items-list">
                 <div v-for="(item, index) in order.orderItems?.slice(0, 3)" :key="item.id" class="order-item">
                   <div class="item-image">
-                    <img :src="item.productImage || '/placeholder-flower.jpg'" :alt="item.productName">
+                    <img :src="getProductImageUrl(item.productImage || '')" :alt="item.productName">
                   </div>
                   <div class="item-details">
                     <h5 class="item-name">{{ item.productName }}</h5>
@@ -243,6 +243,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import orderService from '@/services/orderService'
 import { productService } from '@/services/product'
 import { getAvatarUrl } from '@/utils/avatar.js'
+import { getProductImageUrl } from '@/utils/avatar.js'
 
 import { notifySuccess, notifyError } from '@/utils/notify'
 

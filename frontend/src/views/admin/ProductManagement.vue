@@ -357,6 +357,7 @@ import { ref, reactive, onMounted } from 'vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import adminService from '@/services/adminService.js'
 import { ElMessage } from 'element-plus'
+import { getProductImageUrl } from '@/utils/avatar.js'
 
 // 响应式数据
 const searchQuery = ref('')
@@ -671,14 +672,11 @@ onMounted(async () => {
 })
 // 图片地址与回退（移入脚本作用域）
 const getProductImage = (product) => {
-  const src = (product.imageUrl || product.image || '').trim()
-  if (!src) return '/src/assets/default-product.png'
-  if (src.startsWith('http')) return src
-  return '/api' + src
+  return getProductImageUrl(product.imageUrl || product.image)
 }
 
 const onImageError = (e) => {
-  e.target.src = '/src/assets/default-product.png'
+  e.target.src = '/images/product-placeholder.svg'
 }
 
 // 加载销量映射（移入脚本作用域）

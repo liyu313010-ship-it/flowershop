@@ -22,12 +22,9 @@
           <span class="ml-2 text-sm text-gray-500">加载消息中...</span>
         </div>
       </div>
-      <div v-else-if="!currentMessages.length" class="empty-message">
-        <p class="text-gray-500 text-center py-8">暂无消息，开始您的对话吧！</p>
-      </div>
-      <div v-else>
+      <div>
         <div 
-          v-for="message in sortedMessages" 
+          v-for="message in sortedCurrentMessages" 
           :key="message.id" 
           class="message-item"
           :class="message.senderId === currentUserId ? 'sent' : 'received'"
@@ -39,6 +36,9 @@
               <span v-if="message.isRead && message.senderId === currentUserId" class="ml-2 text-xs text-blue-400">已读</span>
             </div>
           </div>
+        </div>
+        <div v-if="!sortedCurrentMessages.length" class="empty-message">
+          <p class="text-gray-500 text-center py-8">暂无消息，开始您的对话吧！</p>
         </div>
       </div>
     </div>
@@ -100,7 +100,7 @@ const messagesContainer = ref(null)
 const isLoading = computed(() => chatStore.isLoading)
 const currentUserId = computed(() => userStore.user?.id || 0)
 const currentMessages = computed(() => chatStore.currentMessages)
-const sortedMessages = computed(() => chatStore.sortedMessages)
+const sortedCurrentMessages = computed(() => [...currentMessages.value].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)))
 const chatTitle = computed(() => {
   const c = chatStore.currentConversation
   if (!c) return '聊天'
@@ -132,8 +132,16 @@ const sendMessage = async () => {
       }
     }
     const isAdmin = userStore.isAdmin
-    const receiverId = isAdmin ? ((c.UserId ?? c.userId) || 0) : ((c.AdminId ?? c.adminId) || 0)
+    // 优先使用后端返回的 AdminId/UserId，如果是本地占位符则使用 adminId/userId
+    // 对于普通用户，接收者是管理员 (AdminId)
+    // 对于管理员，接收者是用户 (UserId)
+    const receiverId = isAdmin 
+      ? ((c.UserId ?? c.userId) || 0) 
+      : ((c.AdminId ?? c.adminId) || 1) // 默认为1 (管理员)
+      
     if (!receiverId) throw new Error('缺少接收者ID')
+    
+    console.log('Sending message to:', receiverId, 'Conversation:', c.id)
     await chatStore.sendMessage(messageText.value, receiverId)
     messageText.value = ''
     

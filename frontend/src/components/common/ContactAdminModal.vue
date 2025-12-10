@@ -24,8 +24,8 @@
           </div>
           <div v-else class="chat-container">
             <ChatWindow 
-              v-if="adminConversationId" 
-              :conversation-id="adminConversationId" 
+              v-if="chatStore.currentConversation || adminConversationId !== null" 
+              :conversation-id="adminConversationId ?? (chatStore.currentConversation?.id ?? 0)" 
               @close="close"
               @message-sent="handleMessageSent"
             />
@@ -98,7 +98,11 @@ const initializeChat = async () => {
     isInitialized.value = false
     if (initTimer) { clearTimeout(initTimer); initTimer = null }
     initTimer = setTimeout(() => { isInitialized.value = true }, 3000)
-    try { await chatStore.connectHub() } catch {}
+    try {
+      // 重新连接Hub，确保使用最新用户的Token
+      chatStore.disconnectHub()
+      await chatStore.connectHub()
+    } catch {}
     const conversation = await chatStore.fetchAdminConversation()
     adminConversationId.value = conversation.id
     isInitialized.value = true
@@ -138,8 +142,18 @@ const unwatch = watch(() => props.isVisible, (newVal) => {
   }
 })
 
+// Reset chat when user changes
+const unwatchUser = watch(() => userStore.user?.id, () => {
+  if (props.isVisible) {
+    chatStore.reset()
+    adminConversationId.value = null
+    initializeChat()
+  }
+})
+
 onUnmounted(() => {
   unwatch()
+  unwatchUser()
   if (initTimer) { clearTimeout(initTimer); initTimer = null }
   try { const onKey = (window).__contact_admin_modal_onkey; if (onKey) window.removeEventListener('keydown', onKey) } catch {}
 })
