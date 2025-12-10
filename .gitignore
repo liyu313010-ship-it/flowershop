@@ -71,6 +71,10 @@ Thumbs.db
 .Trashes
 ehthumbs.db
 
+# Trae AI tool
+trae/
+.trae/
+
 # Uploads
 **/uploads/
 
