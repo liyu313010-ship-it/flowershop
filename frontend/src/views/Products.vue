@@ -87,7 +87,7 @@
                     <img
                       :src="product.image"
                       :alt="product.name"
-                      class="w-full h-64 object-contain"
+                      class="w-full h-64 object-cover"
                       @error="onProductImageError"
                     />
                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
