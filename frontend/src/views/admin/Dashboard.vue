@@ -164,7 +164,7 @@
             <div class="space-y-3">
               <div v-for="product in topProducts" :key="product.id" class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                  <img :src="((product.image || product.ImageUrl || product.imageUrl) ? (((product.image || product.ImageUrl || product.imageUrl).startsWith('http') ? (product.image || product.ImageUrl || product.imageUrl) : (((product.image || product.ImageUrl || product.imageUrl).startsWith('/uploads') || (product.image || product.ImageUrl || product.imageUrl).startsWith('/images')) ? (product.image || product.ImageUrl || product.imageUrl) : '/api' + (product.image || product.ImageUrl || product.imageUrl)))) : '/images/product-placeholder.svg')" :alt="product.name" class="w-10 h-10 rounded-lg object-cover">
+                  <img :src="getProductImageUrl(product.image || product.ImageUrl || product.imageUrl || '')" :alt="product.name" class="w-10 h-10 rounded-lg object-cover">
                   <div>
                     <p class="font-medium text-gray-900">{{ product.name }}</p>
                     <p class="text-sm text-gray-600">销量: {{ product.salesCount }}</p>
@@ -186,6 +186,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import adminService from '@/services/adminService.js'
+import { getProductImageUrl } from '@/utils/avatar.js'
 
 const router = useRouter()
 const userStore = useUserStore()

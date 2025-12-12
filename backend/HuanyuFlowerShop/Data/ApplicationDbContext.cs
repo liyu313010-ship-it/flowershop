@@ -30,6 +30,7 @@ namespace HuanyuFlowerShop.Data
         public DbSet<ProductRecommendation> ProductRecommendations { get; set; } = null!;
         public DbSet<Message> Messages { get; set; } = null!;
         public DbSet<Conversation> Conversations { get; set; } = null!;
+        public DbSet<Video> Videos { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

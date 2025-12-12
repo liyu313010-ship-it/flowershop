@@ -135,8 +135,9 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
     builder.Services.AddScoped<IOrderStatusHistoryService, OrderStatusHistoryService>();
         builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-        builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
+            builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
             builder.Services.AddScoped<IChatService, ChatService>();
+            builder.Services.AddScoped<IVideoService, VideoService>();
 
 // 注册SignalR服务
 builder.Services.AddSignalR();
@@ -156,10 +157,9 @@ var app = builder.Build();
 // 使用默认或环境变量配置的地址（ASPNETCORE_URLS）以避免重复绑定
 
 // 初始化数据库 - 暂时禁用迁移，因为表已存在
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<ApplicationDbContext>();
+using var scope = app.Services.CreateScope();
+var services = scope.ServiceProvider;
+var context = services.GetRequiredService<ApplicationDbContext>();
     // 初始化数据库
     // 开发环境下启用自动迁移
     if (app.Environment.IsDevelopment())
@@ -169,36 +169,30 @@ using (var scope = app.Services.CreateScope())
         // 开发环境下若迁移缺失，安全创建聊天相关表
         try
         {
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Conversations` (
+            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Videos` (
                 `Id` INT NOT NULL AUTO_INCREMENT,
-                `UserId` INT NOT NULL,
-                `AdminId` INT NOT NULL,
-                `LastMessage` TEXT NULL,
-                `LastMessageTime` DATETIME NULL,
-                `UnreadCount` INT NOT NULL DEFAULT 0,
+                `Title` VARCHAR(200) NOT NULL,
+                `FilePath` VARCHAR(500) NOT NULL,
+                `Slot` VARCHAR(50) NOT NULL DEFAULT 'story',
+                `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
                 `CreatedAt` DATETIME NOT NULL,
-                `UpdatedAt` DATETIME NOT NULL,
-                PRIMARY KEY (`Id`),
-                INDEX `IX_Conversations_UserId` (`UserId`),
-                INDEX `IX_Conversations_AdminId` (`AdminId`),
-                CONSTRAINT `FK_Conversations_Users_UserId` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
-                CONSTRAINT `FK_Conversations_Users_AdminId` FOREIGN KEY (`AdminId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+                `UpdatedAt` DATETIME NULL,
+                PRIMARY KEY (`Id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            try { context.Database.ExecuteSqlRaw(@"ALTER TABLE `Videos` ADD COLUMN `Slot` VARCHAR(50) NOT NULL DEFAULT 'story'"); } catch { }
 
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Messages` (
+            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `OrderStatusHistories` (
                 `Id` INT NOT NULL AUTO_INCREMENT,
-                `SenderId` INT NOT NULL,
-                `ReceiverId` INT NOT NULL,
-                `Content` TEXT NOT NULL,
-                `MessageType` VARCHAR(20) NOT NULL,
-                `IsRead` TINYINT(1) NOT NULL DEFAULT 0,
+                `OrderId` INT NOT NULL,
+                `OldStatus` VARCHAR(20) NULL,
+                `NewStatus` VARCHAR(20) NOT NULL,
+                `OperatorId` INT NULL,
+                `OperatorName` VARCHAR(50) NOT NULL,
+                `Note` VARCHAR(500) NULL,
                 `CreatedAt` DATETIME NOT NULL,
-                `UpdatedAt` DATETIME NOT NULL,
                 PRIMARY KEY (`Id`),
-                INDEX `IX_Messages_SenderId` (`SenderId`),
-                INDEX `IX_Messages_ReceiverId` (`ReceiverId`),
-                CONSTRAINT `FK_Messages_Users_SenderId` FOREIGN KEY (`SenderId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
-                CONSTRAINT `FK_Messages_Users_ReceiverId` FOREIGN KEY (`ReceiverId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
+                INDEX `IX_OrderStatusHistories_OrderId` (`OrderId`),
+                CONSTRAINT `FK_OrderStatusHistories_Orders_OrderId` FOREIGN KEY (`OrderId`) REFERENCES `Orders` (`Id`) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
         catch { }
@@ -208,6 +202,35 @@ using (var scope = app.Services.CreateScope())
         // 生产环境下使用安全的SQL语句确保数据库结构正确
         try
         {
+            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Videos` (
+                `Id` INT NOT NULL AUTO_INCREMENT,
+                `Title` VARCHAR(200) NOT NULL,
+                `FilePath` VARCHAR(500) NOT NULL,
+                `Slot` VARCHAR(50) NOT NULL DEFAULT 'story',
+                `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
+                `CreatedAt` DATETIME NOT NULL,
+                `UpdatedAt` DATETIME NULL,
+                PRIMARY KEY (`Id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            try { context.Database.ExecuteSqlRaw(@"ALTER TABLE `Videos` ADD COLUMN `Slot` VARCHAR(50) NOT NULL DEFAULT 'story'"); } catch { }
+            // 标记旧迁移为已应用，避免 EF 在后续 update 时重复创建已存在表
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `__EFMigrationsHistory` (
+                    `MigrationId` VARCHAR(150) NOT NULL,
+                    `ProductVersion` VARCHAR(32) NOT NULL,
+                    PRIMARY KEY (`MigrationId`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                context.Database.ExecuteSqlRaw(@"INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES
+                    ('20251130045107_InitialMySQLMigration','9.0.0'),
+                    ('20251130045257_MySQLCleanMigration','9.0.0'),
+                    ('20251201084240_AddPaymentFieldsToOrder','9.0.0'),
+                    ('20251209000000_AddChatTables','9.0.0'),
+                    ('20251211133513_AddVideosTable','9.0.0')
+                ;");
+            }
+            catch {}
+
             // 安全创建OrderStatusHistories表（如果不存在）
             context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `OrderStatusHistories` (
                 `Id` INT NOT NULL AUTO_INCREMENT,
@@ -315,8 +338,7 @@ using (var scope = app.Services.CreateScope())
     }
 
     // 初始化数据库数据（分类/产品种子与缺失分类修复）
-    DatabaseInitializer.Initialize(services);
-}
+DatabaseInitializer.Initialize(services);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -374,6 +396,17 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(uploadsPath),
     RequestPath = "/uploads"
 });
+
+// 额外映射本地用户头像目录为 /uploads/avatars
+var userAvatarPath = @"D:\flowershop\用户头像";
+if (Directory.Exists(userAvatarPath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(userAvatarPath),
+        RequestPath = "/uploads/avatars"
+    });
+}
 
 app.UseCors("AllowSpecificOrigins");
 

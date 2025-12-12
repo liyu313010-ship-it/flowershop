@@ -32,7 +32,7 @@
               loop
               playsinline
               @loadeddata="onHeroBackgroundLoad"
-              @error="onHeroBackgroundLoad"
+              @error="onHeroVideoError"
               style="object-position: center center;"
             ></video>
           </transition>
@@ -42,26 +42,74 @@
         
         <!-- 文字内容 - 直接显示在背景上，无遮罩 -->
         <div class="absolute inset-0 flex items-center justify-center text-center text-white px-4 rounded-[4rem]">
-          <div class="max-w-3xl fade-in bg-black/5 backdrop-blur-sm p-8 rounded-3xl border-2 border-white/30 shadow-2xl hero-content">
-            <h1 class="text-4xl md:text-6xl font-bold mb-4 text-shadow">
-              欢雨flower
-            </h1>
-            <p class="text-xl md:text-2xl mb-8 text-shadow">
-              用心传递每一份美好，让鲜花为您的生活增添色彩
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-              <router-link 
-                  to="/products" 
-                  class="btn-primary bg-white text-huanyu-pink-300 hover:bg-huanyu-pink-50 font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                >
-                浏览商品
-              </router-link>
-              <router-link 
-                to="/auth" 
-                class="btn-secondary border-white text-pink-700 hover:bg-white hover:text-huanyu-pink-500 font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              >
-                立即注册
-              </router-link>
+          <div v-if="userStore.isAdmin" class="absolute top-4 right-6 z-50">
+            <input ref="heroVideoUploadInput" type="file" accept="video/*" class="hidden" @change="handleHeroVideoFileSelected" />
+            <button 
+              @click.stop="triggerHeroVideoUpload"
+              class="bg-white/90 hover:bg-white text-gray-800 px-3 py-1 rounded-lg text-sm shadow"
+              :disabled="uploadingHeroVideo"
+            >
+              {{ uploadingHeroVideo ? '上传中...' : '更换背景视频' }}
+            </button>
+          </div>
+          <div class="relative w-full max-w-6xl fade-in" @mouseenter="heroAutoRotatePaused = true" @mouseleave="heroAutoRotatePaused = false" @touchstart="handleHeroTouchStart" @touchmove="handleHeroTouchMove" @touchend="handleHeroTouchEnd">
+            <transition name="fade" mode="out-in">
+              <div :key="currentHeroSlide" class="w-full">
+                <div v-if="heroSlides[currentHeroSlide] === 'hero'" class="mx-auto bg-black/5 backdrop-blur-sm p-8 rounded-3xl border-2 border-white/30 shadow-2xl hero-content max-w-3xl">
+                  <h1 class="text-4xl md:text-6xl font-bold mb-4 text-shadow">欢雨flower</h1>
+                  <p class="text-xl md:text-2xl mb-8 text-shadow">用心传递每一份美好，让鲜花为您的生活增添色彩</p>
+                  <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <router-link to="/products" class="btn-primary bg-white text-huanyu-pink-300 hover:bg-huanyu-pink-50 font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">浏览商品</router-link>
+                    <router-link to="/auth" class="btn-secondary border-white text-pink-700 hover:bg-white hover:text-huanyu-pink-500 font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">立即注册</router-link>
+                  </div>
+                </div>
+                <div v-else-if="heroSlides[currentHeroSlide] === 'hot'" class="mx-auto bg-black/10 backdrop-blur-sm p-6 rounded-3xl border-2 border-white/30 shadow-2xl">
+                  <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-2xl md:text-3xl font-bold">热销推荐</h3>
+                    <router-link to="/products" class="text-white/90 hover:text-white underline">更多</router-link>
+                  </div>
+                  <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <router-link v-for="p in (featuredProducts || []).slice(0,3)" :key="p.id" :to="`/product/${p.id}`" class="bg-white/20 rounded-xl p-3 backdrop-blur shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/80">
+                      <div class="h-40 md:h-56 lg:h-64 bg-white/30 rounded-lg overflow-hidden">
+                        <img :src="p.image" :alt="p.name" class="w-full h-full object-cover" />
+                      </div>
+                      <div class="mt-2 text-left">
+                        <div class="text-sm md:text-base font-semibold truncate">{{ p.name }}</div>
+                        <div class="text-huanyu-pink-200 font-bold">¥{{ p.price }}</div>
+                      </div>
+                    </router-link>
+                  
+                    <template v-if="(featuredProducts || []).length === 0">
+                      <div v-for="i in 3" :key="i" class="bg-white/20 rounded-xl p-3 backdrop-blur shadow">
+                        <div class="h-24 md:h-32 rounded-lg overflow-hidden skeleton"></div>
+                        <div class="mt-2">
+                          <div class="h-4 w-24 skeleton mb-2"></div>
+                          <div class="h-4 w-12 skeleton"></div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <div v-else class="w-full">
+                  <div class="promo-hero relative h-64 md:h-80 lg:h-[28rem] max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl">
+                    <img :src="promoStaticSrc" alt="促销占位图" class="absolute inset-0 w-full h-full object-cover" />
+                    <div class="absolute inset-0 flex items-center justify-start">
+                      <div class="ml-6 md:ml-12 lg:ml-16 px-4 w-full max-w-2xl text-left">
+                        <h2 class="text-black font-extrabold text-4xl md:text-6xl lg:text-7xl mb-4 tracking-tight">Fresh Flower 2</h2>
+                        <p class="text-black text-2xl md:text-3xl mb-4">For Special Someone</p>
+                        <p class="text-gray-600 text-base md:text-lg mb-6">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore.</p>
+                        <router-link to="/products" class="inline-block bg-black text-white px-5 md:px-6 py-3 md:py-3.5 rounded-full shadow-lg hover:bg-gray-900">Shop Now</router-link>
+                      </div>
+                      
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
+            <div class="absolute -bottom-2 left-0 right-0 flex items-center justify-center gap-2">
+              <button @click="prevHeroSlide" class="w-8 h-8 rounded-full bg-white/40 hover:bg-white/70 text-gray-800 flex items-center justify-center">‹</button>
+              <button v-for="(s,i) in heroSlides" :key="i" @click="currentHeroSlide = i" class="w-2 h-2 rounded-full" :class="i === currentHeroSlide ? 'bg-white' : 'bg-white/50'"></button>
+              <button @click="nextHeroSlide" class="w-8 h-8 rounded-full bg-white/40 hover:bg-white/70 text-gray-800 flex items-center justify-center">›</button>
             </div>
           </div>
         </div>
@@ -80,13 +128,13 @@
         </div>
         
         <!-- 视频播放器 -->
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-6xl mx-auto">
           <div class="relative rounded-2xl overflow-hidden shadow-2xl">
             <!-- 视频播放器 -->
               <div ref="videoSection" class="relative video-container bg-gray-900 rounded-2xl overflow-hidden w-full" :style="`padding-bottom: ${videoAspectRatio ? getPaddingBottom(videoAspectRatio) : '56.25%'}; min-height: 400px;`">
               <!-- 视频封面图片 -->
               <img 
-                src="/images/视屏壁纸图片.png" 
+                src="/images/视屏封面图片.png" 
                 alt="视频封面" 
                 class="absolute inset-0 w-full h-full object-cover hero-image"
                 style="image-rendering: -webkit-optimize-contrast; image-rendering: auto; object-position: center; width: 100%; height: 100%;"
@@ -104,17 +152,27 @@
                     <path d="M8 5v14l11-7z"/>
                   </svg>
                 </div>
+                <div v-if="userStore.isAdmin" class="absolute top-3 right-3 flex items-center gap-2">
+                  <input ref="videoUploadInput" type="file" accept="video/*" class="hidden" @change="handleVideoFileSelected" />
+                  <button 
+                    @click.stop="triggerVideoUpload"
+                    class="bg-white/90 hover:bg-white text-gray-800 px-3 py-1 rounded-lg text-sm shadow"
+                    :disabled="uploadingVideo"
+                  >
+                    {{ uploadingVideo ? '上传中...' : '上传视频' }}
+                  </button>
+                </div>
               </div>
               
               <!-- 视频播放器 -->
               <video 
-                v-if="videoPlaying"
+                v-show="videoPlaying"
                 ref="videoPlayer"
                 class="absolute inset-0 w-full h-full"
                 style="object-fit: cover; background: black;"
                 controls
                 playsinline
-                preload="metadata"
+                preload="none"
                 @loadedmetadata="onVideoLoaded"
                 @ended="videoEnded"
                 @error="onVideoError"
@@ -125,8 +183,7 @@
                 @playing="onVideoPlaying"
                 @touchstart="handleMobileVideoPlay"
                 @touchend.prevent="preventDoubleTapZoom">
-                <!-- 使用本地视频文件 -->
-                <source :src="heroVideoPath" type="video/mp4">
+                <source :src="storyVideoPath" type="video/mp4">
                 <p>您的浏览器不支持视频播放</p>
               </video>
               
@@ -158,43 +215,53 @@
             </div>
             
             <!-- 视频信息 -->
-            <div class="bg-white p-6 border-t">
-              <h3 class="text-xl font-semibold text-gray-800 mb-2">欢雨flower - 用心传递每一份美好</h3>
-              <p class="text-gray-600 mb-4">
-                从花田到花束，从花艺师到配送员，每一个环节我们都用心对待。让我们一起见证鲜花的美丽旅程。
-              </p>
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4 text-sm text-gray-500">
-                  <span>时长: {{ videoDuration || '3:45' }}</span>
-                  <span>发布时间: 2024年1月</span>
-                  <span v-if="videoDimensions">{{ videoDimensions.width }}x{{ videoDimensions.height }}</span>
-                </div>
-                <div class="video-controls flex space-x-2">
-                  <button 
-                    v-if="videoPlaying"
-                    @click="pauseVideo"
-                    class="bg-huanyu-pink-100 hover:bg-huanyu-pink-200 text-huanyu-pink-600 px-4 py-2 rounded-lg transition-colors"
-                  >
-                    暂停
-                  </button>
-                  <button 
-                    v-if="!videoPlaying && hasPlayed"
-                    @click="replayVideo"
-                    class="bg-huanyu-pink-100 hover:bg-huanyu-pink-200 text-huanyu-pink-600 px-4 py-2 rounded-lg transition-colors"
-                  >
-                    重播
-                  </button>
-                  <button 
-                    @click="shareVideo"
-                    class="bg-huanyu-pink-500 hover:bg-huanyu-pink-600 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    分享
-                  </button>
+              <div class="bg-white p-6 border-t">
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">欢雨flower - 用心传递每一份美好</h3>
+                <p class="text-gray-600 mb-4">
+                  从花田到花束，从花艺师到配送员，每一个环节我们都用心对待。让我们一起见证鲜花的美丽旅程。
+                </p>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-4 text-sm text-gray-500">
+                    <span>时长: {{ videoDuration || '3:45' }}</span>
+                    <span>发布时间: 2024年1月</span>
+                    <span v-if="videoDimensions">{{ videoDimensions.width }}x{{ videoDimensions.height }}</span>
+                  </div>
+                  <div class="video-controls flex space-x-2">
+                    <button 
+                      v-if="videoPlaying"
+                      @click="pauseVideo"
+                      class="bg-huanyu-pink-100 hover:bg-huanyu-pink-200 text-huanyu-pink-600 px-4 py-2 rounded-lg transition-colors"
+                    >
+                      暂停
+                    </button>
+                    <button 
+                      v-if="!videoPlaying && hasPlayed"
+                      @click="replayVideo"
+                      class="bg-huanyu-pink-100 hover:bg-huanyu-pink-200 text-huanyu-pink-600 px-4 py-2 rounded-lg transition-colors"
+                    >
+                      重播
+                    </button>
+                    <button 
+                      @click="shareVideo"
+                      class="bg-huanyu-pink-500 hover:bg-huanyu-pink-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      分享
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
+      </div>
+      <div v-if="userStore.isAdmin" class="absolute top-3 right-3 z-20">
+        <input ref="heroVideoUploadInput" type="file" accept="video/*" class="hidden" @change="handleHeroVideoFileSelected" />
+        <button 
+          @click.stop="triggerHeroVideoUpload"
+          class="bg-white/90 hover:bg-white text-gray-800 px-3 py-1 rounded-lg text-sm shadow"
+          :disabled="uploadingHeroVideo"
+        >
+          {{ uploadingHeroVideo ? '上传中...' : '更换背景视频' }}
+        </button>
       </div>
     </section>
     
@@ -792,6 +859,7 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
 import AutoLinkText from '@/components/AutoLinkText.vue'
 import api from '@/services/api'
+import { videoService } from '@/services/video'
 import adminService from '@/services/adminService'
 
 // 路由和状态管理
@@ -811,10 +879,37 @@ const fallbackToDefaultImage = () => {
 
 // 英雄区域背景设置 - 这里可以修改默认背景路径
 const heroBackgroundType = ref('image')
-const heroImagePath = ref('/images/主页背景.png') // 修改这里的路径来更改默认图片背景
-const heroVideoPath = ref('/videos/2.mp4') // 设置视频背景路径
+const heroImagePath = ref('/images/主页背景.png')
+const heroVideoPath = ref('')
+const storyVideoPath = ref('')
 const heroVideoRef = ref(null)
 const heroBackgroundLoaded = ref(false)
+const heroSlides = ref(['hero','hot','promo'])
+const currentHeroSlide = ref(0)
+let heroRotateTimer = null
+const heroAutoRotatePaused = ref(false)
+const heroTouchStartX = ref(0)
+const heroTouchEndX = ref(0)
+const heroIsDragging = ref(false)
+const promoBannerPath = ref('')
+  const promoBannerTitle = ref('')
+  
+
+// 规范化 /uploads 资源路径，移除端口与域名，避免开发端口变更导致的资源失效
+const normalizeUploadsPath = (p) => {
+  try {
+    if (!p || typeof p !== 'string') return ''
+    let s = p.trim()
+    if (s.startsWith('http://') || s.startsWith('https://')) {
+      const u = new URL(s)
+      s = u.pathname || s
+    }
+    if (!s.startsWith('/')) s = '/' + s
+    // 仅允许 /uploads 前缀资源
+    if (s.startsWith('/uploads/')) return s
+    return s
+  } catch { return p }
+}
 
 // 响应式数据
 const featuredProducts = ref([])
@@ -838,10 +933,10 @@ const fetchReviews = async () => {
   if (now - lastReviewsFetchAt.value < 1200) return
   reviewsFetching = true
   try {
-    // 直接调用API获取真实评价数据
-    console.log('开始获取真实评价数据...');
-    
-    const data = await productService.getAllReviews();
+    // 为本次请求建立可取消的控制器，避免导航/隐藏导致 ERR_ABORTED 噪音
+    if (reviewsController) { try { reviewsController.abort() } catch {} }
+    reviewsController = new AbortController()
+    const data = await productService.getAllReviews({}, { signal: reviewsController.signal })
     console.log('获取到的评价数据:', data);
     
     reviews.value = (data || []).map(review => ({
@@ -858,7 +953,11 @@ const fetchReviews = async () => {
     }));
     console.log('处理后的评价数据:', reviews.value);
   } catch (error) {
-    console.error('获取评价失败:', error);
+    // 静默处理被取消的请求
+    if (error?.code === 'ERR_CANCELED' || /aborted/i.test(error?.message || '')) {
+      reviewsFetching = false
+      return
+    }
     reviews.value = []
   } finally {
     lastReviewsFetchAt.value = Date.now()
@@ -1198,10 +1297,42 @@ const onHeroBackgroundLoad = () => {
     isLoading.value = false
   }, 800)
 }
+const onHeroVideoError = () => {
+  if (storyVideoPath.value) {
+    heroBackgroundType.value = 'video'
+    heroVideoPath.value = storyVideoPath.value
+    return
+  }
+  heroBackgroundType.value = 'image'
+}
 
 // 监听背景类型变化
 watch(heroBackgroundType, () => {
   heroBackgroundLoaded.value = false
+})
+
+watch(heroVideoPath, (val) => {
+  try {
+    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
+      const p = normalizeUploadsPath(val)
+      if (p !== val) {
+        heroVideoPath.value = p
+        try { localStorage.setItem('heroVideoPath', p) } catch {}
+      }
+    }
+  } catch {}
+})
+
+watch(storyVideoPath, (val) => {
+  try {
+    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
+      const p = normalizeUploadsPath(val)
+      if (p !== val) {
+        storyVideoPath.value = p
+        try { localStorage.setItem('storyVideoPath', p) } catch {}
+      }
+    }
+  } catch {}
 })
 
 // 自动播放视频
@@ -1245,9 +1376,20 @@ const useDefaultImageBackground = () => {
   heroImagePath.value = '/images/主图.jpg' // 与上面的默认路径保持一致
 }
 
-const useDefaultVideoBackground = () => {
-  heroBackgroundType.value = 'video'
-  heroVideoPath.value = '/videos/2.mp4'
+const useDefaultVideoBackground = async () => {
+  try {
+    const v = await videoService.getBySlot('hero')
+    const data = v?.data || v
+    const path = data?.FilePath || data?.filePath
+    if (path) {
+      heroBackgroundType.value = 'video'
+      heroVideoPath.value = path
+    } else {
+      notifyInfo('暂无数据库视频可用')
+    }
+  } catch {
+    notifyInfo('获取首页视频失败')
+  }
 }
 
 // 组件挂载时加载数据
@@ -1256,9 +1398,51 @@ onMounted(async () => {
   setTimeout(() => { if (isLoading.value) { isLoading.value = false } }, 3000)
 
   try {
+    // 先用本地缓存的英雄视频，避免刷新瞬间回落图片
+    try {
+      const cachedHero = localStorage.getItem('heroVideoPath')
+      if (cachedHero && typeof cachedHero === 'string' && cachedHero.trim()) {
+        heroBackgroundType.value = 'video'
+        const p = normalizeUploadsPath(cachedHero)
+        heroVideoPath.value = p
+        try { localStorage.setItem('heroVideoPath', p) } catch {}
+      }
+    } catch {}
+    // 先用本地缓存的故事视频，避免刷新后出现暂无可播放
+    try {
+      const cachedStory = localStorage.getItem('storyVideoPath')
+      if (cachedStory && typeof cachedStory === 'string' && cachedStory.trim()) {
+        const p = normalizeUploadsPath(cachedStory)
+        storyVideoPath.value = p
+        try { localStorage.setItem('storyVideoPath', p) } catch {}
+      }
+    } catch {}
+
     await loadCategories()
     await loadFeaturedProducts()
     await loadRecommendedProducts()
+    try {
+      const heroRes = await videoService.getBySlot('hero')
+      const heroData = heroRes?.data || heroRes
+      const path = heroData?.FilePath || heroData?.filePath
+      if (path) {
+        heroBackgroundType.value = 'video'
+        heroVideoPath.value = normalizeUploadsPath(path)
+        try { localStorage.setItem('heroVideoPath', heroVideoPath.value) } catch {}
+      }
+    } catch {}
+    try {
+      const storyRes = await videoService.getBySlot('story')
+      const storyData = storyRes?.data || storyRes
+      const path = storyData?.FilePath || storyData?.filePath
+      if (path) {
+        storyVideoPath.value = normalizeUploadsPath(path)
+        try { localStorage.setItem('storyVideoPath', storyVideoPath.value) } catch {}
+      }
+    } catch {}
+    try {
+      
+    } catch {}
     // 直接调用获取评价数据，不使用延迟调度
     await fetchReviews()
     startReviewsPolling()
@@ -1284,6 +1468,9 @@ onMounted(async () => {
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('touchend', preventDoubleTapZoom, { passive: false })
     nextTick(() => { playHeroVideo() })
+    if (!heroRotateTimer) {
+      heroRotateTimer = setInterval(() => { if (!heroAutoRotatePaused.value) { currentHeroSlide.value = (currentHeroSlide.value + 1) % heroSlides.value.length } }, 2000)
+    }
   }
 })
 
@@ -1292,6 +1479,7 @@ watch(() => userStore.user?.avatar, () => { fetchReviews() })
 onUnmounted(() => {
   stopReviewsPolling()
   document.removeEventListener('visibilitychange', handleVisibilityReview)
+  if (heroRotateTimer) { clearInterval(heroRotateTimer); heroRotateTimer = null }
 })
 
 if (import.meta && import.meta.hot) {
@@ -1345,6 +1533,12 @@ const videoSection = ref(null)
 const videoAspectRatio = ref('')
 const videoDimensions = ref(null)
 const videoDuration = ref('')
+const videoUploadInput = ref(null)
+const uploadingVideo = ref(false)
+const heroVideoUploadInput = ref(null)
+const uploadingHeroVideo = ref(false)
+  const promoUploadInput = ref(null)
+  const uploadingPromo = ref(false)
 
 // 商品相关状态
 const showQuantitySelector = ref({})
@@ -1352,7 +1546,27 @@ const productQuantities = ref({})
 const favoriteProducts = ref([])
 const quickViewProduct = ref(null)
 const showQuickViewModal = ref(false)
- 
+
+const topPromo = computed(() => {
+  const fp = featuredProducts.value || []
+  const rp = recommendedProducts.value || []
+  const all = [...fp, ...rp]
+  if (all.length === 0) return null
+  return all.reduce((max, p) => ((p.salesCount || 0) > ((max?.salesCount) || 0) ? p : max), all[0])
+})
+
+const promoImageUrl = computed(() => {
+  const p = topPromo.value
+  if (p && p.image) return p.image
+  return '/images/封面3.png'
+})
+
+const promoPlaceholderUrl = computed(() => {
+  return getAvatarUrl('2.jpg')
+})
+
+const promoStaticSrc = '/uploads/avatars/2.jpg'
+
 
 const retryVideoLoad = () => {
   videoDimensions.value = null
@@ -1367,26 +1581,38 @@ const retryVideoLoad = () => {
 }
 
 // 视频控制方法
-const playVideo = () => {
+const playVideo = async () => {
   if (videoPlaying.value) {
     pauseVideo()
     return
   }
-  
+  if (!storyVideoPath.value) {
+    try {
+      const v = await videoService.getBySlot('story')
+      const data = v?.data || v
+      const path = data?.FilePath || data?.filePath
+      if (path) {
+        storyVideoPath.value = normalizeUploadsPath(path)
+      }
+    } catch {}
+  }
+  if (!storyVideoPath.value) {
+    showNotification('暂无视频可播放', 'warning')
+    return
+  }
   videoPlaying.value = true
   hasPlayed.value = true
-  
   nextTick(() => {
     if (videoPlayer.value) {
-      // 尝试自动播放视频
+      try {
+        // 重新加载当前源，避免之前的请求残留引起中断
+        videoPlayer.value.pause()
+        videoPlayer.value.currentTime = 0
+        videoPlayer.value.load()
+      } catch {}
       const playPromise = videoPlayer.value.play()
-      
       if (playPromise !== undefined) {
-        playPromise.then(() => {
-          showNotification('视频开始播放', 'success')
-        }).catch((error) => {
-          showNotification('请点击视频播放按钮开始播放', 'info')
-        })
+        playPromise.then(() => { showNotification('视频开始播放', 'success') }).catch(() => { showNotification('请点击视频播放按钮开始播放', 'info') })
       }
     }
   })
@@ -1481,6 +1707,79 @@ const onVideoError = (event) => {
   videoPlaying.value = false
   hasPlayed.value = true // 标记已尝试播放，显示占位符
 }
+
+const triggerVideoUpload = () => {
+  if (!userStore.isAdmin) return
+  if (videoUploadInput.value) videoUploadInput.value.click()
+}
+
+const handleVideoFileSelected = async (e) => {
+  if (!userStore.isAdmin) return
+  const file = e.target.files?.[0]
+  if (!file) return
+  const form = new FormData()
+  form.append('file', file)
+  form.append('title', file.name || '品牌故事视频')
+  form.append('slot', 'story')
+  uploadingVideo.value = true
+  try {
+    const res = await videoService.upload(form)
+    const data = res?.data || res
+    if (data && (data.FilePath || data.filePath)) {
+      const path = normalizeUploadsPath(data.FilePath || data.filePath)
+      storyVideoPath.value = path
+      try { localStorage.setItem('storyVideoPath', path) } catch {}
+      showNotification('视频上传成功', 'success')
+    } else {
+      showNotification('上传成功，但未返回路径', 'warning')
+    }
+  } catch (err) {
+    showNotification('视频上传失败', 'error')
+  } finally {
+    uploadingVideo.value = false
+    if (videoUploadInput.value) videoUploadInput.value.value = ''
+  }
+}
+
+const triggerHeroVideoUpload = () => {
+  if (!userStore.isAdmin) return
+  if (heroVideoUploadInput.value) heroVideoUploadInput.value.click()
+}
+
+const handleHeroVideoFileSelected = async (e) => {
+  if (!userStore.isAdmin) return
+  const file = e.target.files?.[0]
+  if (!file) return
+  const form = new FormData()
+  form.append('file', file)
+  form.append('title', file.name || '首页英雄背景视频')
+  form.append('slot', 'hero')
+  uploadingHeroVideo.value = true
+  try {
+    const res = await videoService.upload(form)
+    const data = res?.data || res
+    if (data && (data.FilePath || data.filePath)) {
+      const path = normalizeUploadsPath(data.FilePath || data.filePath)
+      heroBackgroundType.value = 'video'
+      heroVideoPath.value = path
+      try { localStorage.setItem('heroVideoPath', path) } catch {}
+      showNotification('背景视频上传成功', 'success')
+    } else {
+      showNotification('上传成功，但未返回路径', 'warning')
+    }
+  } catch (err) {
+    showNotification('背景视频上传失败', 'error')
+  } finally {
+    uploadingHeroVideo.value = false
+    if (heroVideoUploadInput.value) heroVideoUploadInput.value.value = ''
+  }
+}
+
+  const triggerPromoUpload = () => { }
+
+  const handlePromoFileSelected = async (e) => {
+  return
+  }
 
 const shareVideo = () => {
   if (navigator.share) {
@@ -1751,6 +2050,36 @@ const handleScroll = () => {
   })
 }
 
+const prevHeroSlide = () => {
+  currentHeroSlide.value = (currentHeroSlide.value - 1 + heroSlides.value.length) % heroSlides.value.length
+}
+
+const nextHeroSlide = () => {
+  currentHeroSlide.value = (currentHeroSlide.value + 1) % heroSlides.value.length
+}
+
+const handleHeroTouchStart = (event) => {
+  heroTouchStartX.value = event.touches[0].clientX
+  heroIsDragging.value = true
+  heroAutoRotatePaused.value = true
+}
+
+const handleHeroTouchMove = (event) => {
+  if (!heroIsDragging.value) return
+  heroTouchEndX.value = event.touches[0].clientX
+}
+
+const handleHeroTouchEnd = () => {
+  if (!heroIsDragging.value) return
+  heroIsDragging.value = false
+  const swipeDistance = heroTouchEndX.value - heroTouchStartX.value
+  const minSwipeDistance = 50
+  if (Math.abs(swipeDistance) > minSwipeDistance) {
+    if (swipeDistance > 0) { prevHeroSlide() } else { nextHeroSlide() }
+  }
+  setTimeout(() => { heroAutoRotatePaused.value = false }, 800)
+}
+
 // 移动端视频播放优化
 const handleMobileVideoPlay = () => {
   const video = videoRef.value
@@ -1982,6 +2311,26 @@ const handleQuickViewImageError = (event) => {
   transform: scale(1.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
+
+.skeleton {
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+  background: linear-gradient(90deg, rgba(255,255,255,0.25) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.25) 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes skeletonPulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.promo-hero { height: 16rem; }
+@media (min-width: 768px) { .promo-hero { height: 20rem; } }
+@media (min-width: 1024px) { .promo-hero { height: 28rem; } }
+.promo-bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(0.9); }
+.promo-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.5)); }
+.promo-content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; padding: 1rem; }
+.carousel-btn { padding: 0.5rem 1rem; border-radius: 9999px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transition: transform .2s ease, box-shadow .2s ease; }
+.carousel-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
 
 /* 视频控制按钮组优化 */
 .video-controls {
