@@ -134,7 +134,7 @@
               <div ref="videoSection" class="relative video-container bg-gray-900 rounded-2xl overflow-hidden w-full" :style="`padding-bottom: ${videoAspectRatio ? getPaddingBottom(videoAspectRatio) : '56.25%'}; min-height: 400px;`">
               <!-- 视频封面图片 -->
               <img 
-                src="/images/视屏封面图片.png" 
+                src="/images/视频封面图片.png" 
                 alt="视频封面" 
                 class="absolute inset-0 w-full h-full object-cover hero-image"
                 style="image-rendering: -webkit-optimize-contrast; image-rendering: auto; object-position: center; width: 100%; height: 100%;"

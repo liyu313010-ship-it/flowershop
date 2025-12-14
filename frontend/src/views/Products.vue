@@ -72,11 +72,11 @@
                 <div class="text-gray-600">找到 {{ filteredProducts.length }} 个商品</div>
                 <div class="flex items-center space-x-2">
                   <span class="text-gray-600 text-sm">排序方式：</span>
-                  <select class="border rounded px-2 py-1 text-sm">
-                    <option>默认排序</option>
-                    <option>价格从低到高</option>
-                    <option>价格从高到低</option>
-                    <option>销量从高到低</option>
+                  <select v-model="sortOption" class="border rounded px-2 py-1 text-sm">
+                    <option value="default">默认排序</option>
+                    <option value="price_asc">价格从低到高</option>
+                    <option value="price_desc">价格从高到低</option>
+                    <option value="sales_desc">销量从高到低</option>
                   </select>
                 </div>
               </div>
@@ -230,6 +230,7 @@ const categories = ref([])
 const selectedCategory = ref(null) // 保留旧逻辑
 const selectedCategories = ref([]) // 新增多选分类
 const selectedPriceRange = ref(null)
+const sortOption = ref('default')
 
 // 数量选择与快速查看
   const showQuantitySelector = ref({})
@@ -526,7 +527,21 @@ const filteredProducts = computed(() => {
       list = list.filter(p => (p.price || 0) > 500)
       break
   }
-  return list
+  const sorted = [...list]
+  switch (sortOption.value) {
+    case 'price_asc':
+      sorted.sort((a, b) => (a.price || 0) - (b.price || 0))
+      break
+    case 'price_desc':
+      sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
+      break
+    case 'sales_desc':
+      sorted.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
+      break
+    default:
+      break
+  }
+  return sorted
 })
 
 const toggleFavorite = async (product) => {
