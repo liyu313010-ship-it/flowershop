@@ -58,6 +58,15 @@ namespace HuanyuFlowerShop.Controllers
         {
             var coupon = _db.Coupons.FirstOrDefault(c => c.Code == req.Code && c.Status == "active");
             if (coupon == null) return NotFound(new { message = "优惠券无效" });
+            
+            // 检查用户是否已使用
+            var uidStr = User.Claims.FirstOrDefault(c => c.Type.EndsWith("nameidentifier", StringComparison.OrdinalIgnoreCase))?.Value;
+            if (int.TryParse(uidStr, out var userId))
+            {
+                var used = _db.UserCoupons.Any(uc => uc.UserId == userId && uc.CouponId == coupon.Id && uc.Status == "used");
+                if (used) return BadRequest(new { message = "该优惠券您已使用过" });
+            }
+
             var now = DateTime.UtcNow;
             if ((coupon.StartAt.HasValue && coupon.StartAt > now) || (coupon.EndAt.HasValue && coupon.EndAt < now))
                 return BadRequest(new { message = "优惠券不在有效期" });

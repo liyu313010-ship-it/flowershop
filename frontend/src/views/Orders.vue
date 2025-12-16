@@ -98,13 +98,13 @@
                 <span class="label">配送费用:</span>
                 <span class="value">{{ order.shippingFee === 0 ? '免运费' : `¥${order.shippingFee?.toFixed(2) || '0.00'}` }}</span>
               </div>
-              <div v-if="order.discount" class="summary-row discount">
+              <div v-if="order.discountAmount > 0" class="summary-row discount">
                 <span class="label">优惠金额:</span>
-                <span class="value">-¥{{ order.discount.toFixed(2) }}</span>
+                <span class="value">-¥{{ order.discountAmount.toFixed(2) }}</span>
               </div>
               <div class="summary-row total">
                 <span class="label">实付金额:</span>
-                <span class="value total-amount">¥{{ (order.finalAmount || order.totalAmount || 0).toFixed(2) }}</span>
+                <span class="value total-amount">¥{{ (order.totalAmount || 0).toFixed(2) }}</span>
               </div>
             </div>
             

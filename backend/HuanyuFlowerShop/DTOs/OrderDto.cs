@@ -11,6 +11,9 @@ namespace HuanyuFlowerShop.DTOs
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public List<OrderItemDto> OrderItems { get; set; } = new();
+
+        public decimal DiscountAmount { get; set; }
+        public string? CouponCode { get; set; }
         
         // 支付相关字段
         public string PaymentStatus { get; set; } = "unpaid";

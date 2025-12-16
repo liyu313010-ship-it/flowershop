@@ -16,6 +16,9 @@
     
     <!-- 页脚组件 -->
     <Footer />
+    
+    <!-- 返回顶部组件 -->
+    <BackToTop />
   </div>
 </template>
 
@@ -27,6 +30,7 @@ import { useCartStore } from '@/stores/cart'
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
+import BackToTop from './components/BackToTop.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()

@@ -216,10 +216,59 @@ namespace HuanyuFlowerShop
                         `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
                         `CreatedAt` DATETIME NOT NULL,
                         `UpdatedAt` DATETIME NULL,
+                        `Slot` VARCHAR(50) NULL,
                         PRIMARY KEY (`Id`)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
                 }
                 catch {}
+
+                // 确保Coupons表存在并添加示例优惠券
+                try
+                {
+                    // 确保Coupons表存在（如果未通过迁移创建）
+                    context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Coupons` (
+                        `Id` INT NOT NULL AUTO_INCREMENT,
+                        `Code` VARCHAR(50) NOT NULL,
+                        `DiscountType` VARCHAR(20) NOT NULL,
+                        `Value` DECIMAL(10,2) NOT NULL,
+                        `MinOrderAmount` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                        `MaxDiscount` DECIMAL(10,2) NULL,
+                        `UsageLimit` INT NULL,
+                        `UsageLimitPerUser` INT NULL,
+                        `UsedCount` INT NOT NULL DEFAULT 0,
+                        `Status` VARCHAR(20) NULL DEFAULT 'active',
+                        `StartAt` DATETIME NULL,
+                        `EndAt` DATETIME NULL,
+                        `CreatedAt` DATETIME NOT NULL,
+                        `UpdatedAt` DATETIME NULL,
+                        PRIMARY KEY (`Id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    if (!context.Coupons.Any())
+                    {
+                        context.Coupons.Add(new Coupon 
+                        { 
+                            Code = "WELCOME2024", 
+                            DiscountType = "percent", 
+                            Value = 10, // 10% off
+                            MinOrderAmount = 0,
+                            Status = "active", 
+                            CreatedAt = DateTime.UtcNow 
+                        });
+                         context.Coupons.Add(new Coupon 
+                        { 
+                            Code = "SAVE50", 
+                            DiscountType = "amount", 
+                            Value = 50, // 减50
+                            MinOrderAmount = 100,
+                            Status = "active", 
+                            CreatedAt = DateTime.UtcNow 
+                        });
+                        context.SaveChanges();
+                    }
+                }
+                catch {}
+
                 try
                 {
                     if (!context.Videos.Any())

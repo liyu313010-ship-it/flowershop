@@ -144,7 +144,10 @@
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                ¥{{ order.totalAmount }}
+                <div class="font-medium">¥{{ order.totalAmount }}</div>
+                <div v-if="order.discountAmount > 0" class="text-xs text-red-500">
+                  (已减 ¥{{ order.discountAmount }})
+                </div>
               </td>
               <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                 {{ order.user?.address || order.deliveryAddress || '无地址' }}

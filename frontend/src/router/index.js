@@ -53,6 +53,7 @@ const Shipping = () => import('@/views/Shipping.vue') // 配送说明页面
 const Returns = () => import('@/views/Returns.vue') // 退换货政策页面
 const FAQ = () => import('@/views/FAQ.vue') // 常见问题页面
 const Privacy = () => import('@/views/Privacy.vue') // 隐私政策页面
+const Terms = () => import('@/views/Terms.vue') // 服务条款页面
 
 // 路由配置
 const routes = [
@@ -103,6 +104,12 @@ const routes = [
     name: 'Privacy',
     component: Privacy,
     meta: { title: '隐私政策 - 欢雨鲜花' }
+  },
+  {
+    path: '/terms',
+    name: 'Terms',
+    component: Terms,
+    meta: { title: '服务条款 - 欢雨鲜花' }
   },
   {
     path: '/auth',

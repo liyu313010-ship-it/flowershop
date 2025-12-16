@@ -133,6 +133,8 @@ namespace HuanyuFlowerShop.Services
                     OrderNumber = order.OrderNumber ?? "",
                     Status = order.Status ?? "unknown",
                     TotalAmount = order.TotalAmount,
+                    DiscountAmount = order.DiscountAmount,
+                    CouponCode = order.CouponCode,
                     ShippingAddress = order.DeliveryAddress ?? "",
                     Phone = order.RecipientPhone ?? "",
                     CreatedAt = order.CreatedAt,
@@ -237,6 +239,8 @@ namespace HuanyuFlowerShop.Services
                 OrderNumber = order.OrderNumber ?? "",
                 Status = order.Status ?? "unknown",
                 TotalAmount = order.TotalAmount,
+                DiscountAmount = order.DiscountAmount,
+                CouponCode = order.CouponCode,
                 ShippingAddress = order.DeliveryAddress ?? "",
                 Phone = order.RecipientPhone ?? "",
                 CreatedAt = order.CreatedAt,
@@ -323,8 +327,8 @@ namespace HuanyuFlowerShop.Services
                 UpdatedAt = DateTime.UtcNow
             };
             
-            _logger.LogInformation("创建订单，用户ID: {UserId}，支付方式: {PaymentMethod}，支付超时时间: {PaymentExpiresAt}", 
-                userId, createOrderDto.PaymentMethod, order.PaymentExpiresAt);
+            _logger.LogInformation("创建订单，用户ID: {UserId}，支付方式: {PaymentMethod}，支付超时时间: {PaymentExpiresAt}，优惠券: {CouponCode}", 
+                userId, createOrderDto.PaymentMethod, order.PaymentExpiresAt, createOrderDto.CouponCode ?? "未使用");
 
             // 在保存订单前处理优惠券
             if (!string.IsNullOrWhiteSpace(order.CouponCode))
@@ -348,16 +352,28 @@ namespace HuanyuFlowerShop.Services
                         }
                         if (discount > 0)
                         {
-                            order.DiscountAmount = discount;
-                            order.TotalAmount = Math.Max(0, order.Subtotal + order.ShippingFee - discount);
-                            // 标记用户优惠券使用
+                            // 检查用户是否已使用过该优惠券
                             var userCoupons = await _userCouponRepository.GetAllAsync();
                             var uc = userCoupons.FirstOrDefault(x => x.UserId == userId && x.CouponId == coupon.Id);
+
+                            if (uc != null && uc.Status == "used")
+                            {
+                                throw new ArgumentException($"优惠券 {order.CouponCode} 已被使用");
+                            }
+
+                            // 检查个人使用上限 (如果是多次使用的情况，目前逻辑只支持一次，除非Status设计支持计数，这里UserCoupon是一对一)
+                            // 如果UserCoupon记录存在且Status!=used，说明是已领取未使用的券
+                            // 如果UserCoupon不存在，说明是直接输入的公共码
+
+                            order.DiscountAmount = discount;
+                            order.TotalAmount = Math.Max(0, order.Subtotal + order.ShippingFee - discount);
+                            
+                            // 标记用户优惠券使用
                             if (uc == null)
                             {
                                 await _userCouponRepository.AddAsync(new UserCoupon { UserId = userId, CouponId = coupon.Id, ClaimedAt = DateTime.UtcNow, UsedAt = DateTime.UtcNow, Status = "used" });
                             }
-                            else if (uc.Status != "used")
+                            else
                             {
                                 uc.UsedAt = DateTime.UtcNow;
                                 uc.Status = "used";
