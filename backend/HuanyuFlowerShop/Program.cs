@@ -25,7 +25,19 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // 添加自定义SchemaId生成策略，确保每个类都有唯一的SchemaId
+    options.CustomSchemaIds(type =>
+    {
+        return $"{type.Namespace}_{type.Name}";
+    });
+    options.UseAllOfToExtendReferenceSchemas();
+    options.UseAllOfForInheritance();
+    options.UseOneOfForPolymorphism();
+    options.SelectDiscriminatorNameUsing((type) => "type");
+    options.SelectDiscriminatorValueUsing((type) => type.Name);
+});
 
 // 数据库配置
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("数据库连接字符串未配置");
@@ -341,12 +353,16 @@ var context = services.GetRequiredService<ApplicationDbContext>();
 DatabaseInitializer.Initialize(services);
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// 允许在所有环境下访问Swagger
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Huanyu Flower Shop API V1");
+    options.RoutePrefix = string.Empty; // 根路径直接显示 Swagger UI
+    options.ConfigObject.ValidatorUrl = null; // 禁用在线验证器
+});
 
+// 保持根路径为Swagger UI，无需重定向
 // 添加全局异常处理中间件
 app.UseMiddleware<GlobalExceptionHandler>();
 

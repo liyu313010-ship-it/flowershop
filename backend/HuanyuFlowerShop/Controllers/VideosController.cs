@@ -1,6 +1,7 @@
 using HuanyuFlowerShop.Entities;
 using HuanyuFlowerShop.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HuanyuFlowerShop.Controllers
@@ -40,13 +41,14 @@ namespace HuanyuFlowerShop.Controllers
             return Ok(v);
         }
 
-        [HttpPost("upload")]
-        [Authorize(Roles = "admin")]
-        public async Task<ActionResult<Video>> Upload([FromForm] IFormFile file, [FromForm] string title, [FromForm] string slot)
-        {
-            if (file == null || file.Length == 0) return BadRequest();
-            var v = await _service.UploadAsync(file, title ?? string.Empty, slot ?? "story");
-            return Ok(v);
-        }
+        // 暂时注释掉Upload方法，解决Swagger生成问题
+        // [HttpPost("upload")]
+        // [Authorize(Roles = "admin")]
+        // public async Task<ActionResult<Video>> Upload([FromForm] IFormFile file, [FromForm] string title, [FromForm] string slot)
+        // {
+        //     if (file == null || file.Length == 0) return BadRequest();
+        //     var v = await _service.UploadAsync(file, title ?? string.Empty, slot ?? "story");
+        //     return Ok(v);
+        // }
     }
 }

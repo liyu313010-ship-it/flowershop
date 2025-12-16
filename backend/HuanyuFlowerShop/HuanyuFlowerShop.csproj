@@ -18,10 +18,11 @@
     
     <!-- 身份验证和授权 -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Filters" Version="10.0.1" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
     
     <!-- API文档 -->
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     
     <!-- CORS支持 -->
     <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.3.0" />
