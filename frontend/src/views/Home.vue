@@ -95,9 +95,9 @@
                     <img :src="promoStaticSrc" alt="促销占位图" class="absolute inset-0 w-full h-full object-cover" />
                     <div class="absolute inset-0 flex items-center justify-start">
                       <div class="ml-6 md:ml-12 lg:ml-16 px-4 w-full max-w-2xl text-left">
-                        <h2 class="text-black font-extrabold text-4xl md:text-6xl lg:text-7xl mb-4 tracking-tight">Fresh Flower 2</h2>
-                        <p class="text-black text-2xl md:text-3xl mb-4">For Special Someone</p>
-                        <p class="text-gray-600 text-base md:text-lg mb-6">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore.</p>
+                        <h2 class="text-black font-extrabold text-4xl md:text-6xl lg:text-7xl mb-4 tracking-tight">欢雨 Flower </h2>
+                        <p class="text-black text-2xl md:text-3xl mb-4">岁岁年年花相似 岁岁年年人不同.</p>
+                        <p class="text-gray-600 text-base md:text-lg mb-6">买一束花给你最爱的人吧.</p>
                         <router-link to="/products" class="inline-block bg-black text-white px-5 md:px-6 py-3 md:py-3.5 rounded-full shadow-lg hover:bg-gray-900">Shop Now</router-link>
                       </div>
                       
@@ -1565,7 +1565,7 @@ const promoPlaceholderUrl = computed(() => {
   return getAvatarUrl('2.jpg')
 })
 
-const promoStaticSrc = '/uploads/avatars/2.jpg'
+const promoStaticSrc = 'images/12.jpg'
 
 
 const retryVideoLoad = () => {
