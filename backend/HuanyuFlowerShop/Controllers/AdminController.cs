@@ -13,19 +13,12 @@ namespace HuanyuFlowerShop.Controllers
     [Authorize(Roles = "admin")]
     [ApiController]
     [Route("api/[controller]")]
-public class AdminController : ControllerBase
+public class AdminController(ApplicationDbContext context, IWebHostEnvironment environment, ICacheService cacheService) : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IWebHostEnvironment _environment;
-    private readonly ICacheService _cacheService;
-    private static readonly string[] AllowedImageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-
-        public AdminController(ApplicationDbContext context, IWebHostEnvironment environment, ICacheService cacheService)
-        {
-            _context = context;
-            _environment = environment;
-            _cacheService = cacheService;
-        }
+    private readonly ApplicationDbContext _context = context;
+    private readonly IWebHostEnvironment _environment = environment;
+    private readonly ICacheService _cacheService = cacheService;
+    private static readonly string[] AllowedImageExtensions = [ ".jpg", ".jpeg", ".png", ".gif", ".webp" ];
 
     
 
@@ -89,19 +82,26 @@ public class AdminController : ControllerBase
             {
                 var startDate = from?.Date ?? DateTime.Today.AddDays(-days);
                 var endDate = to?.Date ?? DateTime.Today;
-                var sales = await _context.Orders
+                var salesData = await _context.Orders
                     .Where(o => o.CreatedAt.Date >= startDate && o.CreatedAt.Date <= endDate && o.Status != "cancelled")
                     .GroupBy(o => o.CreatedAt.Date)
                     .Select(g => new
                     {
-                        date = g.Key.ToString("yyyy-MM-dd"),
-                        revenue = g.Sum(o => o.TotalAmount),
-                        orders = g.Count()
+                        Date = g.Key,
+                        Revenue = g.Sum(o => o.TotalAmount),
+                        Orders = g.Count()
                     })
-                    .OrderBy(x => x.date)
+                    .OrderBy(x => x.Date)
                     .ToListAsync();
 
-                return Ok(sales);
+                var result = salesData.Select(x => new
+                {
+                    date = x.Date.ToString("yyyy-MM-dd"),
+                    revenue = x.Revenue,
+                    orders = x.Orders
+                });
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -114,38 +114,64 @@ public class AdminController : ControllerBase
         {
             try
             {
-                // 使用Include来获取商品的分类信息
-                var query = from oi in _context.OrderItems
-                            join o in _context.Orders on oi.OrderId equals o.Id
-                            where o.Status != "cancelled"
-                            join p in _context.Products on oi.ProductId equals p.Id
-                            join c in _context.Categories on p.CategoryId equals c.Id into categories
-                            from category in categories.DefaultIfEmpty()
-                            group new { oi, p, category } by new
-                            {
-                                p.Id,
-                                p.Name,
-                                p.ImageUrl,
-                                p.Price,
-                                CategoryName = category != null ? category.Name : "未分类"
-                            } into g
-                            select new
-                            {
-                                id = g.Key.Id,
-                                name = g.Key.Name,
-                                image = g.Key.ImageUrl,
-                                price = g.Key.Price,
-                                category = g.Key.CategoryName,
-                                salesCount = g.Sum(x => x.oi.Quantity),
-                                totalRevenue = g.Sum(x => x.oi.Subtotal)
-                            };
-
-                var topProducts = await query
-                    .OrderByDescending(x => x.salesCount)
+                // 1. 先统计商品销售数据，仅按商品ID和基本信息分组
+                var productStats = await _context.OrderItems
+                    .Include(oi => oi.Order)
+                    .Where(oi => oi.Order.Status != "cancelled")
+                    .GroupBy(oi => new { 
+                        oi.ProductId, 
+                        oi.Product.Name, 
+                        oi.Product.ImageUrl, 
+                        oi.Product.Price, 
+                        oi.Product.CategoryId 
+                    })
+                    .Select(g => new
+                    {
+                        Id = g.Key.ProductId,
+                        g.Key.Name,
+                        g.Key.ImageUrl,
+                        g.Key.Price,
+                        g.Key.CategoryId,
+                        SalesCount = g.Sum(x => x.Quantity),
+                        TotalRevenue = g.Sum(x => x.Subtotal)
+                    })
+                    .OrderByDescending(x => x.SalesCount)
                     .Take(limit)
                     .ToListAsync();
 
-                return Ok(topProducts);
+                // 2. 获取相关分类名称
+                var categoryIds = productStats
+                    .Select(p => p.CategoryId)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var categories = await _context.Categories
+                    .Where(c => categoryIds.Contains(c.Id))
+                    .ToDictionaryAsync(c => c.Id, c => c.Name);
+
+                // 3. 组合结果
+                var result = productStats.Select(p =>
+                {
+                    var catName = "未分类";
+                    if (p.CategoryId.HasValue && categories.TryGetValue(p.CategoryId.Value, out var n))
+                    {
+                        catName = n;
+                    }
+                    return new
+                    {
+                        id = p.Id,
+                        name = p.Name,
+                        image = p.ImageUrl,
+                        price = p.Price,
+                        category = catName,
+                        salesCount = p.SalesCount,
+                        totalRevenue = p.TotalRevenue
+                    };
+                });
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -160,16 +186,22 @@ public class AdminController : ControllerBase
             {
                 var startDate = from?.Date ?? DateTime.Today.AddDays(-days);
                 var endDate = to?.Date ?? DateTime.Today;
-                var userGrowth = await _context.Users
+                var userGrowthData = await _context.Users
                     .Where(u => u.CreatedAt.Date >= startDate && u.CreatedAt.Date <= endDate)
                     .GroupBy(u => u.CreatedAt.Date)
                     .Select(g => new
                     {
-                        date = g.Key.ToString("yyyy-MM-dd"),
-                        newUsers = g.Count()
+                        Date = g.Key,
+                        NewUsers = g.Count()
                     })
-                    .OrderBy(x => x.date)
+                    .OrderBy(x => x.Date)
                     .ToListAsync();
+
+                var userGrowth = userGrowthData.Select(x => new
+                {
+                    date = x.Date.ToString("yyyy-MM-dd"),
+                    newUsers = x.NewUsers
+                });
 
                 return Ok(userGrowth);
             }
@@ -649,7 +681,7 @@ public class AdminController : ControllerBase
                 order.Status = request.Status;
                 order.UpdatedAt = DateTime.UtcNow;
                 var note = (request.Note ?? request.Reason ?? string.Empty).Trim();
-                if (note.Length > 480) note = note.Substring(0, 480);
+                if (note.Length > 480) note = note[..480];
                 if (!string.IsNullOrEmpty(note))
                 {
                     order.Message = note;

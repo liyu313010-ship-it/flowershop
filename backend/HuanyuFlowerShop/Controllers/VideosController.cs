@@ -8,14 +8,9 @@ namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class VideosController : ControllerBase
+    public class VideosController(IVideoService service) : ControllerBase
     {
-        private readonly IVideoService _service;
-
-        public VideosController(IVideoService service)
-        {
-            _service = service;
-        }
+        private readonly IVideoService _service = service;
 
         [HttpGet("home")]
         public async Task<ActionResult<Video>> GetHome()
@@ -41,14 +36,13 @@ namespace HuanyuFlowerShop.Controllers
             return Ok(v);
         }
 
-        // 暂时注释掉Upload方法，解决Swagger生成问题
-        // [HttpPost("upload")]
-        // [Authorize(Roles = "admin")]
-        // public async Task<ActionResult<Video>> Upload([FromForm] IFormFile file, [FromForm] string title, [FromForm] string slot)
-        // {
-        //     if (file == null || file.Length == 0) return BadRequest();
-        //     var v = await _service.UploadAsync(file, title ?? string.Empty, slot ?? "story");
-        //     return Ok(v);
-        // }
+        [HttpPost("upload")]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult<Video>> Upload([FromForm] IFormFile file, [FromForm] string title, [FromForm] string slot)
+        {
+            if (file == null || file.Length == 0) return BadRequest();
+            var v = await _service.UploadAsync(file, title ?? string.Empty, slot ?? "story");
+            return Ok(v);
+        }
     }
 }

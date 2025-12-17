@@ -24,11 +24,10 @@ namespace HuanyuFlowerShop
                         Role = "admin",
                         Status = "active",
                         CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        UpdatedAt = DateTime.UtcNow,
+                        // 使用BCrypt进行密码哈希
+                        Password = BCrypt.Net.BCrypt.HashPassword("admin@123")
                     };
-                    
-                    // 使用BCrypt进行密码哈希
-                    adminUser.Password = BCrypt.Net.BCrypt.HashPassword("admin@123");
                     
                     context.Users.Add(adminUser);
                     context.SaveChanges();
@@ -219,6 +218,44 @@ namespace HuanyuFlowerShop
                         `Slot` VARCHAR(50) NULL,
                         PRIMARY KEY (`Id`)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                }
+                catch {}
+
+                try
+                {
+                    // 确保audit_logs表存在
+                    context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `audit_logs` (
+                        `Id` INT NOT NULL AUTO_INCREMENT,
+                        `user_id` INT NULL,
+                        `action` VARCHAR(50) NOT NULL,
+                        `resource` VARCHAR(50) NOT NULL,
+                        `resource_id` VARCHAR(100) NULL,
+                        `details` VARCHAR(1000) NULL,
+                        `ip_address` VARCHAR(45) NULL,
+                        `created_at` DATETIME NOT NULL,
+                        PRIMARY KEY (`Id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                }
+                catch {}
+
+                try
+                {
+                    // 确保ProductRecommendations表存在
+                    context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `ProductRecommendations` (
+                        `Id` INT NOT NULL AUTO_INCREMENT,
+                        `ProductId` INT NOT NULL,
+                        `ForUserId` INT NULL,
+                        `Score` DECIMAL(10,2) NOT NULL DEFAULT 0,
+                        `GeneratedAt` DATETIME NOT NULL,
+                        PRIMARY KEY (`Id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+                    
+                    // 尝试添加ForUserId列，如果不存在 (用于修复旧表结构)
+                    try 
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE `ProductRecommendations` ADD COLUMN `ForUserId` INT NULL;");
+                    }
+                    catch {} // 如果列已存在会报错，忽略
                 }
                 catch {}
 

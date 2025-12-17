@@ -74,7 +74,7 @@ builder.Services.AddAuthorization();
 
 // CORS配置 - 从配置文件读取允许的源
 var securitySettings = builder.Configuration.GetSection("SecuritySettings");
-var allowOrigins = securitySettings.GetSection("AllowOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" };
+var allowOrigins = securitySettings.GetSection("AllowOrigins").Get<string[]>() ?? [ "http://localhost:3000" ];
 
 builder.Services.AddCors(options =>
 {
@@ -374,7 +374,7 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
     var csp = app.Environment.IsDevelopment()
-        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:5173 http://127.0.0.1:5173 http://localhost:5176 http://127.0.0.1:5176 http://localhost:* ws://localhost:5173 ws://localhost:5176"
+        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:5173 http://127.0.0.1:5173 http://localhost:5174 http://127.0.0.1:5174 http://localhost:5176 http://127.0.0.1:5176 http://localhost:* ws://localhost:5173 ws://localhost:5174 ws://localhost:5176"
         : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'";
     context.Response.Headers.Append("Content-Security-Policy", csp);
     await next();
