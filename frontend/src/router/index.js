@@ -61,86 +61,86 @@ const routes = [
     path: '/',
     name: 'Home',
     component: Home,
-    meta: { title: '欢雨鲜花 - 首页' }
+    meta: { title: '欢雨flower - 首页' }
   },
   {
     path: '/products',
     name: 'Products',
     component: Products,
-    meta: { title: '商品列表 - 欢雨鲜花' }
+    meta: { title: '商品列表 - 欢雨flower' }
   },
   {
     path: '/about',
     name: 'About',
     component: About,
-    meta: { title: '关于我们 - 欢雨鲜花' }
+    meta: { title: '关于我们 - 欢雨flower' }
   },
   {
     path: '/contact',
     name: 'Contact',
     component: Contact,
-    meta: { title: '联系我们 - 欢雨鲜花' }
+    meta: { title: '联系我们 - 欢雨flower' }
   },
   {
     path: '/shipping',
     name: 'Shipping',
     component: Shipping,
-    meta: { title: '配送说明 - 欢雨鲜花' }
+    meta: { title: '配送说明 - 欢雨flower' }
   },
   {
     path: '/returns',
     name: 'Returns',
     component: Returns,
-    meta: { title: '退换货政策 - 欢雨鲜花' }
+    meta: { title: '退换货政策 - 欢雨flower' }
   },
   {
     path: '/faq',
     name: 'FAQ',
     component: FAQ,
-    meta: { title: '常见问题 - 欢雨鲜花' }
+    meta: { title: '常见问题 - 欢雨flower' }
   },
   {
     path: '/privacy',
     name: 'Privacy',
     component: Privacy,
-    meta: { title: '隐私政策 - 欢雨鲜花' }
+    meta: { title: '隐私政策 - 欢雨flower' }
   },
   {
     path: '/terms',
     name: 'Terms',
     component: Terms,
-    meta: { title: '服务条款 - 欢雨鲜花' }
+    meta: { title: '服务条款 - 欢雨flower' }
   },
   {
     path: '/auth',
     name: 'Auth',
     component: Auth,
-    meta: { title: '登录注册 - 欢雨鲜花' }
+    meta: { title: '登录注册 - 欢雨flower' }
   },
   {
     path: '/admin/login',
     name: 'AdminLogin',
     component: Auth,
-    meta: { title: '管理员登录 - 欢雨鲜花' }
+    meta: { title: '管理员登录 - 欢雨flower' }
   },
   {
     path: '/product/:id',
     name: 'ProductDetail',
     component: ProductDetail,
-    meta: { title: '商品详情 - 欢雨鲜花' }
+    meta: { title: '商品详情 - 欢雨flower' }
   },
   {
     path: '/reviews/:id',
     name: 'ReviewDetail',
     component: () => import('@/views/ReviewDetail.vue'),
-    meta: { title: '评价详情 - 欢雨鲜花' }
+    meta: { title: '评价详情 - 欢雨flower' }
   },
   {
     path: '/admin',
     name: 'AdminDashboard',
     component: AdminDashboard,
     meta: { 
-      title: '管理员后台 - 欢雨鲜花',
+      title: '管理员后台 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -150,7 +150,7 @@ const routes = [
     name: 'ProductManagement',
     component: ProductManagement,
     meta: { 
-      title: '商品管理 - 欢雨鲜花',
+      title: '商品管理 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -160,7 +160,7 @@ const routes = [
     name: 'OrderManagement',
     component: OrderManagement,
     meta: { 
-      title: '订单管理 - 欢雨鲜花',
+      title: '订单管理 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -170,7 +170,7 @@ const routes = [
     name: 'AdminOrderDetail',
     component: AdminOrderDetail,
     meta: { 
-      title: '订单详情 - 欢雨鲜花',
+      title: '订单详情 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -180,7 +180,7 @@ const routes = [
     name: 'UserManagement',
     component: UserManagement,
     meta: { 
-      title: '用户管理 - 欢雨鲜花',
+      title: '用户管理 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -190,7 +190,7 @@ const routes = [
     name: 'ReviewManagement',
     component: ReviewManagement,
     meta: { 
-      title: '评价管理 - 欢雨鲜花',
+      title: '评价管理 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -200,7 +200,7 @@ const routes = [
     name: 'CouponManagement',
     component: CouponManagement,
     meta: { 
-      title: '优惠券管理 - 欢雨鲜花',
+      title: '优惠券管理 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -210,7 +210,7 @@ const routes = [
     name: 'MessageCenter',
     component: MessageCenter,
     meta: { 
-      title: '消息中心 - 欢雨鲜花',
+      title: '消息中心 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -220,7 +220,7 @@ const routes = [
     name: 'Cart',
     component: Cart,
     meta: { 
-      title: '购物车 - 欢雨鲜花',
+      title: '购物车 - 欢雨flower',
       requiresAuth: true
     }
   },
@@ -229,7 +229,7 @@ const routes = [
     name: 'Orders',
     component: Orders,
     meta: { 
-      title: '我的订单 - 欢雨鲜花',
+      title: '我的订单 - 欢雨flower',
       requiresAuth: true
     }
   },
@@ -238,7 +238,7 @@ const routes = [
     name: 'OrderDetail',
     component: OrderDetail,
     meta: { 
-      title: '订单详情 - 欢雨鲜花',
+      title: '订单详情 - 欢雨flower',
       requiresAuth: true
     }
   },
@@ -246,14 +246,14 @@ const routes = [
     path: '/payment/verify/:orderId',
     name: 'PaymentVerification',
     component: PaymentVerification,
-    meta: { title: '支付验证 - 欢雨鲜花' }
+    meta: { title: '支付验证 - 欢雨flower' }
   },
   {
     path: '/order-detail/:id',
     name: 'OrderDetailAlt',
     component: OrderDetail,
     meta: { 
-      title: '订单详情 - 欢雨鲜花',
+      title: '订单详情 - 欢雨flower', 
       requiresAuth: true
     }
   },
@@ -261,19 +261,19 @@ const routes = [
     path: '/favorites',
     name: 'Favorites',
     component: Favorites,
-    meta: { title: '我的收藏 - 欢雨鲜花', requiresAuth: true }
+    meta: { title: '我的收藏 - 欢雨flower', requiresAuth: true }
   },
   {
     path: '/profile',
     name: 'Profile',
     component: Profile,
-    meta: { title: '个人资料 - 欢雨鲜花', requiresAuth: true }
+    meta: { title: '个人资料 - 欢雨flower', requiresAuth: true }
   },
   {
     path: '/checkout',
     name: 'Checkout',
     component: Checkout,
-    meta: { title: '结算 - 欢雨鲜花', requiresAuth: true }
+    meta: { title: '结算 - 欢雨flower', requiresAuth: true }
   },
 
   // 管理员统计报表页面
@@ -282,7 +282,7 @@ const routes = [
     name: 'StatsReport',
     component: StatsReport,
     meta: {
-      title: '数据统计报表 - 欢雨鲜花',
+      title: '数据统计报表 - 欢雨flower',
       requiresAuth: true,
       requiresAdmin: true
     }
@@ -293,7 +293,7 @@ const routes = [
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFound.vue'),
-    meta: { title: '页面未找到 - 欢雨鲜花' }
+    meta: { title: '页面未找到 - 欢雨flower' }  
   }
 ]
 
