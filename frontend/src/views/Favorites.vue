@@ -67,6 +67,7 @@ import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import AutoLinkText from '@/components/AutoLinkText.vue'
+import { getProductImageUrl } from '@/utils/avatar.js'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -85,7 +86,7 @@ const loadFavorites = async () => {
       name: f.ProductName || f.productName || '未命名商品',
       description: '',
       price: f.ProductPrice || f.productPrice || 0,
-      image: f.ProductImage || f.productImage || '/images/default-product.svg'
+      image: getProductImageUrl(f.ProductImage || f.productImage || '/images/default-product.svg')
     }))
   } catch {
     favorites.value = []

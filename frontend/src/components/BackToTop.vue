@@ -2,10 +2,11 @@
   <button 
     v-if="isVisible" 
     @click="scrollToTop" 
-    class="back-to-top fixed bottom-8 right-8 p-4 bg-pink-500 text-white rounded-full shadow-lg hover:bg-pink-600 transition-all duration-300 transform hover:scale-110 z-50"
+    class="back-to-top fixed bottom-8 right-8 px-2 py-2 bg-pink-400 text-white rounded-full shadow-lg hover:bg-pink-800 transition-all duration-300 transform hover:scale-110 z-50 flex items-center justify-center gap-2"
     aria-label="返回顶部"
   >
     <i class="fas fa-arrow-up"></i>
+    <span class="font-medium">回到顶部</span>
   </button>
 </template>
 
@@ -64,7 +65,7 @@ export default {
   .back-to-top {
     bottom: 4rem;
     right: 1rem;
-    padding: 0.75rem;
+    padding: 0.5rem 1rem;
   }
   
   .back-to-top i {

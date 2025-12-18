@@ -38,11 +38,18 @@ namespace HuanyuFlowerShop.Controllers
 
         [HttpPost("upload")]
         [Authorize(Roles = "admin")]
-        public async Task<ActionResult<Video>> Upload([FromForm] IFormFile file, [FromForm] string title, [FromForm] string slot)
+        public async Task<ActionResult<Video>> Upload([FromForm] UploadVideoDto dto)
         {
-            if (file == null || file.Length == 0) return BadRequest();
-            var v = await _service.UploadAsync(file, title ?? string.Empty, slot ?? "story");
+            if (dto.File == null || dto.File.Length == 0) return BadRequest();
+            var v = await _service.UploadAsync(dto.File, dto.Title ?? string.Empty, dto.Slot ?? "story");
             return Ok(v);
         }
+    }
+
+    public class UploadVideoDto
+    {
+        public required IFormFile File { get; set; }
+        public string? Title { get; set; }
+        public string? Slot { get; set; }
     }
 }

@@ -18,6 +18,7 @@ using HuanyuFlowerShop.Validators;
 using HuanyuFlowerShop;
 using Microsoft.AspNetCore.SignalR;
 using HuanyuFlowerShop.Hubs;
+using Microsoft.OpenApi.Models;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,16 +28,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    // 添加自定义SchemaId生成策略，确保每个类都有唯一的SchemaId
-    options.CustomSchemaIds(type =>
-    {
-        return $"{type.Namespace}_{type.Name}";
-    });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Huanyu Flower Shop API", Version = "v1" });
+    options.CustomSchemaIds(type => $"{type.Namespace}_{type.Name}");
     options.UseAllOfToExtendReferenceSchemas();
     options.UseAllOfForInheritance();
     options.UseOneOfForPolymorphism();
-    options.SelectDiscriminatorNameUsing((type) => "type");
-    options.SelectDiscriminatorValueUsing((type) => type.Name);
+    options.SelectDiscriminatorNameUsing(_ => "type");
+    options.SelectDiscriminatorValueUsing(type => type.Name);
 });
 
 // 数据库配置
@@ -354,6 +352,7 @@ DatabaseInitializer.Initialize(services);
 
 // Configure the HTTP request pipeline.
 // 允许在所有环境下访问Swagger
+Console.WriteLine("Registering Swagger Middleware...");
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
