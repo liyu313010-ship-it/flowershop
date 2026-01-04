@@ -2,6 +2,12 @@ using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Entities;
 using HuanyuFlowerShop.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Aop.Api;
+using Aop.Api.Request;
+using Aop.Api.Response;
+using Aop.Api.Domain;
+using Newtonsoft.Json;
 
 namespace HuanyuFlowerShop.Services
 {
@@ -11,6 +17,7 @@ namespace HuanyuFlowerShop.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICacheService _cacheService;
         private readonly ILogger<PaymentService> _logger;
+        private readonly IConfiguration _configuration;
 
         // 缓存键常量
         private const string PAYMENT_STATUS_CACHE_KEY = "payment_status_{0}_{1}"; // userId_orderId
@@ -24,12 +31,48 @@ namespace HuanyuFlowerShop.Services
             IRepository<Order> orderRepository,
             IUnitOfWork unitOfWork,
             ICacheService cacheService,
-            ILogger<PaymentService> logger)
+            ILogger<PaymentService> logger,
+            IConfiguration configuration)
         {
             _orderRepository = orderRepository;
             _unitOfWork = unitOfWork;
             _cacheService = cacheService;
             _logger = logger;
+            _configuration = configuration;
+        }
+
+        private DefaultAopClient GetAlipayClient()
+        {
+            var config = _configuration.GetSection("Alipay");
+            var appId = config["AppId"];
+            var privateKey = config["PrivateKey"];
+            var alipayPublicKey = config["AlipayPublicKey"];
+            var gatewayUrl = config["GatewayUrl"];
+
+            if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(privateKey))
+            {
+                throw new Exception("支付宝配置缺失: AppId或PrivateKey为空");
+            }
+
+            // 清理私钥格式（移除头尾和换行）
+            if (!string.IsNullOrEmpty(privateKey))
+            {
+                privateKey = privateKey
+                    .Replace("-----BEGIN PRIVATE KEY-----", "")
+                    .Replace("-----END PRIVATE KEY-----", "")
+                    .Replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                    .Replace("-----END RSA PRIVATE KEY-----", "")
+                    .Replace("\n", "")
+                    .Replace("\r", "")
+                    .Trim();
+            }
+
+            // 打印调试信息
+            Console.WriteLine($"[Alipay Config] AppId: {appId}, Gateway: {gatewayUrl}");
+            Console.WriteLine($"[Alipay Config] PrivateKey Length: {privateKey?.Length ?? 0}");
+
+            // 必须使用 GBK 编码，否则 .NET Core 下会报错
+            return new DefaultAopClient(gatewayUrl, appId, privateKey, "json", "1.0", "RSA2", alipayPublicKey, "GBK", false);
         }
 
         public async Task<PaymentResult> CreatePaymentAsync(int userId, int orderId, string paymentMethod)
@@ -173,7 +216,7 @@ namespace HuanyuFlowerShop.Services
 
                     // 调用第三方支付网关验证（模拟）
                     // 在实际应用中，这里应该调用真实的支付网关API
-                    bool isPaymentSuccessful = await VerifyPaymentWithGatewayAsync(order, paymentReference);
+                    bool isPaymentSuccessful = await VerifyPaymentWithGatewayAsync(paymentReference);
 
                     if (isPaymentSuccessful)
                     {
@@ -356,12 +399,13 @@ namespace HuanyuFlowerShop.Services
 
                 // 尝试从缓存获取
                 string cacheKey = string.Format(PAYMENT_LINK_CACHE_KEY, userId, orderId);
-                var cachedResult = await _cacheService.GetAsync<(string PaymentUrl, string PaymentReference)>(cacheKey);
-                if (cachedResult != (null, null))
-                {
-                    _logger.LogInformation("从缓存获取支付链接，用户ID: {UserId}，订单ID: {OrderId}", userId, orderId);
-                    return cachedResult;
-                }
+                // 暂时禁用缓存读取，以确保生成的链接是最新的（Mock链接）
+                // var cachedResult = await _cacheService.GetAsync<(string PaymentUrl, string PaymentReference)>(cacheKey);
+                // if (cachedResult != (null, null))
+                // {
+                //     _logger.LogInformation("从缓存获取支付链接，用户ID: {UserId}，订单ID: {OrderId}", userId, orderId);
+                //     return cachedResult;
+                // }
 
                 // 获取订单
                 var order = await _orderRepository.GetByIdAsync(orderId);
@@ -385,9 +429,9 @@ namespace HuanyuFlowerShop.Services
                     await _orderRepository.UpdateAsync(order);
                 }
 
-                // 生成支付链接（模拟）
-                // 在实际应用中，这里应该调用支付网关API生成真实的支付链接
-                string paymentUrl = GeneratePaymentGatewayUrl(order);
+                // 生成支付链接
+                // 使用支付宝沙箱生成支付表单HTML
+                string paymentUrl = GenerateAlipayPagePay(order);
 
                 var result = (PaymentUrl: paymentUrl, PaymentReference: order.PaymentReference);
 
@@ -410,40 +454,220 @@ namespace HuanyuFlowerShop.Services
         }
 
         // 私有辅助方法
-        private string GeneratePaymentReference()
+        private static string GeneratePaymentReference()
         {
             return $"PAY{DateTime.Now:yyyyMMddHHmmss}{new Random().Next(10000, 99999)}";
         }
 
-        private async Task<bool> VerifyPaymentWithGatewayAsync(Order order, string paymentReference)
+        private async Task<bool> VerifyPaymentWithGatewayAsync(string paymentReference)
         {
-            // 模拟调用第三方支付网关验证支付
-            // 在实际应用中，这里应该调用真实的支付网关API
-            _logger.LogInformation("调用支付网关验证支付，订单ID: {OrderId}，支付参考号: {PaymentReference}", 
-                order.Id, paymentReference);
-            
-            // 模拟验证延迟
-            await Task.Delay(500);
-            
-            // 模拟验证成功
-            return true;
+            try 
+            {
+                // 使用支付宝查询接口验证支付状态
+                var client = GetAlipayClient();
+                var request = new AlipayTradeQueryRequest();
+                var model = new AlipayTradeQueryModel
+                {
+                    OutTradeNo = paymentReference
+                };
+                request.SetBizModel(model);
+
+                var response = client.Execute(request);
+                
+                _logger.LogInformation("支付宝查询响应: {Body}", response.Body);
+
+                if (!response.IsError)
+                {
+                    // TRADE_SUCCESS: 交易支付成功
+                    // TRADE_FINISHED: 交易结束，不可退款
+                    return response.TradeStatus == "TRADE_SUCCESS" || response.TradeStatus == "TRADE_FINISHED";
+                }
+                
+                // 如果是开发环境且配置了模拟模式，或者查询失败但我们想为了演示目的允许通过（仅限未配置真实key的情况）
+                // 这里我们做个fallback：如果配置是默认的placeholder，则使用原来的模拟逻辑
+                var config = _configuration.GetSection("Alipay");
+                if (config["AppId"] == "your_sandbox_app_id")
+                {
+                    _logger.LogWarning("检测到默认配置，使用模拟验证模式");
+                    await Task.Delay(500);
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "调用支付宝查询接口失败");
+                // Fallback for demo
+                var config = _configuration.GetSection("Alipay");
+                if (config["AppId"] == "your_sandbox_app_id")
+                {
+                    return true;
+                }
+                throw;
+            }
         }
 
         private async Task CancelPaymentWithGatewayAsync(string paymentReference)
         {
-            // 模拟调用第三方支付网关取消支付
-            // 在实际应用中，这里应该调用真实的支付网关API
-            _logger.LogInformation("调用支付网关取消支付，支付参考号: {PaymentReference}", paymentReference);
+            try
+            {
+                var client = GetAlipayClient();
+                var request = new AlipayTradeCloseRequest();
+                var model = new AlipayTradeCloseModel
+                {
+                    OutTradeNo = paymentReference
+                };
+                request.SetBizModel(model);
+                
+                var response = client.Execute(request);
+                _logger.LogInformation("支付宝关闭交易响应: {Body}", response.Body);
+            }
+            catch (Exception ex)
+            {
+                 _logger.LogError(ex, "调用支付宝关闭交易接口失败");
+            }
             await Task.Delay(300);
+        }
+
+        private string GenerateAlipayPagePay(Order order)
+        {
+            // 为了解决开发环境沙箱网络不稳定的问题，暂时强制使用本地模拟支付
+            // 如果需要恢复真实支付宝沙箱，请注释掉下面这一行
+            return GeneratePaymentGatewayUrl(order);
+
+            /*
+            var config = _configuration.GetSection("Alipay");
+            try 
+            {
+                // 如果是默认配置，返回模拟URL
+                if (config["AppId"] == "your_sandbox_app_id")
+                {
+                    return GeneratePaymentGatewayUrl(order);
+                }
+
+                var client = GetAlipayClient();
+                var request = new AlipayTradePagePayRequest();
+                
+                // 设置回调地址
+                request.SetNotifyUrl(config["NotifyUrl"]);
+                // 设置同步跳转地址，带上订单ID
+                // 前端路由是 /orders/:id，所以这里应该是 /orders/{orderId}
+                var returnUrl = config["ReturnUrl"];
+                if (string.IsNullOrEmpty(returnUrl))
+                {
+                    // 默认值 fallback
+                    returnUrl = "http://localhost:5173/payment/callback";
+                }
+                
+                // 替换为具体的订单详情页地址
+                // 假设前端地址是 http://localhost:5173，那么跳转地址应该是 http://localhost:5173/orders/{orderId}
+                // 这里我们做一个简单的替换，或者直接构造
+                if (returnUrl.Contains("payment/success"))
+                {
+                     returnUrl = returnUrl.Replace("payment/success", $"orders/{order.Id}");
+                }
+                else if (returnUrl.Contains("payment/callback"))
+                {
+                     // 如果是 callback 页面，带上 verify 参数让前端处理
+                     returnUrl = returnUrl + $"?verify=true&orderId={order.Id}";
+                }
+                
+                request.SetReturnUrl(returnUrl);
+
+                var model = new AlipayTradePagePayModel
+                {
+                    OutTradeNo = order.PaymentReference,
+                    TotalAmount = order.TotalAmount.ToString("0.00"),
+                    Subject = $"欢雨鲜花订单-{order.OrderNumber}",
+                    ProductCode = "FAST_INSTANT_TRADE_PAY",
+                    Body = $"订单号:{order.OrderNumber}"
+                };
+                
+                request.SetBizModel(model);
+                
+                // 生成表单
+                // AlipaySDKNet 中，PageExecute 方法可能不可用或命名不同
+                // 使用通用的 Execute 方法，对于 PagePayRequest，它返回的 Body 通常就是 HTML 表单
+                // 使用 SdkExecute 生成签名后的请求参数字符串 (PagePay 不需要后端直接调用 API，而是生成链接给前端跳转)
+                var response = client.SdkExecute(request);
+                
+                if (!response.IsError && !string.IsNullOrEmpty(response.Body))
+                {
+                     // config 已经在外部定义
+                     var gatewayUrl = config["GatewayUrl"];
+                     if (string.IsNullOrEmpty(gatewayUrl))
+                     {
+                         throw new Exception("支付宝配置缺失: GatewayUrl为空");
+                     }
+                     // 如果 GatewayUrl 结尾没有 ?，需要根据情况添加
+                     if (!gatewayUrl.EndsWith("?"))
+                     {
+                         gatewayUrl += "?";
+                     }
+                     return gatewayUrl + response.Body;
+                }
+                
+                throw new Exception($"支付宝签名生成失败: {response.SubMsg ?? response.Msg}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Alipay Exception] {ex.Message} \n {ex.StackTrace}");
+                _logger.LogError(ex, "生成支付宝支付表单失败");
+                // 如果是真实配置出错，抛出异常而不是返回模拟链接，以便排查
+                if (config["AppId"] != "your_sandbox_app_id")
+                {
+                    throw;
+                }
+                // Fallback
+                return GeneratePaymentGatewayUrl(order);
+            }
+            */
         }
 
         private string GeneratePaymentGatewayUrl(Order order)
         {
             // 模拟生成支付网关URL
-            // 在实际应用中，这里应该调用支付网关API生成真实的支付链接
-            string baseUrl = "https://payment-gateway.example.com/pay";
-            string paramsString = $"order_id={order.OrderNumber}&amount={order.TotalAmount}&reference={order.PaymentReference ?? string.Empty}&return_url=https://flowershop.example.com/payment/callback";
-            return $"{baseUrl}?{paramsString}";
+            // 指向前端的 MockPay 页面
+            // 参数: order_id, amount, reference, return_url
+            // return_url 指向前端的回调处理页
+            
+            var config = _configuration.GetSection("Alipay");
+            var returnUrl = config["ReturnUrl"];
+            // 确保 ReturnUrl 不为空且是相对路径（为了适配不同端口）
+            // 即使配置了 absolute url，我们也尝试提取 path
+            if (string.IsNullOrEmpty(returnUrl) || returnUrl.StartsWith("http"))
+            {
+                returnUrl = "/payment/callback";
+            }
+            
+            // 构造 returnUrl (与支付宝逻辑保持一致)
+            if (returnUrl.Contains("payment/success"))
+            {
+                 returnUrl = returnUrl.Replace("payment/success", $"orders/{order.Id}");
+            }
+            else if (returnUrl.Contains("payment/callback"))
+            {
+                 returnUrl = returnUrl + $"?verify=true&orderId={order.Id}";
+            }
+            
+            // 确保 returnUrl 是相对路径
+            if (returnUrl.StartsWith("http"))
+            {
+                try {
+                    var uri = new Uri(returnUrl);
+                    returnUrl = uri.PathAndQuery;
+                } catch {}
+            }
+            
+            // 前端 MockPay 页面地址
+            // 使用相对路径，让前端自动匹配当前端口
+            string baseUrl = "/mock-pay";
+            string paramsString = $"order_id={order.OrderNumber}&amount={order.TotalAmount:0.00}&reference={order.PaymentReference ?? string.Empty}&return_url={System.Net.WebUtility.UrlEncode(returnUrl)}&t={DateTime.Now.Ticks}";
+            string finalUrl = $"{baseUrl}?{paramsString}";
+            
+            _logger.LogInformation("Generated Mock Payment URL: {Url}", finalUrl);
+            return finalUrl;
         }
 
         private async Task ClearPaymentCache(int userId, int orderId)
@@ -465,7 +689,7 @@ namespace HuanyuFlowerShop.Services
 
                 // 参数验证
                 if (orderId <= 0) throw new ArgumentException("订单ID无效", nameof(orderId));
-                if (request == null) throw new ArgumentNullException(nameof(request));
+                ArgumentNullException.ThrowIfNull(request, nameof(request));
                 if (string.IsNullOrWhiteSpace(request.PaymentStatus)) throw new ArgumentException("支付状态不能为空", nameof(request.PaymentStatus));
 
                 await _unitOfWork.BeginTransactionAsync();

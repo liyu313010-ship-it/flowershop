@@ -559,11 +559,40 @@ const confirmPayment = async () => {
 
   processingPayment.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    showPaymentModal.value = false
-    showPaymentSuccess.value = true
-    const paymentStatus = paymentModalMethod.value === 'cod' ? 'unpaid' : 'paid'
-    await orderService.updateOrderStatus(currentOrderId.value, paymentStatus)
+    if (paymentModalMethod.value === 'cod') {
+      // 货到付款处理
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await orderService.updateOrderStatus(currentOrderId.value, 'unpaid')
+      showPaymentModal.value = false
+      showPaymentSuccess.value = true
+    } else {
+      // 在线支付（支付宝）
+      const res = await orderService.repayOrder(currentOrderId.value)
+      if (res.success && res.data) {
+        const paymentLink = res.data.paymentLink || res.data.PaymentLink
+        
+        if (paymentLink && paymentLink.startsWith('<form')) {
+          // 支付宝返回的是HTML表单，需要渲染并提交
+          const div = document.createElement('div')
+          div.innerHTML = paymentLink
+          document.body.appendChild(div)
+          // 提交表单
+          const form = div.querySelector('form')
+          if (form) {
+            form.submit()
+          } else {
+             ElMessage.error('支付表单格式错误')
+          }
+        } else if (paymentLink) {
+          // 普通URL跳转
+          window.location.href = paymentLink
+        } else {
+          ElMessage.error('获取支付链接为空')
+        }
+      } else {
+        ElMessage.error('获取支付链接失败')
+      }
+    }
   } catch (error) {
     console.error('支付过程错误:', error)
     ElMessage.error('支付处理过程中出现错误')

@@ -137,7 +137,7 @@ namespace HuanyuFlowerShop.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "生成支付链接失败，订单ID: {OrderId}", orderId);
-                return StatusCode(500, "生成支付链接时发生错误");
+                return StatusCode(500, new { message = ex.Message });
             }
         }
 

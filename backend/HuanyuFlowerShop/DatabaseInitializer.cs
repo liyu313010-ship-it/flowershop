@@ -253,7 +253,14 @@ namespace HuanyuFlowerShop
                     // 尝试添加ForUserId列，如果不存在 (用于修复旧表结构)
                     try 
                     {
-                        context.Database.ExecuteSqlRaw("ALTER TABLE `ProductRecommendations` ADD COLUMN `ForUserId` INT NULL;");
+                        var conn = context.Database.GetDbConnection();
+                        if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                        using var cmd = conn.CreateCommand();
+                        cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ProductRecommendations' AND COLUMN_NAME = 'ForUserId'";
+                        if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
+                        {
+                            context.Database.ExecuteSqlRaw("ALTER TABLE `ProductRecommendations` ADD COLUMN `ForUserId` INT NULL;");
+                        }
                     }
                     catch {} // 如果列已存在会报错，忽略
                 }

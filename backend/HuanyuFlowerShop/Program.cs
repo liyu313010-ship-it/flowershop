@@ -23,6 +23,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 注册 GBK 编码支持（AlipaySDKNet 必需）
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -189,7 +192,20 @@ var context = services.GetRequiredService<ApplicationDbContext>();
                 `UpdatedAt` DATETIME NULL,
                 PRIMARY KEY (`Id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-            try { context.Database.ExecuteSqlRaw(@"ALTER TABLE `Videos` ADD COLUMN `Slot` VARCHAR(50) NOT NULL DEFAULT 'story'"); } catch { }
+            
+            // 安全添加Slot列
+            try 
+            {
+                var conn = context.Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Videos' AND COLUMN_NAME = 'Slot'";
+                if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
+                {
+                    context.Database.ExecuteSqlRaw(@"ALTER TABLE `Videos` ADD COLUMN `Slot` VARCHAR(50) NOT NULL DEFAULT 'story'");
+                }
+            } 
+            catch { }
 
             context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `OrderStatusHistories` (
                 `Id` INT NOT NULL AUTO_INCREMENT,
@@ -332,14 +348,28 @@ var context = services.GetRequiredService<ApplicationDbContext>();
             // 安全添加Addresses表的缺失列
             try
             {
-                context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PhoneNumber` varchar(20) NOT NULL DEFAULT ''");
+                var conn = context.Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
+                
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Addresses' AND COLUMN_NAME = 'PhoneNumber'";
+                    if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
+                    {
+                        context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PhoneNumber` varchar(20) NOT NULL DEFAULT ''");
+                    }
+                }
+                
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Addresses' AND COLUMN_NAME = 'PostalCode'";
+                    if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
+                    {
+                        context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PostalCode` varchar(20) NULL");
+                    }
+                }
             }
             catch { }
-        try
-        {
-            context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PostalCode` varchar(20) NULL");
-        }
-        catch { }
         }
         catch (Exception ex)
         {

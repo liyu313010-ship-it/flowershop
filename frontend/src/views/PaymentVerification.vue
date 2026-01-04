@@ -113,6 +113,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import orderService from '@/services/orderService'
 
 const route = useRoute()
 const router = useRouter()
@@ -126,6 +127,14 @@ const paymentError = ref('')
 
 onMounted(async () => {
   await loadOrderInfo()
+  
+  // 检查URL参数，如果有out_trade_no，说明是从支付宝回调回来的，自动验证
+  const { out_trade_no } = route.query
+  if (out_trade_no) {
+    paymentReference.value = out_trade_no
+    // 稍微延迟一下，确保后端状态同步（可选）
+    setTimeout(() => verifyPayment(), 500)
+  }
 })
 
 const loadOrderInfo = async () => {
@@ -134,14 +143,18 @@ const loadOrderInfo = async () => {
     const orderId = route.params.orderId
     
     // 从后端获取订单信息
-    // 这里可以调用orderService来获取订单详情
-    // 暂时使用mock数据
-    order.value = {
-      id: orderId,
-      orderNumber: 'HY' + Date.now(),
-      totalAmount: 128.00,
-      createdAt: new Date().toISOString(),
-      paymentStatus: 'unpaid'
+    const res = await orderService.getOrderById(orderId)
+    if (res.success) {
+      const data = res.data
+      order.value = {
+        id: data.id || data.Id,
+        orderNumber: data.orderNumber || data.OrderNumber,
+        totalAmount: data.totalAmount || data.TotalAmount,
+        createdAt: data.createdAt || data.CreatedAt,
+        paymentStatus: data.paymentStatus || data.PaymentStatus
+      }
+    } else {
+       throw new Error('获取订单失败')
     }
   } catch (error) {
     console.error('加载订单信息失败:', error)
@@ -161,19 +174,21 @@ const verifyPayment = async () => {
     paymentStatus.value = ''
     paymentError.value = ''
     
-    // 模拟支付验证
-    // 这里可以调用实际的支付验证API
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // 调用后端API验证
+    const res = await orderService.verifyPayment(order.value.id, paymentReference.value)
     
-    // 模拟成功结果
-    paymentStatus.value = 'verified'
-    order.value.paymentStatus = 'paid'
-    alert('支付验证成功')
+    if (res.success) {
+        paymentStatus.value = 'verified'
+        order.value.paymentStatus = 'paid'
+        // 清除URL参数，避免刷新重复验证
+        // router.replace({ query: {} })
+    } else {
+        throw new Error(res.message || '验证失败')
+    }
   } catch (error) {
     console.error('验证支付失败:', error)
     paymentStatus.value = 'failed'
-    paymentError.value = '验证过程中出现错误'
-    alert('验证过程中出现错误')
+    paymentError.value = error.message || '验证过程中出现错误，请联系客服'
   } finally {
     verifying.value = false
   }

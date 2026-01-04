@@ -48,6 +48,7 @@ const Contact = () => import('@/views/Contact.vue')
 
 import Checkout from '@/views/Checkout.vue'
 const PaymentVerification = () => import('@/views/PaymentVerification.vue')
+import MockPay from '@/views/MockPay.vue' // 直接导入，避免动态导入失败
 
 const Shipping = () => import('@/views/Shipping.vue') // 配送说明页面
 const Returns = () => import('@/views/Returns.vue') // 退换货政策页面
@@ -247,6 +248,12 @@ const routes = [
     name: 'PaymentVerification',
     component: PaymentVerification,
     meta: { title: '支付验证 - 欢雨flower' }
+  },
+  {
+    path: '/mock-pay',
+    name: 'MockPay',
+    component: MockPay,
+    meta: { title: '模拟支付 - 欢雨flower' }
   },
   {
     path: '/order-detail/:id',

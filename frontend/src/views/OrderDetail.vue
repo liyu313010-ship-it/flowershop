@@ -403,6 +403,7 @@ const error = ref('')
 let pollInterval = null
 const POLLING_INTERVAL = 8000
 const previousOrderStatus = ref(null)
+const isFetching = ref(false)
 
 const statusHistory = ref([])
 let lastOrderJson = ''
@@ -438,14 +439,11 @@ const loadOrderDetail = async (setLoading = true) => {
   try {
     const orderId = route.params.id
     if (setLoading) loading.value = true
-    if (currentController) {
-      try { currentController.abort() } catch {}
-    }
-    currentController = new AbortController()
-    const reqOptions = { signal: currentController.signal }
+    if (isFetching.value) return
+    isFetching.value = true
     const [orderResponse, historyResponse] = await Promise.all([
-      orderService.getOrderById(orderId, reqOptions),
-      orderService.getOrderStatusHistory(orderId, reqOptions)
+      orderService.getOrderById(orderId, { silent: true }),
+      orderService.getOrderStatusHistory(orderId, { silent: true })
     ])
     
     // 处理订单详情（仅在变更时更新以避免频闪）
@@ -505,6 +503,7 @@ const loadOrderDetail = async (setLoading = true) => {
     error.value = '加载订单详情失败，请稍后重试'
   } finally {
     loading.value = false
+    isFetching.value = false
   }
 }
 
@@ -904,17 +903,39 @@ const payOrder = async () => {
   
   try {
     loading.value = true
-    const useVirtualPayment = confirm('是否使用虚拟付款进行测试？\n\n确定 = 使用虚拟付款（立即成功）\n取消 = 使用真实支付流程')
-    console.log('支付方式选择:', useVirtualPayment ? '虚拟付款' : '真实支付')
-    await new Promise(resolve => setTimeout(resolve, 1200))
-    notifySuccess('虚拟付款成功！')
-    // 使用后端支付状态接口更新为已支付
-    await orderService.updatePaymentStatus(order.value.id, { paymentStatus: 'paid', paymentMethod: 'online', paymentReference: 'VIRTUAL' })
-    await loadOrderDetail()
+    // 调用后端获取支付宝支付链接/表单
+    const res = await orderService.repayOrder(order.value.id)
+    
+    if (res.success && res.data) {
+      const paymentLink = res.data.paymentLink || res.data.PaymentLink
+      
+      if (paymentLink && paymentLink.startsWith('<form')) {
+        // 支付宝返回的是HTML表单，需要渲染并提交
+        const div = document.createElement('div')
+        div.innerHTML = paymentLink
+        document.body.appendChild(div)
+        // 提交表单
+        const form = div.querySelector('form')
+        if (form) {
+          form.submit()
+        } else {
+           notifyError('支付表单格式错误')
+           loading.value = false
+        }
+      } else if (paymentLink) {
+        // 普通URL跳转
+        window.location.href = paymentLink
+      } else {
+        notifyError('获取支付链接为空')
+        loading.value = false
+      }
+    } else {
+      notifyError('获取支付链接失败')
+      loading.value = false
+    }
   } catch (error) {
     console.error('支付失败:', error);
     notifyError('支付过程中出现错误')
-  } finally {
     loading.value = false;
   }
 }
@@ -943,7 +964,57 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
   
   // 处理URL参数，如果有review=true则自动打开评价弹窗
-  const { review } = route.query
+  const { review, verify, out_trade_no } = route.query
+  
+  // 处理支付同步跳转验证
+  if (verify === 'true' || out_trade_no) {
+      console.log('检测到支付回调，开始验证支付状态...');
+      loading.value = true;
+      try {
+          // 等待一小会儿，确保支付宝那边数据已同步（虽然是同步跳转，但有时候查询太快会查不到）
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // 获取当前订单ID
+          const orderId = route.params.id;
+          
+          // 尝试验证支付
+          // 注意：这里需要后端提供一个 verify-payment 接口，或者直接查询订单状态
+          // 如果没有专门的 verify 接口，我们可以直接刷新订单详情，因为后端可能还没收到 notify
+          // 但我们可以调用后端的 verify-payment 接口主动去支付宝查
+          if (out_trade_no) {
+             await orderService.verifyPayment(orderId, { paymentReference: out_trade_no });
+          }
+          
+          // 刷新订单详情
+          await loadOrderDetail();
+          
+          if (order.value && order.value.paymentStatus === 'paid') {
+              notifySuccess('支付成功！');
+              // 清除 URL 参数
+              router.replace({ query: {} });
+          } else {
+              // 如果还没变更为 paid，可能需要轮询几次
+              let retryCount = 0;
+              const checkPay = setInterval(async () => {
+                  retryCount++;
+                  await loadOrderDetail(false);
+                  if (order.value.paymentStatus === 'paid') {
+                      clearInterval(checkPay);
+                      notifySuccess('支付成功！');
+                      router.replace({ query: {} });
+                  } else if (retryCount > 5) {
+                      clearInterval(checkPay);
+                      // 不报错，只是没查到，可能是延迟
+                  }
+              }, 2000);
+          }
+      } catch (err) {
+          console.error('支付验证失败', err);
+      } finally {
+          loading.value = false;
+      }
+  }
+
   if (review === 'true') {
     // 等待订单数据加载完成
     await new Promise(resolve => {
@@ -967,9 +1038,6 @@ onMounted(async () => {
 onUnmounted(() => {
   stopPolling()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
-  if (currentController) {
-    try { currentController.abort() } catch {}
-  }
 })
 
 // 移除重复的 onMounted 监听，避免多次绑定

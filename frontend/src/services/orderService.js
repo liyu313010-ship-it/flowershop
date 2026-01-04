@@ -73,18 +73,22 @@ const orderService = {
   },
 
   /**
-   * 重新支付订单
+   * 重新支付订单/获取支付链接
    * @param {string} orderId - 订单ID
    * @returns {Promise} - 支付链接信息
    */
-  async repayOrder(orderId) {
+  async getPaymentLink(orderId) {
     try {
-      const data = await api.post(`/Orders/${orderId}/repay`)
+      const data = await api.get(`/Orders/${orderId}/payment-link`)
       return { success: true, data }
     } catch (error) {
-      console.error('重新支付失败:', error)
+      console.error('获取支付链接失败:', error)
       throw error
     }
+  },
+
+  async repayOrder(orderId) {
+    return this.getPaymentLink(orderId)
   },
 
   // 取消订单
@@ -129,6 +133,22 @@ const orderService = {
     const payload = { PaymentStatus: paymentStatus, PaymentMethod: paymentMethod, PaymentReference: paymentReference }
     const data = await api.put(`/Orders/${orderId}/payment-status`, payload)
     return { success: true, data }
+  },
+
+  /**
+   * 验证支付结果
+   * @param {string} orderId 
+   * @param {string} paymentReference 
+   * @returns 
+   */
+  async verifyPayment(orderId, paymentReference) {
+    try {
+      const data = await api.post(`/Orders/${orderId}/verify-payment`, { paymentReference })
+      return { success: true, data }
+    } catch (error) {
+      console.error('验证支付失败:', error)
+      throw error
+    }
   },
 
   /**

@@ -126,7 +126,7 @@
               <button
                 v-if="order.status === 'pending' && (order.paymentStatus === 'unpaid' || !order.paymentStatus)"
                 @click="payOrder(order)"
-                class="action-btn secondary"
+                class="action-btn warning"
               >
                 <i class="fas fa-credit-card"></i>
                 立即付款
@@ -338,12 +338,34 @@ const cancelOrder = async (orderId) => {
   setBanner('订单已取消', 'success')
 }
 
-const payOrder = (order) => {
-  // 显示支付方式选择模态框
-  selectedOrder.value = order
-  selectedPaymentMethod.value = 'alipay' // 默认选择支付宝
-  paymentStep.value = 1
-  showPaymentModal.value = true
+const payOrder = async (order) => {
+  try {
+    const res = await orderService.getPaymentLink(order.id)
+    console.log('Payment Link Response:', res)
+    if (res && res.data && res.data.paymentLink) {
+      let link = res.data.paymentLink
+      console.log('Received payment link:', link)
+      
+      // 强制修正端口问题：如果后端返回了带 http://localhost:5173 的链接，替换为当前 origin
+      if (link.includes('localhost:5173')) {
+        link = link.replace('http://localhost:5173', window.location.origin)
+        link = link.replace('localhost:5173', window.location.host)
+      }
+      // 如果是相对路径，确保它能被正确解析
+      else if (link.startsWith('/')) {
+        // 保持原样，浏览器会自动处理
+      }
+      
+      console.log('Redirecting to:', link)
+      window.location.href = link
+    } else {
+      console.error('Invalid payment link response:', res)
+      notifyError('获取支付链接失败：服务器返回格式错误')
+    }
+  } catch (e) {
+    console.error('Payment error:', e)
+    notifyError(e.message || '支付跳转失败')
+  }
 }
 
 // 处理支付
