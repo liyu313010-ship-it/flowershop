@@ -128,19 +128,33 @@ const paymentError = ref('')
 onMounted(async () => {
   await loadOrderInfo()
   
-  // 检查URL参数，如果有out_trade_no，说明是从支付宝回调回来的，自动验证
-  const { out_trade_no } = route.query
+  // 检查URL参数，如果有out_trade_no或trade_no，说明是从支付回调回来的，自动验证
+  const { out_trade_no, trade_no, verify } = route.query
   if (out_trade_no) {
     paymentReference.value = out_trade_no
-    // 稍微延迟一下，确保后端状态同步（可选）
+    // 稍微延迟一下，确保后端状态同步
     setTimeout(() => verifyPayment(), 500)
+  } else if (trade_no) {
+    paymentReference.value = trade_no
+    setTimeout(() => verifyPayment(), 500)
+  } else if (verify === 'true') {
+    // 如果只有verify=true参数，尝试使用订单的paymentReference进行验证
+    if (order.value && order.value.paymentReference) {
+      paymentReference.value = order.value.paymentReference
+      setTimeout(() => verifyPayment(), 500)
+    }
   }
 })
 
 const loadOrderInfo = async () => {
   try {
     loading.value = true
-    const orderId = route.params.orderId
+    // 先从params获取orderId，如果没有则从query获取
+    const orderId = route.params.orderId || route.query.orderId
+    
+    if (!orderId) {
+      throw new Error('订单ID缺失')
+    }
     
     // 从后端获取订单信息
     const res = await orderService.getOrderById(orderId)

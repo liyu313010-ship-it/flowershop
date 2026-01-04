@@ -256,6 +256,12 @@ const routes = [
     meta: { title: '模拟支付 - 欢雨flower' }
   },
   {
+    path: '/payment/callback',
+    name: 'PaymentCallback',
+    component: PaymentVerification,
+    meta: { title: '支付回调 - 欢雨flower' }
+  },
+  {
     path: '/order-detail/:id',
     name: 'OrderDetailAlt',
     component: OrderDetail,
