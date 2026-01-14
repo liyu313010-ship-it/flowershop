@@ -16,7 +16,7 @@
       <div v-else-if="!order" class="text-center py-8">
         <i class="fas fa-exclamation-circle text-red-500 text-4xl mb-4"></i>
         <p class="text-gray-600 mb-4">未找到订单信息</p>
-        <button @click="goBack" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded transition-colors">
+        <button @click="goHome" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded transition-colors">
           返回首页
         </button>
       </div>
@@ -59,7 +59,7 @@
               />
               <button
                 @click="verifyPayment"
-                :disabled="!paymentReference || verifying"
+                :disabled="verifying"
                 class="bg-pink-600 hover:bg-pink-700 text-white px-6 py-2 rounded-r-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span v-if="!verifying">验证支付</span>
@@ -178,31 +178,42 @@ const loadOrderInfo = async () => {
 }
 
 const verifyPayment = async () => {
-  if (!paymentReference.value.trim()) {
-    alert('请输入支付凭证号')
-    return
-  }
-  
   try {
     verifying.value = true
     paymentStatus.value = ''
     paymentError.value = ''
     
-    // 调用后端API验证
-    const res = await orderService.verifyPayment(order.value.id, paymentReference.value)
+    let ref = paymentReference.value.trim()
+    if (!ref) {
+      try {
+        const statusRes = await orderService.getOrderPaymentStatus(order.value.id)
+        ref = statusRes?.data?.paymentReference || order.value?.paymentReference || ''
+      } catch {}
+    }
+    if (!ref) {
+      throw new Error('缺少支付凭证号')
+    }
+    const res = await orderService.verifyPayment(order.value.id, ref)
     
     if (res.success) {
         paymentStatus.value = 'verified'
         order.value.paymentStatus = 'paid'
-        // 清除URL参数，避免刷新重复验证
-        // router.replace({ query: {} })
+        router.push(`/orders/${order.value.id}`)
     } else {
         throw new Error(res.message || '验证失败')
     }
   } catch (error) {
     console.error('验证支付失败:', error)
     paymentStatus.value = 'failed'
-    paymentError.value = error.message || '验证过程中出现错误，请联系客服'
+    // 优先显示后端返回的具体错误信息（如果 axios 拦截器或 service 处理了）
+    // 通常 axios 错误在 error.response.data 中
+    if (error.response && error.response.data && error.response.data.message) {
+        paymentError.value = error.response.data.message
+    } else if (error.message) {
+        paymentError.value = error.message
+    } else {
+        paymentError.value = '验证过程中出现错误，请联系客服'
+    }
   } finally {
     verifying.value = false
   }
@@ -246,11 +257,20 @@ const formatDate = (dateString) => {
 }
 
 const goToOrderDetail = () => {
-  router.push(`/order/${route.params.orderId}`)
+  const orderId = order.value?.id || route.params.orderId
+  if (orderId) {
+    router.push(`/orders/${orderId}`)
+  } else {
+    router.push('/orders')
+  }
+}
+
+const goHome = () => {
+  router.push('/')
 }
 
 const goBack = () => {
-  if (router.history.state.back) {
+  if (window.history.length > 1) {
     router.back()
   } else {
     router.push('/')

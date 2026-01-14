@@ -4,25 +4,18 @@ using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Interfaces;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace HuanyuFlowerShop.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class AddressesController : ControllerBase
+    public class AddressesController(
+        IAddressService addressService,
+        ILogger<AddressesController> logger) : ControllerBase
     {
-        private readonly IAddressService _addressService;
-        private readonly ILogger<AddressesController> _logger;
-
-        public AddressesController(
-            IAddressService addressService,
-            ILogger<AddressesController> logger)
-        {
-            _addressService = addressService;
-            _logger = logger;
-        }
+        private readonly IAddressService _addressService = addressService;
+        private readonly ILogger<AddressesController> _logger = logger;
 
         // 获取当前用户ID（转换为int类型）
         private int GetCurrentUserId()

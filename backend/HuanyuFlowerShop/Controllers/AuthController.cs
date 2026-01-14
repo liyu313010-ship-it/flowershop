@@ -3,28 +3,18 @@ using Microsoft.AspNetCore.Authorization;
 
 using HuanyuFlowerShop.Services;
 using HuanyuFlowerShop.Interfaces;
-using Microsoft.Extensions.Logging;
 using HuanyuFlowerShop.DTOs;
 
 namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    public class AuthController(IAuthService authService, IOrderService orderService, IWebHostEnvironment environment, ILogger<AuthController> logger) : ControllerBase
     {
-        private const string USER_ORDER_STATS_CACHE_KEY_PREFIX = "user_order_stats_";
-        private readonly IAuthService _authService;
-        private readonly IOrderService _orderService;
-        private readonly IWebHostEnvironment _environment;
-        private readonly ILogger<AuthController> _logger;
-
-        public AuthController(IAuthService authService, IOrderService orderService, IWebHostEnvironment environment, ILogger<AuthController> logger)
-        {
-            _authService = authService;
-            _orderService = orderService;
-            _environment = environment;
-            _logger = logger;
-        }
+        private readonly IAuthService _authService = authService;
+        private readonly IOrderService _orderService = orderService;
+        private readonly IWebHostEnvironment _environment = environment;
+        private readonly ILogger<AuthController> _logger = logger;
 
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginDto loginDto)
@@ -143,7 +133,7 @@ namespace HuanyuFlowerShop.Controllers
                 
                 if (!result.Success)
                 {
-                    return BadRequest(new { Success = false, Message = result.Message });
+                    return BadRequest(new { Success = false, result.Message });
                 }
 
                 return Ok(result);
@@ -177,7 +167,7 @@ namespace HuanyuFlowerShop.Controllers
 
         [HttpPost("addresses")]
         [Authorize]
-        public async Task<IActionResult> AddAddress([FromBody] HuanyuFlowerShop.DTOs.CreateAddressDto createAddressDto)
+        public async Task<IActionResult> AddAddress([FromBody] CreateAddressDto createAddressDto)
         {
             if (!ModelState.IsValid)
             {
@@ -193,7 +183,7 @@ namespace HuanyuFlowerShop.Controllers
             try
             {
                 // 转换CreateAddressDto到AddressDto
-                var addressDto = new HuanyuFlowerShop.DTOs.AddressDto
+                var addressDto = new AddressDto
                 {
                     RecipientName = createAddressDto.RecipientName,
                     PhoneNumber = createAddressDto.PhoneNumber,
@@ -216,7 +206,7 @@ namespace HuanyuFlowerShop.Controllers
 
         [HttpPut("addresses/{addressId}")]
         [Authorize]
-        public async Task<IActionResult> UpdateAddress(int addressId, [FromBody] HuanyuFlowerShop.DTOs.AddressDto addressDto)
+        public async Task<IActionResult> UpdateAddress(int addressId, [FromBody] AddressDto addressDto)
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
@@ -377,7 +367,7 @@ namespace HuanyuFlowerShop.Controllers
                     {
                         System.IO.File.Delete(filePath);
                     }
-                    return BadRequest(new { Success = false, Message = updateResult.Message });
+                    return BadRequest(new { Success = false, updateResult.Message });
                 }
 
                 // 返回完整的URL，与产品图片保持一致

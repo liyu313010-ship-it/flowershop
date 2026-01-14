@@ -1429,6 +1429,13 @@ onMounted(async () => {
         heroBackgroundType.value = 'video'
         heroVideoPath.value = normalizeUploadsPath(path)
         try { localStorage.setItem('heroVideoPath', heroVideoPath.value) } catch {}
+      } else {
+        // 如果后端没有返回视频，清除本地缓存，避免显示旧视频导致404
+        if (heroBackgroundType.value === 'video') {
+           heroBackgroundType.value = 'image'
+        }
+        heroVideoPath.value = ''
+        try { localStorage.removeItem('heroVideoPath') } catch {}
       }
     } catch {}
     try {
@@ -1438,6 +1445,10 @@ onMounted(async () => {
       if (path) {
         storyVideoPath.value = normalizeUploadsPath(path)
         try { localStorage.setItem('storyVideoPath', storyVideoPath.value) } catch {}
+      } else {
+        // 如果后端没有返回视频，清除本地缓存
+        storyVideoPath.value = ''
+        try { localStorage.removeItem('storyVideoPath') } catch {}
       }
     } catch {}
     try {

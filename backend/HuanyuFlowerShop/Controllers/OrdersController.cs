@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging;
-using HuanyuFlowerShop.Entities;
 // 使用System.UnauthorizedAccessException类型不需要using命名空间
 
 namespace HuanyuFlowerShop.Controllers
@@ -12,18 +10,11 @@ namespace HuanyuFlowerShop.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class OrdersController : ControllerBase
+    public class OrdersController(IOrderService orderService, IPaymentService paymentService, ILogger<OrdersController> logger) : ControllerBase
     {
-        private readonly IOrderService _orderService;
-        private readonly IPaymentService _paymentService;
-        private readonly ILogger<OrdersController> _logger;
-
-        public OrdersController(IOrderService orderService, IPaymentService paymentService, ILogger<OrdersController> logger)
-        {
-            _orderService = orderService;
-            _paymentService = paymentService;
-            _logger = logger;
-        }
+        private readonly IOrderService _orderService = orderService;
+        private readonly IPaymentService _paymentService = paymentService;
+        private readonly ILogger<OrdersController> _logger = logger;
 
         // 更新支付状态
         [HttpPut("{orderId}/payment-status")]
@@ -112,6 +103,11 @@ namespace HuanyuFlowerShop.Controllers
             {
                 return Unauthorized();
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "验证支付业务异常，订单ID: {OrderId}", orderId);
+                return BadRequest(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "验证支付失败，订单ID: {OrderId}", orderId);
@@ -132,12 +128,17 @@ namespace HuanyuFlowerShop.Controllers
                 var (paymentUrl, paymentReference) = await _paymentService.GeneratePaymentLinkAsync(userId, orderId);
                 
                 // 由于元组直接返回数据，默认为成功状态
-                return Ok(new { success = true, paymentLink = paymentUrl, paymentReference = paymentReference });
+                return Ok(new { success = true, paymentLink = paymentUrl, paymentReference });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "生成支付链接业务异常，订单ID: {OrderId}", orderId);
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "生成支付链接失败，订单ID: {OrderId}", orderId);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "生成支付链接时发生错误" });
             }
         }
 

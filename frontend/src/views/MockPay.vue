@@ -75,6 +75,7 @@ const returnUrl = ref('')
 const selectedMethod = ref('alipay')
 const processing = ref(false)
 const paymentReference = ref('')
+const dbOrderId = ref(null)
 
 onMounted(() => {
   // 从 URL 参数获取订单信息
@@ -87,6 +88,12 @@ onMounted(() => {
   if (!route.query.order_id) {
     notifyError('参数错误：缺少订单信息')
   }
+  
+  try {
+    const u = new URL(returnUrl.value, window.location.origin)
+    const oid = u.searchParams.get('orderId')
+    if (oid) dbOrderId.value = Number(oid)
+  } catch {}
 })
 
 const confirmPayment = async () => {
@@ -96,15 +103,19 @@ const confirmPayment = async () => {
   await new Promise(resolve => setTimeout(resolve, 1500))
   
   try {
-    // 尝试解析 returnUrl 中的订单 ID
-    // returnUrl 可能是 https://flowershop.example.com/payment/callback
-    // 我们需要知道真实的订单 ID (数据库 ID) 来调用 API，或者使用 reference
-    // 如果 URL 参数里没有 database ID，我们可能需要后端支持通过 reference 更新
-    
-    // 这里我们直接调用后端的 verify-payment 接口，或者是 update-status 接口
-    // 但由于这是前端模拟页，我们其实可以直接跳转回 returnUrl 并带上成功参数
-    
-    // 构造回调参数
+    // 若拿到了数据库订单ID，直接更新支付状态形成闭环
+    if (dbOrderId.value) {
+      await orderService.updatePaymentStatus(dbOrderId.value, {
+        paymentStatus: 'paid',
+        paymentMethod: selectedMethod.value,
+        paymentReference: paymentReference.value || `PAY${Date.now()}`
+      })
+      notifySuccess('支付成功，订单状态已更新')
+      useRouterInstance.push(`/orders/${dbOrderId.value}`)
+      return
+    }
+
+    // 回退：无法解析订单ID时，跳转回回调页由其自动验证
     let targetUrl;
     try {
       targetUrl = new URL(returnUrl.value)

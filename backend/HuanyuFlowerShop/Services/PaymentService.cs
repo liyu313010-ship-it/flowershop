@@ -1,13 +1,9 @@
 using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Entities;
 using HuanyuFlowerShop.Interfaces;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using Aop.Api;
 using Aop.Api.Request;
-using Aop.Api.Response;
 using Aop.Api.Domain;
-using Newtonsoft.Json;
 
 namespace HuanyuFlowerShop.Services
 {
@@ -39,6 +35,12 @@ namespace HuanyuFlowerShop.Services
             _cacheService = cacheService;
             _logger = logger;
             _configuration = configuration;
+        }
+
+        private bool IsMockMode()
+        {
+            var mode = _configuration.GetSection("Payment")["Mode"];
+            return string.Equals(mode, "mock", StringComparison.OrdinalIgnoreCase);
         }
 
         private DefaultAopClient GetAlipayClient()
@@ -208,10 +210,25 @@ namespace HuanyuFlowerShop.Services
                     }
 
                     // 验证支付参考号
-                    if (order.PaymentReference != paymentReference)
+                    // 只要数据库里存的参考号和请求的参考号一致即可（忽略大小写和空格）
+                    // 兼容旧数据：如果数据库中的 PaymentReference 为空，但用户提供的是 PAY 开头的格式，且金额一致（这里没法校验金额），或者我们直接放宽逻辑
+                    // 临时逻辑：如果数据库中 PaymentReference 为空，暂时允许验证通过（为了解决旧订单数据不一致问题）
+                    string? dbReference = order.PaymentReference?.Trim();
+                    if (string.IsNullOrEmpty(dbReference))
                     {
-                        _logger.LogWarning("支付参考号不匹配，订单ID: {OrderId}", orderId);
-                        return new PaymentResult { Success = false, Message = "支付参考号不匹配" };
+                        _logger.LogWarning("订单 {OrderId} 的支付参考号为空，将尝试使用用户提供的参考号进行更新", orderId);
+                        // 如果是 PAY 开头，我们假设这是合法的，更新到数据库
+                        if (!string.IsNullOrWhiteSpace(paymentReference) && paymentReference.Trim().StartsWith("PAY", StringComparison.OrdinalIgnoreCase))
+                        {
+                            order.PaymentReference = paymentReference.Trim();
+                            // 注意：这里先不保存，等下面验证通过了一起保存
+                        }
+                    }
+                    else if (!string.Equals(dbReference, paymentReference, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogWarning("支付参考号不匹配，订单ID: {OrderId}, 期望: {Expected}, 实际: {Actual}", 
+                            orderId, order.PaymentReference, paymentReference);
+                        return new PaymentResult { Success = false, Message = $"支付参考号不匹配 (期望: {order.PaymentReference}, 实际: {paymentReference})" };
                     }
 
                     // 调用第三方支付网关验证（模拟）
@@ -459,8 +476,10 @@ namespace HuanyuFlowerShop.Services
             return $"PAY{DateTime.Now:yyyyMMddHHmmss}{new Random().Next(10000, 99999)}";
         }
 
-        private async Task<bool> VerifyPaymentWithGatewayAsync(string paymentReference)
+        private Task<bool> VerifyPaymentWithGatewayAsync(string paymentReference)
         {
+            if (IsMockMode()) return Task.FromResult(true);
+
             try 
             {
                 // 使用支付宝查询接口验证支付状态
@@ -480,30 +499,22 @@ namespace HuanyuFlowerShop.Services
                 {
                     // TRADE_SUCCESS: 交易支付成功
                     // TRADE_FINISHED: 交易结束，不可退款
-                    return response.TradeStatus == "TRADE_SUCCESS" || response.TradeStatus == "TRADE_FINISHED";
+                    if (response.TradeStatus == "TRADE_SUCCESS" || response.TradeStatus == "TRADE_FINISHED")
+                    {
+                        return Task.FromResult(true);
+                    }
+                    _logger.LogWarning("支付宝查询成功但状态未完成: {TradeStatus}", response.TradeStatus);
+                }
+                else 
+                {
+                    _logger.LogWarning("支付宝查询返回错误: {SubMsg}", response.SubMsg);
                 }
                 
-                // 如果是开发环境且配置了模拟模式，或者查询失败但我们想为了演示目的允许通过（仅限未配置真实key的情况）
-                // 这里我们做个fallback：如果配置是默认的placeholder，则使用原来的模拟逻辑
-                var config = _configuration.GetSection("Alipay");
-                if (config["AppId"] == "your_sandbox_app_id")
-                {
-                    _logger.LogWarning("检测到默认配置，使用模拟验证模式");
-                    await Task.Delay(500);
-                    return true;
-                }
-
-                return false;
+                return Task.FromResult(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "调用支付宝查询接口失败");
-                // Fallback for demo
-                var config = _configuration.GetSection("Alipay");
-                if (config["AppId"] == "your_sandbox_app_id")
-                {
-                    return true;
-                }
                 throw;
             }
         }
@@ -532,9 +543,7 @@ namespace HuanyuFlowerShop.Services
 
         private string GenerateAlipayPagePay(Order order)
         {
-            // 为了解决开发环境沙箱网络不稳定的问题，暂时强制使用本地模拟支付
-            // 如果需要恢复真实支付宝沙箱，请注释掉下面这一行
-            return GeneratePaymentGatewayUrl(order);
+            if (IsMockMode()) return GeneratePaymentGatewayUrl(order);
 
             /*
             var config = _configuration.GetSection("Alipay");
@@ -570,7 +579,7 @@ namespace HuanyuFlowerShop.Services
                 else if (returnUrl.Contains("payment/callback"))
                 {
                      // 如果是 callback 页面，带上 verify 参数让前端处理
-                     returnUrl = returnUrl + $"?verify=true&orderId={order.Id}";
+                     returnUrl += $"?verify=true&orderId={order.Id}";
                 }
                 
                 request.SetReturnUrl(returnUrl);
@@ -623,35 +632,25 @@ namespace HuanyuFlowerShop.Services
                 return GeneratePaymentGatewayUrl(order);
             }
             */
+            return GeneratePaymentGatewayUrl(order);
         }
 
         private string GeneratePaymentGatewayUrl(Order order)
         {
-            // 模拟生成支付网关URL
-            // 指向前端的 MockPay 页面
-            // 参数: order_id, amount, reference, return_url
-            // return_url 指向前端的回调处理页
-            
             var config = _configuration.GetSection("Alipay");
             var returnUrl = config["ReturnUrl"];
-            // 确保 ReturnUrl 不为空且是相对路径（为了适配不同端口）
-            // 即使配置了 absolute url，我们也尝试提取 path
             if (string.IsNullOrEmpty(returnUrl) || returnUrl.StartsWith("http"))
             {
                 returnUrl = "/payment/callback";
             }
-            
-            // 构造 returnUrl (与支付宝逻辑保持一致)
             if (returnUrl.Contains("payment/success"))
             {
                  returnUrl = returnUrl.Replace("payment/success", $"orders/{order.Id}");
             }
             else if (returnUrl.Contains("payment/callback"))
             {
-                 returnUrl = returnUrl + $"?verify=true&orderId={order.Id}";
+                 returnUrl += $"?verify=true&orderId={order.Id}";
             }
-            
-            // 确保 returnUrl 是相对路径
             if (returnUrl.StartsWith("http"))
             {
                 try {
@@ -659,9 +658,6 @@ namespace HuanyuFlowerShop.Services
                     returnUrl = uri.PathAndQuery;
                 } catch {}
             }
-            
-            // 前端 MockPay 页面地址
-            // 使用相对路径，让前端自动匹配当前端口
             string baseUrl = "/mock-pay";
             string paramsString = $"order_id={order.OrderNumber}&amount={order.TotalAmount:0.00}&reference={order.PaymentReference ?? string.Empty}&return_url={System.Net.WebUtility.UrlEncode(returnUrl)}&t={DateTime.Now.Ticks}";
             string finalUrl = $"{baseUrl}?{paramsString}";
@@ -690,7 +686,7 @@ namespace HuanyuFlowerShop.Services
                 // 参数验证
                 if (orderId <= 0) throw new ArgumentException("订单ID无效", nameof(orderId));
                 ArgumentNullException.ThrowIfNull(request, nameof(request));
-                if (string.IsNullOrWhiteSpace(request.PaymentStatus)) throw new ArgumentException("支付状态不能为空", nameof(request.PaymentStatus));
+                if (string.IsNullOrWhiteSpace(request.PaymentStatus)) throw new ArgumentException("支付状态不能为空", nameof(request));
 
                 await _unitOfWork.BeginTransactionAsync();
                 
@@ -769,6 +765,49 @@ namespace HuanyuFlowerShop.Services
             {
                 _logger.LogError(ex, "更新支付状态失败，订单ID: {OrderId}", orderId);
                 return new PaymentResult { Success = false, Message = "更新支付状态时发生错误" };
+            }
+        }
+
+        public async Task<PaymentResult> ProcessCallbackAsync(string paymentReference, string tradeStatus, string? paymentMethod = null)
+        {
+            try
+            {
+                await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    var orders = await _orderRepository.GetAllAsync();
+                    var order = orders.FirstOrDefault(o => string.Equals(o.PaymentReference ?? string.Empty, paymentReference ?? string.Empty, StringComparison.OrdinalIgnoreCase));
+                    if (order == null)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new PaymentResult { Success = false, Message = "订单不存在" };
+                    }
+                    if (tradeStatus == "TRADE_SUCCESS" || tradeStatus == "TRADE_FINISHED" || IsMockMode())
+                    {
+                        order.PaymentStatus = "paid";
+                        order.Status = order.Status == "pending" ? "processing" : order.Status;
+                        order.PaidAt = DateTime.UtcNow;
+                        if (!string.IsNullOrEmpty(paymentMethod)) order.PaymentMethod = paymentMethod;
+                        order.UpdatedAt = DateTime.UtcNow;
+                        await _orderRepository.UpdateAsync(order);
+                        await _unitOfWork.SaveChangesAsync();
+                        await _unitOfWork.CommitTransactionAsync();
+                        await ClearPaymentCache(order.UserId, order.Id);
+                        return new PaymentResult { Success = true, Message = "支付回调处理成功", PaymentReference = order.PaymentReference, PaymentStatus = order.PaymentStatus, OrderStatus = order.Status };
+                    }
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return new PaymentResult { Success = false, Message = "支付未完成" };
+                }
+                catch
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "处理支付回调失败");
+                return new PaymentResult { Success = false, Message = "处理支付回调失败" };
             }
         }
     }

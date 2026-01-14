@@ -217,6 +217,13 @@ export const handleAvatarError = (event, defaultAvatar = null) => {
       const failedUrl = new URL(element.src, window.location.origin).href
       const fallbackUrl = new URL(fallbackAvatar, window.location.origin).href
       
+      // 如果当前失败的URL已经是默认头像，说明默认头像也加载失败
+      // 使用内联Base64 SVG作为终极回退，避免重复请求和报错
+      if (failedUrl === fallbackUrl) {
+        element.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI1MCIgZmlsbD0iI2UzZTNUzIiLz48L3N2Zz4='
+        return
+      }
+
       if (failedUrl !== fallbackUrl) {
         element.src = fallbackAvatar
       }
