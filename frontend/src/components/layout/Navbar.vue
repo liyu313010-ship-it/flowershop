@@ -65,6 +65,49 @@
           >
             联系我们
           </router-link>
+
+          <!-- 搜索框 -->
+          <div class="relative group ml-4 search-container">
+            <input 
+              v-model="searchQuery"
+              @keyup.enter="handleSearch"
+              @input="handleInput"
+              @focus="showSuggestions = suggestions.length > 0"
+              type="text" 
+              placeholder="搜索鲜花..." 
+              class="w-32 px-3 py-1.5 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-huanyu-pink-200 focus:w-48 transition-all duration-300"
+            >
+            <button 
+              @click="handleSearch"
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-huanyu-pink-500 transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </button>
+            
+            <!-- 搜索建议下拉框 -->
+            <div v-if="showSuggestions" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl overflow-hidden z-50 w-64 border border-gray-100">
+              <ul>
+                <li 
+                  v-for="item in suggestions" 
+                  :key="item.id"
+                  @click="selectSuggestion(item)"
+                  class="px-4 py-2 hover:bg-huanyu-pink-50 cursor-pointer flex items-center space-x-3 transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <img 
+                    :src="getProductImageUrl(item.image)" 
+                    @error="handleProductImageError"
+                    class="w-10 h-10 rounded object-cover border border-gray-100 bg-gray-50" 
+                    alt=""
+                  >
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-700 truncate">{{ item.name }}</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
         
         <!-- 右侧操作区域 -->
@@ -287,22 +330,76 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { useChatStore } from '@/stores/chat'
-import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
+import { getAvatarUrl, handleAvatarError, getProductImageUrl } from '@/utils/avatar.js'
 import { categoryService } from '@/services/category'
 import orderService from '@/services/orderService'
 import api from '@/services/api'
+import { productService } from '@/services/product'
 import ContactAdminModal from '@/components/common/ContactAdminModal.vue'
 
 // 响应式数据
 const showMobileMenu = ref(false)
 const navbarCategories = ref([])
 const showContactAdminModal = ref(false)
+const searchQuery = ref('')
+const suggestions = ref([])
+const showSuggestions = ref(false)
+let searchTimeout = null
 
 // 路由和状态管理
 const router = useRouter()
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const chatStore = useChatStore()
+
+const handleSearch = () => {
+  showSuggestions.value = false
+  if (searchQuery.value.trim()) {
+    router.push({ path: '/products', query: { q: searchQuery.value } })
+  }
+}
+
+const handleInput = () => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  if (!searchQuery.value.trim()) {
+    suggestions.value = []
+    showSuggestions.value = false
+    return
+  }
+  
+  searchTimeout = setTimeout(async () => {
+    try {
+      const res = await productService.searchProducts({ 
+        Keyword: searchQuery.value, 
+        PageSize: 5 
+      })
+      const list = res.data?.items || res.items || []
+      suggestions.value = list.map(item => ({
+        id: item.id || item.Id,
+        name: item.name || item.Name,
+        image: item.images?.[0] || item.Images?.[0] || item.imageUrl || item.ImageUrl
+      }))
+      showSuggestions.value = suggestions.value.length > 0
+    } catch (e) {
+      console.error(e)
+    }
+  }, 300)
+}
+
+const selectSuggestion = (item) => {
+  searchQuery.value = item.name
+  showSuggestions.value = false
+  handleSearch()
+}
+
+// 点击外部关闭建议列表
+onMounted(() => {
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-container')) {
+      showSuggestions.value = false
+    }
+  })
+})
 
 // 监听用户登录状态变化，连接或断开聊天连接
 watch(() => userStore.isLoggedIn, (isLoggedIn) => {
@@ -322,6 +419,11 @@ const userAvatar = computed(() => {
   // 使用头像处理工具函数处理头像URL
   return getAvatarUrl(userStore.user?.avatar)
 })
+
+// 图片加载错误处理
+const handleProductImageError = (e) => {
+  e.target.src = '/images/product-placeholder.svg'
+}
 
 // 方法
 const toggleMobileMenu = () => {
@@ -467,4 +569,3 @@ const ackBadge = (key) => { setLastSeen(badgeKeys[key]); badgeCounts.value[key] 
   box-shadow: 0 0 0 2px #fff;
 }
 </style>
- 

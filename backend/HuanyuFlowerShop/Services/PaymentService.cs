@@ -450,7 +450,7 @@ namespace HuanyuFlowerShop.Services
                 // 使用支付宝沙箱生成支付表单HTML
                 string paymentUrl = GenerateAlipayPagePay(order);
 
-                var result = (PaymentUrl: paymentUrl, PaymentReference: order.PaymentReference);
+                var result = (PaymentUrl: paymentUrl, order.PaymentReference);
 
                 // 缓存结果
                 await _cacheService.SetAsync(cacheKey, result, _paymentLinkCacheExpiry);

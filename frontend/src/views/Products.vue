@@ -144,11 +144,11 @@
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center space-x-1">
                         <div class="flex text-yellow-400">
-                          <svg v-for="i in 5" :key="i" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <svg v-for="i in 5" :key="i" class="w-4 h-4" :class="((product.reviewCount && product.reviewCount > 0) ? (product.averageRating || 0) : 5) >= i ? 'fill-current' : 'text-gray-200 fill-current'" viewBox="0 0 24 24">
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                           </svg>
                         </div>
-                        <span class="text-sm text-gray-500">({{ (product.reviewCount || 0).toFixed ? (product.reviewCount || 0).toFixed(1) : (product.reviewCount || 0) }})</span>
+                        <span class="text-sm text-gray-500">({{ ((product.reviewCount && product.reviewCount > 0) ? (product.averageRating || 0) : 5).toFixed(1) }})</span>
                       </div>
                       <span class="text-sm text-gray-500">已售 {{ product.salesCount || 0 }}</span>
                     </div>
@@ -231,6 +231,7 @@ const selectedCategory = ref(null) // 保留旧逻辑
 const selectedCategories = ref([]) // 新增多选分类
 const selectedPriceRange = ref(null)
 const sortOption = ref('default')
+const searchQuery = ref('')
 
 // 数量选择与快速查看
   const showQuantitySelector = ref({})
@@ -297,7 +298,8 @@ const selectCategory = async (categoryId) => {
           categoryName: product.categoryName || product.CategoryName || '',
           originalPrice: product.originalPrice || null,
           discount: product.discount || null,
-          reviewCount: product.reviewCount || 0,
+          reviewCount: product.reviewCount || product.ReviewCount || 0,
+          averageRating: product.averageRating || product.AverageRating || 0,
           salesCount: product.salesCount || product.SalesCount || 0
         }))
         console.log(`筛选分类 ${categoryId} 的商品，数量:`, products.value.length)
@@ -470,49 +472,53 @@ const loadAllData = async () => {
 
 onMounted(loadAllData)
 
-// 根据路由查询参数预设分类
-onMounted(() => {
-  const q = route.query?.category
-  const cid = q ? Number(q) : null
-  if (cid && !Number.isNaN(cid)) {
-    selectedCategories.value = [cid]
-  }
-})
-
-// 监听路由变化，同步分类筛选
+// 监听路由变化，同步参数
 watchEffect(() => {
+  // 同步搜索关键词
+  searchQuery.value = route.query.q || ''
+  
+  // 同步分类
   const q = route.query?.category
   const cid = q ? Number(q) : null
   if (cid && !Number.isNaN(cid)) {
-    selectedCategories.value = [cid]
+    // 如果 URL 有分类，且当前未选中或仅选中了其他，则覆盖（单选效果），或者合并？
+    // 这里采用：如果 URL 变了，优先响应 URL
+    if (!selectedCategories.value.includes(cid)) {
+       selectedCategories.value = [cid]
+    }
   }
 })
 
-// 监听价格/分类选择变化：
-// - 0 个分类：拉取所有（服务端价格过滤）
-// - 1 个分类：服务端按分类+价格过滤
-// - 2+ 个分类：服务端拉取所有（价格过滤），前端按多选分类交集过滤
-watchEffect(async () => {
-  const len = selectedCategories.value.length
-  if (len === 0) {
-    await selectCategory(null)
-  } else if (len === 1) {
-    await selectCategory(selectedCategories.value[0])
-  } else {
-    // 多选：拉取全量（受价格过滤），再用 filteredProducts 进行前端分类过滤
-    await selectCategory(null)
-  }
-})
+// 移除原本监听 selectedCategories 触发后端请求的 watchEffect，改为纯前端过滤
+// 这样点击分类时响应最快，且不闪烁
 
 const isFavorite = (product) => favoriteProducts.value.includes(product.id)
 
 const filteredProducts = computed(() => {
   let list = products.value || []
-  // 分类多选过滤
+
+  // 1. 搜索关键词过滤：优先精准匹配，其次模糊查询
+  if (searchQuery.value && String(searchQuery.value).trim()) {
+    const q = String(searchQuery.value).trim().toLowerCase()
+    const exact = list.filter(p => (p.name || '').toLowerCase() === q)
+    if (exact.length > 0) {
+      list = exact
+    } else {
+      list = list.filter(
+        p =>
+          (p.name && p.name.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q))
+      )
+    }
+  }
+
+  // 2. 分类多选过滤
   if (selectedCategories.value && selectedCategories.value.length > 0) {
     const set = new Set(selectedCategories.value)
     list = list.filter(p => set.has(p.categoryId))
   }
+
+  // 3. 价格过滤
   switch (selectedPriceRange.value) {
     case '0-100':
       list = list.filter(p => (p.price || 0) <= 100)
@@ -527,6 +533,8 @@ const filteredProducts = computed(() => {
       list = list.filter(p => (p.price || 0) > 500)
       break
   }
+
+  // 4. 排序
   const sorted = [...list]
   switch (sortOption.value) {
     case 'price_asc':

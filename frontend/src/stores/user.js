@@ -38,8 +38,8 @@ export const useUserStore = defineStore('user', () => {
     try {
       const response = await authService.login({
         username: credentials.username,
-        password: credentials.password,
-        role: credentials.role || 'user'
+        password: credentials.password
+        // Remove role from payload since backend LoginDto doesn't support it
       })
 
       // 响应拦截器已经返回了response.data，所以直接从response中获取token和user

@@ -185,6 +185,27 @@ export function getDistrictName(provinceCode, cityCode, districtCode) {
   return ''
 }
 
+// 根据名称获取代码 - 辅助反向查找
+export function getProvinceCodeByName(name) {
+  if (!name) return ''
+  const entry = Object.entries(regionData).find(([code, data]) => data.name === name || data.name.includes(name) || name.includes(data.name))
+  return entry ? entry[0] : ''
+}
+
+export function getCityCodeByName(provinceCode, name) {
+  if (!provinceCode || !name) return ''
+  const cities = getCities(provinceCode)
+  const entry = cities.find(c => c.name === name || c.name.includes(name) || name.includes(c.name))
+  return entry ? entry.code : ''
+}
+
+export function getDistrictCodeByName(provinceCode, cityCode, name) {
+  if (!provinceCode || !cityCode || !name) return ''
+  const districts = getDistricts(provinceCode, cityCode)
+  const entry = districts.find(d => d.name === name || d.name.includes(name) || name.includes(d.name))
+  return entry ? entry.code : ''
+}
+
 // 动态加载完整数据（优先从本地 /regions.json，其次远程）
 export async function ensureRegionDataLoaded() {
   if (loaded) {
