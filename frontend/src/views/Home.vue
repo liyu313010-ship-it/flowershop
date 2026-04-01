@@ -28,7 +28,6 @@
             <!-- 背景视频 -->
             <div 
               v-else
-              :key="heroVideoPath"
               class="absolute inset-0 w-full h-full"
             >
               <video 
@@ -1446,16 +1445,21 @@ onMounted(async () => {
       const heroData = heroRes?.data || heroRes
       const path = heroData?.FilePath || heroData?.filePath
       if (path) {
-        heroBackgroundType.value = 'video'
-        heroVideoPath.value = normalizeUploadsPath(path)
-        try { localStorage.setItem('heroVideoPath', heroVideoPath.value) } catch {}
+        const normalized = normalizeUploadsPath(path)
+        if (heroVideoPath.value !== normalized) {
+          heroBackgroundType.value = 'video'
+          heroVideoPath.value = normalized
+          try { localStorage.setItem('heroVideoPath', normalized) } catch {}
+        }
       } else {
         // 如果后端没有返回视频，清除本地缓存，避免显示旧视频导致404
         if (heroBackgroundType.value === 'video') {
            heroBackgroundType.value = 'image'
         }
-        heroVideoPath.value = ''
-        try { localStorage.removeItem('heroVideoPath') } catch {}
+        if (heroVideoPath.value !== '') {
+          heroVideoPath.value = ''
+          try { localStorage.removeItem('heroVideoPath') } catch {}
+        }
       }
     } catch {}
     try {
@@ -1463,12 +1467,17 @@ onMounted(async () => {
       const storyData = storyRes?.data || storyRes
       const path = storyData?.FilePath || storyData?.filePath
       if (path) {
-        storyVideoPath.value = normalizeUploadsPath(path)
-        try { localStorage.setItem('storyVideoPath', storyVideoPath.value) } catch {}
+        const normalized = normalizeUploadsPath(path)
+        if (storyVideoPath.value !== normalized) {
+          storyVideoPath.value = normalized
+          try { localStorage.setItem('storyVideoPath', normalized) } catch {}
+        }
       } else {
         // 如果后端没有返回视频，清除本地缓存
-        storyVideoPath.value = ''
-        try { localStorage.removeItem('storyVideoPath') } catch {}
+        if (storyVideoPath.value !== '') {
+          storyVideoPath.value = ''
+          try { localStorage.removeItem('storyVideoPath') } catch {}
+        }
       }
     } catch {}
     try {
