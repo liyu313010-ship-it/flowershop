@@ -63,6 +63,9 @@ ASPNETCORE_URLS=http://127.0.0.1:5002
 ConnectionStrings__DefaultConnection='Server=localhost;Database=huanyuflowershop;User=flowershop;Password=${DB_PASS};AllowUserVariables=True;AllowPublicKeyRetrieval=True;SslMode=Preferred'
 JwtSettings__SecretKey='${JWT_KEY}'
 SecuritySettings__AllowOrigins__0='http://${PUBLIC_IP}:8080'
+FLOWERSHOP_DB_NAME='huanyuflowershop'
+FLOWERSHOP_DB_USER='flowershop'
+FLOWERSHOP_DB_PASSWORD='${DB_PASS}'
 ENV
 chmod 600 /etc/flowershop.env
 
