@@ -9,7 +9,7 @@ DEPLOY_REF="${DEPLOY_REF:-main}"
 
 echo "[deploy] Updating source from GitHub ref: $DEPLOY_REF..."
 cd "$SOURCE_DIR"
-git -c safe.directory="$SOURCE_DIR" fetch --prune origin \
+git -c safe.directory="$SOURCE_DIR" fetch origin \
   "+${DEPLOY_REF}:refs/remotes/origin/${DEPLOY_REF}"
 git -c safe.directory="$SOURCE_DIR" reset --hard "origin/${DEPLOY_REF}"
 
@@ -20,6 +20,7 @@ npm run build
 
 echo "[deploy] Publishing ASP.NET backend..."
 cd "$SOURCE_DIR/backend/HuanyuFlowerShop"
+rm -rf "$APP_DIR.next"
 dotnet publish HuanyuFlowerShop.csproj -c Release -o "$APP_DIR.next"
 
 echo "[deploy] Applying database migrations..."
