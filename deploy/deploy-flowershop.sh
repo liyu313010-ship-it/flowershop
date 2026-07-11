@@ -5,11 +5,13 @@ SOURCE_DIR="/opt/flowershop-source"
 APP_DIR="/opt/flowershop-app"
 WEB_DIR="/var/www/flowershop"
 ENV_FILE="/etc/flowershop.env"
+DEPLOY_REF="${DEPLOY_REF:-main}"
 
-echo "[deploy] Updating source from GitHub..."
+echo "[deploy] Updating source from GitHub ref: $DEPLOY_REF..."
 cd "$SOURCE_DIR"
-git -c safe.directory="$SOURCE_DIR" fetch --prune origin main
-git -c safe.directory="$SOURCE_DIR" reset --hard origin/main
+git -c safe.directory="$SOURCE_DIR" fetch --prune origin \
+  "+${DEPLOY_REF}:refs/remotes/origin/${DEPLOY_REF}"
+git -c safe.directory="$SOURCE_DIR" reset --hard "origin/${DEPLOY_REF}"
 
 echo "[deploy] Building Vue frontend..."
 cd "$SOURCE_DIR/frontend"
