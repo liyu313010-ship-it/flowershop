@@ -19,11 +19,9 @@ apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ca-certificates curl git mariadb-server nodejs npm nginx openssl rsync wget
 if ! command -v dotnet >/dev/null || ! dotnet --list-sdks | grep -q '^9\.'; then
-  wget -q https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb \
-    -O /tmp/packages-microsoft-prod.deb
-  dpkg -i /tmp/packages-microsoft-prod.deb
-  apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install -y dotnet-sdk-9.0
+  curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+  bash /tmp/dotnet-install.sh --channel 9.0 --install-dir /usr/share/dotnet
+  ln -sfn /usr/share/dotnet/dotnet /usr/bin/dotnet
 fi
 
 echo "[bootstrap] Ensuring 2 GiB swap..."
