@@ -13,7 +13,7 @@ git -c safe.directory="$SOURCE_DIR" reset --hard origin/main
 
 echo "[deploy] Building Vue frontend..."
 cd "$SOURCE_DIR/frontend"
-npm ci
+npm ci --legacy-peer-deps
 npm run build
 
 echo "[deploy] Publishing ASP.NET backend..."
