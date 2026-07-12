@@ -60,7 +60,29 @@ SQL
   done < <(dotnet ef migrations list --project HuanyuFlowerShop.csproj --no-connect | grep -E '^[0-9]{14}_')
 fi
 
-dotnet ef database update --project HuanyuFlowerShop.csproj
+LATEST_MIGRATION="$(dotnet ef migrations list --project HuanyuFlowerShop.csproj --no-connect | grep -E '^[0-9]{14}_' | tail -n 1)"
+LAST_APPLIED_MIGRATION="$(mariadb --protocol=socket \
+  --user="$FLOWERSHOP_DB_USER" --password="$FLOWERSHOP_DB_PASSWORD" \
+  "$FLOWERSHOP_DB_NAME" --skip-column-names --batch \
+  --execute='SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId DESC LIMIT 1;')"
+
+if [ -n "$LATEST_MIGRATION" ] && [ "$LAST_APPLIED_MIGRATION" != "$LATEST_MIGRATION" ]; then
+  echo "[deploy] Applying SQL migrations after ${LAST_APPLIED_MIGRATION:-0}..."
+  MIGRATION_FILE="$(mktemp)"
+  if [ -n "$LAST_APPLIED_MIGRATION" ]; then
+    dotnet ef migrations script "$LAST_APPLIED_MIGRATION" "$LATEST_MIGRATION" \
+      --project HuanyuFlowerShop.csproj --output "$MIGRATION_FILE"
+  else
+    dotnet ef migrations script 0 "$LATEST_MIGRATION" \
+      --project HuanyuFlowerShop.csproj --output "$MIGRATION_FILE"
+  fi
+  mariadb --protocol=socket \
+    --user="$FLOWERSHOP_DB_USER" --password="$FLOWERSHOP_DB_PASSWORD" \
+    "$FLOWERSHOP_DB_NAME" < "$MIGRATION_FILE"
+  rm -f "$MIGRATION_FILE"
+else
+  echo "[deploy] Database schema is already current."
+fi
 
 echo "[deploy] Replacing application files..."
 rm -rf "$APP_DIR.previous"
