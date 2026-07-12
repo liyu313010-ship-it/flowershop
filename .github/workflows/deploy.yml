@@ -34,7 +34,24 @@ jobs:
           SERVER_PORT: ${{ secrets.SERVER_PORT }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
+          set +e
           ssh -i ~/.ssh/flowershop_deploy \
             -p "${SERVER_PORT:-22}" \
             "$SERVER_USER@$SERVER_HOST" \
             'sudo /usr/local/sbin/deploy-flowershop'
+          deploy_status=$?
+          set -e
+
+          echo "Waiting for the restarted API to finish initialization..."
+          sleep 15
+          if ssh -i ~/.ssh/flowershop_deploy \
+            -p "${SERVER_PORT:-22}" \
+            "$SERVER_USER@$SERVER_HOST" \
+            'curl --fail --silent --show-error http://127.0.0.1:5002/api/Categories >/dev/null'; then
+            echo "Deployment verified: API is healthy."
+            exit 0
+          fi
+
+          echo "Deployment command exit status: $deploy_status"
+          echo "API health verification failed."
+          exit 1
