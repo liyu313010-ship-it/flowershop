@@ -37,7 +37,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 9.0.x
 
       - name: Build backend and migration scripts
         shell: bash
@@ -49,8 +49,7 @@ jobs:
 
           dotnet restore "$project"
           dotnet build "$project" -c Release --no-restore
-          dotnet publish "$project" -c Release --no-build -o release/backend \
-            -r linux-x64 --self-contained true
+          dotnet publish "$project" -c Release --no-build -o release/backend
 
           cd "$project_dir"
           dotnet tool restore
