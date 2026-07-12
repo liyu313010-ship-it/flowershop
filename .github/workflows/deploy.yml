@@ -1,0 +1,95 @@
+name: Deploy flower shop
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: flowershop-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Vue frontend
+        working-directory: frontend
+        run: |
+          npm ci --legacy-peer-deps
+          npm run build
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build backend and migration scripts
+        shell: bash
+        run: |
+          project=backend/HuanyuFlowerShop/HuanyuFlowerShop.csproj
+          project_dir=backend/HuanyuFlowerShop
+          mkdir -p release/backend release/frontend release/migrations
+          cp -a frontend/dist/. release/frontend/
+
+          dotnet restore "$project"
+          dotnet build "$project" -c Release --no-restore
+          dotnet publish "$project" -c Release --no-build -o release/backend
+
+          cd "$project_dir"
+          dotnet tool restore
+          mapfile -t migrations < <(
+            dotnet ef migrations list --no-connect --no-build --configuration Release |
+              grep -E '^[0-9]{14}_'
+          )
+          previous=0
+          for migration in "${migrations[@]}"; do
+            dotnet ef migrations script "$previous" "$migration" \
+              --no-build --configuration Release \
+              --output "$GITHUB_WORKSPACE/release/migrations/${migration}.sql"
+            previous="$migration"
+          done
+
+          cd "$GITHUB_WORKSPACE"
+          tar -czf flowershop-release.tgz -C release .
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/flowershop_deploy
+          chmod 600 ~/.ssh/flowershop_deploy
+          ssh-keyscan -p "${SERVER_PORT:-22}" -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload and install release
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          scp -i ~/.ssh/flowershop_deploy \
+            -P "${SERVER_PORT:-22}" \
+            flowershop-release.tgz \
+            "$SERVER_USER@$SERVER_HOST:/home/deploy/flowershop-release.tgz"
+          ssh -i ~/.ssh/flowershop_deploy \
+            -p "${SERVER_PORT:-22}" \
+            "$SERVER_USER@$SERVER_HOST" \
+            'sudo /usr/local/sbin/install-flowershop-release'
