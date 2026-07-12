@@ -879,7 +879,6 @@ import PageTransition from '@/components/PageTransition.vue'
 import AutoLinkText from '@/components/AutoLinkText.vue'
 import api from '@/services/api'
 import { videoService } from '@/services/video'
-import adminService from '@/services/adminService'
 
 // 路由和状态管理
 const router = useRouter()
@@ -1292,20 +1291,6 @@ const loadRecommendedProducts = async () => {
     }
   }
 
-  try {
-    const rankingRes = await adminService.getProductSalesRanking(100)
-    const ranking = rankingRes?.data || rankingRes || []
-    const salesMap = new Map((Array.isArray(ranking) ? ranking : []).map(r => [
-      r.productId || r.ProductId || r.id || r.Id,
-      r.salesCount || r.SalesCount || 0
-    ]))
-    if (salesMap.size > 0) {
-      recommendedProducts.value = (recommendedProducts.value || []).map(p => ({
-        ...p,
-        salesCount: salesMap.has(p.id) ? salesMap.get(p.id) : (p.salesCount || 0)
-      }))
-    }
-  } catch {}
 }
 
 // 英雄区域背景加载处理
