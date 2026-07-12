@@ -99,6 +99,7 @@ systemctl restart flowershop
 nginx -t
 systemctl reload nginx
 
-curl --fail --silent --show-error --retry 10 --retry-delay 2 \
+curl --fail --silent --show-error --retry 15 --retry-delay 2 \
+  --retry-connrefused \
   http://127.0.0.1:5002/api/Categories >/dev/null
 echo "[deploy] Deployment completed successfully."
