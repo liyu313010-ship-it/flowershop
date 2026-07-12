@@ -49,7 +49,8 @@ jobs:
 
           dotnet restore "$project"
           dotnet build "$project" -c Release --no-restore
-          dotnet publish "$project" -c Release --no-build -o release/backend
+          dotnet publish "$project" -c Release --no-build -o release/backend \
+            -r linux-x64 --self-contained true
 
           cd "$project_dir"
           dotnet tool restore
