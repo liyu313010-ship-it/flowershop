@@ -35,6 +35,10 @@ fi
 
 echo "[bootstrap] Creating restricted deployment account..."
 id deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
+# Keep password authentication impossible while allowing SSH public-key login.
+# Ubuntu's useradd creates a locked account (leading `!` in /etc/shadow), and
+# sshd rejects even a valid authorized key for such an account.
+usermod --password '*' deploy
 install -d -o deploy -g deploy -m 700 /home/deploy/.ssh
 printf '%s\n' "$DEPLOY_PUBLIC_KEY" > /home/deploy/.ssh/authorized_keys
 chown deploy:deploy /home/deploy/.ssh/authorized_keys
