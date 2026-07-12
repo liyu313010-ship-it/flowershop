@@ -45,7 +45,9 @@ chown deploy:deploy /home/deploy/.ssh/authorized_keys
 chmod 600 /home/deploy/.ssh/authorized_keys
 install -o root -g root -m 755 "$SOURCE_DIR/deploy/deploy-flowershop.sh" \
   /usr/local/sbin/deploy-flowershop
-printf '%s\n' 'deploy ALL=(root) NOPASSWD: /usr/local/sbin/deploy-flowershop' \
+install -o root -g root -m 755 "$SOURCE_DIR/deploy/install-flowershop-release.sh" \
+  /usr/local/sbin/install-flowershop-release
+printf '%s\n' 'deploy ALL=(root) NOPASSWD: /usr/local/sbin/deploy-flowershop, /usr/local/sbin/install-flowershop-release' \
   > /etc/sudoers.d/flowershop-deploy
 chmod 440 /etc/sudoers.d/flowershop-deploy
 visudo -cf /etc/sudoers.d/flowershop-deploy
