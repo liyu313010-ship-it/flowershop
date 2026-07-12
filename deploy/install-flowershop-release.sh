@@ -33,6 +33,18 @@ test -f "$STAGING/backend/HuanyuFlowerShop.dll"
 test -f "$STAGING/frontend/index.html"
 source "$ENV_FILE"
 
+if [ -f "$STAGING/legacy-restore" ]; then
+  BACKUP_DIR="/var/backups/flowershop/$(date +%Y%m%d-%H%M%S)"
+  install -d -m 700 "$BACKUP_DIR"
+  echo "Backing up the current production database and uploads to $BACKUP_DIR..."
+  mariadb-dump --protocol=socket \
+    --user="$FLOWERSHOP_DB_USER" --password="$FLOWERSHOP_DB_PASSWORD" \
+    --single-transaction --routines --triggers \
+    "$FLOWERSHOP_DB_NAME" > "$BACKUP_DIR/database.sql"
+  install -d "$BACKUP_DIR/uploads"
+  rsync -a "$UPLOAD_DIR/" "$BACKUP_DIR/uploads/"
+fi
+
 APP_NEXT="${APP_DIR}.next"
 WEB_NEXT="${WEB_DIR}.next"
 APP_PREVIOUS="${APP_DIR}.previous"
@@ -60,6 +72,12 @@ for migration_file in "$STAGING"/migrations/*.sql; do
       "$FLOWERSHOP_DB_NAME" < "$migration_file"
   fi
 done
+
+if [ -d "$STAGING/uploads" ]; then
+  echo "Restoring legacy uploaded media..."
+  rsync -a "$STAGING/uploads/" "$UPLOAD_DIR/"
+  chown -R www-data:www-data "$UPLOAD_DIR"
+fi
 
 rm -rf "$APP_PREVIOUS" "$WEB_PREVIOUS"
 systemctl stop flowershop
