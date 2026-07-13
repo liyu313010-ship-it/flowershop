@@ -39,6 +39,7 @@
             ></video>
           </transition>
         </div>
+        <ParticleField class="absolute inset-0 z-[2]" />
         <div class="hero-wash absolute inset-0" aria-hidden="true"></div>
 
         <!-- 文字内容：左侧叙事 + 右侧购买提示 -->
@@ -786,6 +787,7 @@ import { favoriteService } from '@/services/favorite'
 import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
+import ParticleField from '@/components/ParticleField.vue'
 import api from '@/services/api'
 import { getProductDescription } from '@/utils/productCopy'
 
@@ -2285,6 +2287,8 @@ const handleQuickViewImageError = (event) => {
 .hero-note-price small { font-size: .7rem; font-weight: 400; }
 .hero-note-link { display: block; margin-top: .9rem; color: rgba(91,48,70,.78); font-size: .72rem; }
 .hero-note-link span { float: right; font-size: 1rem; }
+@keyframes heroNoteFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(.6deg); } }
+.hero-note { animation: heroNoteFloat 7s ease-in-out infinite; }
 
 @media (max-width: 640px) {
   .hero-wash { background: linear-gradient(90deg, rgba(255, 248, 251, .86), rgba(255, 248, 251, .16)); }
