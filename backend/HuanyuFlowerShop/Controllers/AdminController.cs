@@ -84,19 +84,28 @@ public class AdminController : ControllerBase
         {
             try
             {
-                var startDate = from?.Date ?? DateTime.Today.AddDays(-days);
+                var startDate = from?.Date ?? DateTime.Today.AddDays(-Math.Max(1, days));
                 var endDate = to?.Date ?? DateTime.Today;
-                var sales = await _context.Orders
-                    .Where(o => o.CreatedAt.Date >= startDate && o.CreatedAt.Date <= endDate && o.Status != "cancelled")
+                var endExclusive = endDate.AddDays(1);
+
+                // 先用范围条件筛选，再在内存中按日期聚合。
+                // 避免 MySQL provider 对 Date、ToString(format) 的 SQL 翻译差异导致 500。
+                var orders = await _context.Orders
+                    .AsNoTracking()
+                    .Where(o => o.CreatedAt >= startDate && o.CreatedAt < endExclusive && o.Status != "cancelled")
+                    .Select(o => new { o.CreatedAt, o.TotalAmount })
+                    .ToListAsync();
+
+                var sales = orders
                     .GroupBy(o => o.CreatedAt.Date)
+                    .OrderBy(g => g.Key)
                     .Select(g => new
                     {
                         date = g.Key.ToString("yyyy-MM-dd"),
                         revenue = g.Sum(o => o.TotalAmount),
                         orders = g.Count()
                     })
-                    .OrderBy(x => x.date)
-                    .ToListAsync();
+                    .ToList();
 
                 return Ok(sales);
             }
@@ -155,18 +164,26 @@ public class AdminController : ControllerBase
         {
             try
             {
-                var startDate = from?.Date ?? DateTime.Today.AddDays(-days);
+                var startDate = from?.Date ?? DateTime.Today.AddDays(-Math.Max(1, days));
                 var endDate = to?.Date ?? DateTime.Today;
-                var userGrowth = await _context.Users
-                    .Where(u => u.CreatedAt.Date >= startDate && u.CreatedAt.Date <= endDate)
+                var endExclusive = endDate.AddDays(1);
+
+                // 与销售统计保持一致：只让数据库做范围查询，日期聚合在应用层完成。
+                var users = await _context.Users
+                    .AsNoTracking()
+                    .Where(u => u.CreatedAt >= startDate && u.CreatedAt < endExclusive)
+                    .Select(u => new { u.CreatedAt })
+                    .ToListAsync();
+
+                var userGrowth = users
                     .GroupBy(u => u.CreatedAt.Date)
+                    .OrderBy(g => g.Key)
                     .Select(g => new
                     {
                         date = g.Key.ToString("yyyy-MM-dd"),
                         newUsers = g.Count()
                     })
-                    .OrderBy(x => x.date)
-                    .ToListAsync();
+                    .ToList();
 
                 return Ok(userGrowth);
             }
