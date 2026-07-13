@@ -22,54 +22,56 @@
           </p>
           
           <!-- 社交媒体链接 -->
-          <div class="flex justify-start space-x-4">
+          <div class="social-links" aria-label="关注欢雨flower">
             <!-- 微信 -->
-            <div class="relative group">
-              <a href="#" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="微信">
-                <img src="/images/微信.svg" alt="微信" class="w-5 h-5" />
-              </a>
+            <div class="social-item group">
+              <button type="button" class="social-link" aria-label="微信二维码，悬停或点击查看">
+                <span class="social-icon social-icon-wechat"><img src="/images/微信.svg" alt="" /></span>
+                <span class="social-label">微信</span>
+                <span class="social-arrow" aria-hidden="true">↗</span>
+              </button>
               <!-- 微信预览图片 -->
-                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
-                 <div class="w-40 h-40 bg-white rounded-lg shadow-lg border-2 border-pink-200 overflow-hidden">
-                   <img src="/images/微信.png" alt="微信二维码" class="w-full h-full object-contain" />
-                 </div>
-                </div>
-            </div>
-            <!-- 抖音 -->
-            <div class="relative group">
-              <a href="#" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="抖音">
-                <img src="/images/抖音.svg" alt="抖音" class="w-5 h-5" />
-              </a>
-              <!-- 抖音预览图片 -->
-                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
-                 <div class="w-40 h-40 bg-white rounded-lg shadow-lg border-2 border-pink-200 overflow-hidden">
-                   <img src="/images/抖音.png" alt="抖音二维码" class="w-full h-full object-contain" />
-                 </div>
-                </div>
-            </div>
-            <!-- 邮箱 -->
-            <div class="relative group">
-              <a href="mailto:2784107771@qq.com" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="邮箱">
-                <img src="/images/邮箱.svg" alt="邮箱" class="w-5 h-5" />
-              </a>
-              <!-- 邮箱预览文字 -->
-              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
-                <div class="bg-white text-pink-800 px-4 py-2 rounded-lg shadow-lg border border-pink-200 whitespace-nowrap">
-                2784107771@qq.com
-                </div>
+              <div class="social-popover" role="tooltip">
+                <span class="popover-kicker">扫码添加微信</span>
+                <div class="popover-image"><img src="/images/微信.png" alt="微信二维码" /></div>
+                <span class="popover-tip">长按保存二维码</span>
               </div>
             </div>
-            <!-- 小红书 -->
-            <div class="relative group">
-              <a href="#" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="小红书">
-                <img src="/images/小红书.svg" alt="小红书" class="w-5 h-5" />
+            <!-- 抖音 -->
+            <div class="social-item group">
+              <button type="button" class="social-link" aria-label="抖音二维码，悬停或点击查看">
+                <span class="social-icon social-icon-douyin"><img src="/images/抖音.svg" alt="" /></span>
+                <span class="social-label">抖音</span>
+                <span class="social-arrow" aria-hidden="true">↗</span>
+              </button>
+              <!-- 抖音预览图片 -->
+              <div class="social-popover" role="tooltip">
+                <span class="popover-kicker">关注抖音账号</span>
+                <div class="popover-image"><img src="/images/抖音.png" alt="抖音二维码" /></div>
+                <span class="popover-tip">长按保存二维码</span>
+              </div>
+            </div>
+            <!-- 邮箱 -->
+            <div class="social-item group">
+              <a href="mailto:2784107771@qq.com" class="social-link" aria-label="发送邮件">
+                <span class="social-icon social-icon-email"><img src="/images/邮箱.svg" alt="" /></span>
+                <span class="social-label">邮件</span>
+                <span class="social-arrow" aria-hidden="true">↗</span>
               </a>
+            </div>
+            <!-- 小红书 -->
+            <div class="social-item group">
+              <button type="button" class="social-link" aria-label="小红书二维码，悬停或点击查看">
+                <span class="social-icon social-icon-redbook"><img src="/images/小红书.svg" alt="" /></span>
+                <span class="social-label">小红书</span>
+                <span class="social-arrow" aria-hidden="true">↗</span>
+              </button>
               <!-- 小红书预览图片 -->
-                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
-                 <div class="w-40 h-40 bg-white rounded-lg shadow-lg border-2 border-pink-200 overflow-hidden">
-                   <img src="/images/小红书.png" alt="小红书二维码" class="w-full h-full object-contain" />
-                 </div>
-                </div>
+              <div class="social-popover" role="tooltip">
+                <span class="popover-kicker">关注小红书账号</span>
+                <div class="popover-image"><img src="/images/小红书.png" alt="小红书二维码" /></div>
+                <span class="popover-tip">长按保存二维码</span>
+              </div>
             </div>
           </div>
         </div>
@@ -151,28 +153,34 @@
 
 <style scoped>
 /* 页脚样式增强 */
-a {
-  display: inline-block;
-  transition: all 0.3s ease;
+.social-links { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.25rem; }
+.social-item { position: relative; }
+.social-link {
+  position: relative; display: inline-flex; align-items: center; gap: .55rem; min-width: 5.6rem;
+  padding: .48rem .72rem .48rem .48rem; border: 1px solid rgba(255,255,255,.13); border-radius: 999px;
+  background: rgba(255,255,255,.58); color: var(--ink); cursor: pointer; text-decoration: none;
+  transition: transform .25s ease, background .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
+.social-link:hover, .social-link:focus-visible { transform: translateY(-3px); background: #fff; border-color: rgba(211,112,151,.46); box-shadow: 0 10px 22px rgba(169,79,120,.16); outline: none; }
+.social-icon { width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border-radius: 50%; background: #fffaf5; box-shadow: 0 3px 8px rgba(0,0,0,.12); }
+.social-icon img { width: 1.15rem; height: 1.15rem; object-fit: contain; background: transparent; }
+.social-icon-douyin img { width: 1.25rem; height: 1.25rem; }
+.social-icon-email img { width: 1.18rem; height: 1.18rem; }
+.social-label { color: var(--ink); font-size: .8rem; font-weight: 600; letter-spacing: .03em; }
+.social-arrow { color: var(--plum); font-size: .85rem; line-height: 1; opacity: .75; }
+.social-popover { position: absolute; z-index: 20; left: 50%; bottom: calc(100% + .8rem); width: 10.5rem; padding: .65rem; border: 1px solid #f0c7b9; border-radius: 1rem; background: #fffaf5; box-shadow: 0 18px 42px rgba(24,10,18,.28); text-align: center; opacity: 0; visibility: hidden; transform: translate(-50%, .5rem); transition: opacity .22s ease, visibility .22s ease, transform .22s ease; pointer-events: none; }
+.social-popover::after { content: ''; position: absolute; left: 50%; bottom: -.38rem; width: .75rem; height: .75rem; background: #fffaf5; border-right: 1px solid #f0c7b9; border-bottom: 1px solid #f0c7b9; transform: translateX(-50%) rotate(45deg); }
+.social-item:hover .social-popover, .social-item:focus-within .social-popover { opacity: 1; visibility: visible; transform: translate(-50%, 0); pointer-events: auto; }
+.popover-kicker { display: block; color: #4a2335; font-size: .72rem; font-weight: 700; margin-bottom: .4rem; }
+.popover-image { width: 8.5rem; height: 8.5rem; margin: auto; padding: .35rem; border-radius: .65rem; background: #fff; }
+.popover-image img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.popover-tip { display: block; color: #9a6c78; font-size: .65rem; margin-top: .35rem; }
 
-a:hover {
-  transform: translateX(2px);
-}
-
-/* 预览功能样式 */
-.group .absolute {
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-
-/* 预览图片样式优化 */
-.group img {
-  object-fit: contain;
-  background-color: white;
-}
-
-/* 预览内容居中对齐 */
-.group .transform {
-  text-align: center;
+@media (max-width: 640px) {
+  .social-links { gap: .5rem; }
+  .social-link { min-width: 5.1rem; padding-right: .6rem; }
+  .social-popover { left: 0; transform: translate(0, .5rem); }
+  .social-item:hover .social-popover, .social-item:focus-within .social-popover { transform: translate(0, 0); }
+  .social-popover::after { left: 2rem; }
 }
 </style>

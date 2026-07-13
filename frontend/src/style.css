@@ -163,13 +163,13 @@ main > *:first-child {
 
 /* ---------- 欢雨flower editorial botanical theme ---------- */
 :root {
-  --ink: #2a1822;
-  --plum: #4a2335;
-  --coral: #d9644f;
-  --coral-deep: #b7493d;
-  --cream: #fbf7f2;
-  --sage: #758774;
-  --line: rgba(74, 35, 53, .14);
+  --ink: #5b3046;
+  --plum: #a94f78;
+  --coral: #ee88a7;
+  --coral-deep: #d8668d;
+  --cream: #fff8fb;
+  --sage: #7da998;
+  --line: rgba(211, 112, 151, .2);
 }
 
 body {
@@ -182,7 +182,7 @@ body {
 .site-nav {
   height: 64px;
   min-height: 64px;
-  background: rgba(251, 247, 242, .88) !important;
+  background: rgba(255, 250, 253, .94) !important;
   border-bottom: 1px solid var(--line);
   box-shadow: 0 10px 35px rgba(42, 24, 34, .06) !important;
 }
@@ -191,7 +191,7 @@ body {
   position: absolute;
   inset: auto 0 -2px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--coral), #d6aa63, transparent);
+  background: linear-gradient(90deg, transparent, var(--coral), #f5c3d5, transparent);
   opacity: .85;
 }
 .site-nav .nav-link {
@@ -226,7 +226,7 @@ body {
   min-height: clamp(560px, 74vh, 760px);
   height: auto !important;
   isolation: isolate;
-  background: var(--plum);
+  background: #f7dbe6;
 }
 .hero-section > div:first-child,
 .hero-section > div:first-child img,
@@ -236,10 +236,10 @@ body {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(90deg, rgba(42,24,34,.72) 0%, rgba(42,24,34,.33) 45%, rgba(42,24,34,.04) 85%), linear-gradient(0deg, rgba(42,24,34,.33), transparent 44%);
+  background: linear-gradient(90deg, rgba(255,248,251,.92) 0%, rgba(255,248,251,.62) 34%, rgba(255,248,251,.08) 76%), linear-gradient(0deg, rgba(169,79,120,.08), transparent 44%);
 }
 .hero-section .hero-image,
-.hero-section .hero-video { object-fit: cover !important; filter: saturate(.84) contrast(1.03); transform: scale(1.015); }
+.hero-section .hero-video { object-fit: cover !important; filter: saturate(1.06) contrast(1.01) brightness(1.04); transform: scale(1.015); }
 .hero-section > .absolute.inset-0.flex {
   justify-content: flex-start !important;
   text-align: left !important;
@@ -255,7 +255,7 @@ body {
 .home-reviews-section { padding-top: clamp(4.5rem, 9vw, 8rem) !important; padding-bottom: clamp(4.5rem, 9vw, 8rem) !important; }
 .home-video-section,
 .home-products-section,
-.home-reviews-section { background: #f5eee8 !important; }
+.home-reviews-section { background: #fff1f6 !important; }
 .home-services-section,
 .home-recommended-section { background: var(--cream) !important; }
 .home-video-section h2,
@@ -338,14 +338,14 @@ body {
 .home-reviews-section .bg-white { background: #fffaf5 !important; border-color: var(--line) !important; border-radius: 22px !important; box-shadow: 0 12px 32px rgba(74,35,53,.07) !important; }
 .home-reviews-section .ring-huanyu-pink-200 { --tw-ring-color: #f0c7b9 !important; }
 
-.site-footer { background: #2a1822 !important; color: #f6dfd4 !important; border-top: 0 !important; }
+.site-footer { background: linear-gradient(180deg, #fff0f6 0%, #ffe4ef 100%) !important; color: var(--ink) !important; border-top: 1px solid rgba(211,112,151,.18) !important; }
 .site-footer .text-pink-600,
-.site-footer .text-pink-500 { color: rgba(255,239,231,.66) !important; }
+.site-footer .text-pink-500 { color: rgba(91,48,70,.7) !important; }
 .site-footer .text-pink-800,
 .site-footer h3,
-.site-footer h4 { color: #fffaf5 !important; }
-.site-footer .bg-pink-200 { background: rgba(217,100,79,.24) !important; }
-.site-footer .border-pink-300 { border-color: rgba(255,255,255,.12) !important; }
+.site-footer h4 { color: var(--ink) !important; }
+.site-footer .bg-pink-200 { background: rgba(238,136,167,.18) !important; }
+.site-footer .border-pink-300 { border-color: rgba(169,79,120,.18) !important; }
 
 @media (max-width: 640px) {
   .site-nav { height: 64px; min-height: 64px; }
