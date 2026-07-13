@@ -29,7 +29,7 @@
         <div class="space-y-6">
           <div>
             <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ product.name }}</h1>
-            <p class="text-gray-600">{{ product.description }}</p>
+            <p class="text-gray-600">{{ getProductDescription(product) }}</p>
           </div>
 
           <div class="flex items-baseline space-x-2">
@@ -204,6 +204,7 @@ import { productService } from '@/services/product'
 import { getProductImageUrl } from '@/utils/avatar.js'
 import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import { favoriteService } from '@/services/favorite'
+import { getProductDescription } from '@/utils/productCopy'
 
 const route = useRoute()
 const router = useRouter()
@@ -324,7 +325,7 @@ const loadProduct = async () => {
     product.value = {
       id: data.Id || data.id || 0,
       name: data.Name || data.name || '',
-      description: data.Description || data.description || '',
+      description: getProductDescription({ name: data.Name || data.name, description: data.Description || data.description }),
       price: data.Price || data.price || 0,
       originalPrice: data.OriginalPrice || data.originalPrice || 0,
       image: getProductImageUrl(data.ImageUrl || data.imageUrl || data.image || ''),

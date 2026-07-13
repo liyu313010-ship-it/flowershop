@@ -133,7 +133,7 @@
                   </div>
                   <div class="p-4">
                     <h3 class="font-semibold text-lg mb-2 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">{{ product.name }}</h3>
-                    <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ product.description }}</p>
+                    <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ getProductDescription(product) }}</p>
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center space-x-1">
                         <div class="flex text-yellow-400">
@@ -211,6 +211,7 @@ import { useUserStore } from '@/stores/user'
 import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import { favoriteService } from '@/services/favorite'
 import { watchEffect } from 'vue'
+import { getProductDescription } from '@/utils/productCopy'
 
 const router = useRouter()
 const route = useRoute()
@@ -278,7 +279,7 @@ const selectCategory = async (categoryId) => {
         products.value = productsData.map(product => ({
           id: product.id || product.Id,
           name: product.name || product.Name,
-          description: product.description || product.Description,
+          description: getProductDescription({ name: product.name || product.Name, description: product.description || product.Description }),
           price: product.price || product.Price || 0,
           image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
           categoryId: (() => {
@@ -385,7 +386,7 @@ const loadAllData = async () => {
     products.value = Array.isArray(productsData) ? productsData.map(product => ({
         id: product.id || product.Id,
         name: product.name || product.Name,
-        description: product.description || product.Description,
+        description: getProductDescription({ name: product.name || product.Name, description: product.description || product.Description }),
         price: product.price || product.Price || 0,
         image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
         categoryId: (() => {
