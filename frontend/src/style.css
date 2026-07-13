@@ -324,16 +324,16 @@ body {
 .home-recommended-section .card .bg-huanyu-pink-400 { background: var(--coral) !important; }
 .home-products-section .btn-primary { background: var(--plum) !important; border-radius: 999px; }
 
-/* Give the story a dark, memorable interlude. */
-.home-brand-section { background: var(--plum) !important; color: #fffaf5; position: relative; overflow: hidden; }
-.home-brand-section::before { content: ""; position: absolute; width: 34rem; height: 34rem; right: -12rem; top: -10rem; border-radius: 50%; background: rgba(217,100,79,.18); }
-.home-brand-section h2 { color: #fffaf5 !important; }
-.home-brand-section .text-gray-600 { color: rgba(255,250,245,.72) !important; }
-.home-brand-section .text-huanyu-pink-500 { color: #f4c9af !important; }
-.home-brand-section .text-sm { color: rgba(255,250,245,.65) !important; }
-.home-brand-section img { border-radius: 28px !important; box-shadow: 0 25px 65px rgba(0,0,0,.28) !important; }
+/* Brand story stays within the bright pink-white visual system. */
+.home-brand-section { background: linear-gradient(135deg, #fff9fc 0%, #ffeaf2 56%, #fff 100%) !important; color: var(--ink); position: relative; overflow: hidden; }
+.home-brand-section::before { content: ""; position: absolute; width: 34rem; height: 34rem; right: -12rem; top: -10rem; border-radius: 50%; background: rgba(238,136,167,.13); }
+.home-brand-section h2 { color: var(--plum) !important; }
+.home-brand-section .text-gray-600 { color: rgba(91,48,70,.72) !important; }
+.home-brand-section .text-huanyu-pink-500 { color: var(--coral-deep) !important; }
+.home-brand-section .text-sm { color: rgba(91,48,70,.62) !important; }
+.home-brand-section img { border-radius: 28px !important; box-shadow: 0 25px 65px rgba(169,79,120,.16) !important; }
 .home-brand-section .bg-huanyu-pink-100,
-.home-brand-section .bg-huanyu-pink-200 { background: var(--coral) !important; opacity: .35 !important; }
+.home-brand-section .bg-huanyu-pink-200 { background: var(--coral) !important; opacity: .22 !important; }
 
 .home-reviews-section .bg-white { background: #fffaf5 !important; border-color: var(--line) !important; border-radius: 22px !important; box-shadow: 0 12px 32px rgba(74,35,53,.07) !important; }
 .home-reviews-section .ring-huanyu-pink-200 { --tw-ring-color: #f0c7b9 !important; }
