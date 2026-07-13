@@ -49,7 +49,7 @@ namespace HuanyuFlowerShop.Interfaces
         /// <param name="orderId">订单ID</param>
         /// <returns>支付链接和支付参考号</returns>
         Task<(string PaymentUrl, string PaymentReference)> GeneratePaymentLinkAsync(int userId, int orderId);
-        
-        Task<PaymentResult> ProcessCallbackAsync(string paymentReference, string tradeStatus, string? paymentMethod = null);
+
+        Task<PaymentResult> UpdatePaymentStatusAsync(int orderId, PaymentStatusRequest request);
     }
 }

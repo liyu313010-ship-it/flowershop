@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center px-4 py-12">
+  <div class="auth-page min-h-screen flex items-center justify-center px-4 py-12">
     <!-- 背景装饰 -->
     <div class="absolute inset-0 overflow-hidden">
       <div class="absolute -top-40 -right-40 w-80 h-80 bg-pink-200 rounded-full opacity-20 blur-3xl"></div>
@@ -10,14 +10,14 @@
       <!-- Logo和标题 -->
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-20 h-20 bg-transparent rounded-full mb-4 shadow-lg">
-          <img src="/images/logo.png" alt="logo" class="w-10 h-10 object-contain" />
+          <img src="/images/brand-mark.svg" alt="欢雨flower 标志" class="w-16 h-16 object-contain" />
         </div>
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">欢雨flower</h1>
+        <h1 class="auth-title text-3xl font-bold mb-2">欢雨flower</h1>
         <p class="text-gray-600">您的专属花店</p>
       </div>
 
       <!-- 登录/注册表单容器 -->
-      <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/50 card-beauty">
+      <div class="auth-card backdrop-blur-sm rounded-2xl shadow-xl p-8">
         <!-- 标签切换 -->
         <div class="flex mb-6 bg-gray-100 rounded-lg p-1">
           <button
@@ -32,6 +32,7 @@
             登录
           </button>
           <button
+            v-if="!isAdminLogin"
             @click="activeTab = 'register'"
             :class="[
               'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200',
@@ -47,9 +48,9 @@
         <!-- 登录表单 -->
         <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="space-y-4">
           <!-- 用户类型选择 -->
-          <div class="mb-4">
+          <div v-if="!isAdminLogin" class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">用户类型</label>
-            <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 @click="loginType = 'user'"
@@ -160,14 +161,14 @@
               <input type="checkbox" v-model="rememberMe" class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">
               <span class="ml-2 text-sm text-gray-600">记住我</span>
             </label>
-            <a href="#" class="text-sm text-pink-600 hover:text-pink-700">忘记密码？</a>
+            <button type="button" @click="openRecovery" class="text-sm text-pink-600 hover:text-pink-700">忘记密码？</button>
           </div>
 
           <!-- 登录按钮 -->
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-2 px-4 rounded-lg font-medium hover:from-pink-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed btn-soft"
+            class="auth-submit w-full text-white py-3 px-4 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed btn-soft"
           >
             <span v-if="loading" class="flex items-center justify-center">
               <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -350,7 +351,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-2 px-4 rounded-lg font-medium hover:from-pink-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="auth-submit w-full text-white py-3 px-4 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading" class="flex items-center justify-center">
               <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -374,6 +375,27 @@
         </div>
       </div>
 
+      <div v-if="showRecovery" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4" @click.self="showRecovery = false">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-800">{{ recoveryToken ? '设置新密码' : '找回密码' }}</h2>
+            <button type="button" class="text-gray-400 hover:text-gray-700" @click="showRecovery = false">×</button>
+          </div>
+          <form v-if="!recoveryToken" @submit.prevent="requestReset" class="space-y-4">
+            <p class="text-sm text-gray-500">输入注册邮箱，我们会发送一条 30 分钟内有效的重置链接。</p>
+            <input v-model="recoveryEmail" type="email" required class="w-full border rounded-lg px-3 py-2" placeholder="注册邮箱" />
+            <button class="w-full btn-primary" :disabled="recoveryLoading">发送重置邮件</button>
+          </form>
+          <form v-else @submit.prevent="resetPassword" class="space-y-4">
+            <input v-model="newPassword" type="password" required minlength="12" class="w-full border rounded-lg px-3 py-2" placeholder="新密码（至少12位）" />
+            <input v-model="confirmNewPassword" type="password" required minlength="12" class="w-full border rounded-lg px-3 py-2" placeholder="确认新密码" />
+            <button class="w-full btn-primary" :disabled="recoveryLoading">确认重置密码</button>
+          </form>
+          <p v-if="recoveryMessage" class="mt-4 text-sm text-green-600">{{ recoveryMessage }}</p>
+          <p v-if="recoveryError" class="mt-4 text-sm text-red-600">{{ recoveryError }}</p>
+        </div>
+      </div>
+
       <!-- 返回首页链接 -->
       <div class="text-center mt-6">
         <router-link 
@@ -392,8 +414,9 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { authService } from '@/services/auth'
 import { 
   validateLoginForm, 
   validateRegisterForm, 
@@ -401,18 +424,69 @@ import {
 } from '@/utils/validation'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
-const loginLogoUrl = ref('/images/login-logo.png')
+const loginLogoUrl = ref('/images/brand-mark.svg')
 
 // 响应式数据
 const activeTab = ref('login') // login 或 register
-const loginType = ref('user') // user 或 admin
+const isAdminLogin = computed(() => route.name === 'AdminLogin')
+const loginType = ref(isAdminLogin.value ? 'admin' : 'user') // user 或 admin
 const showPassword = ref(false)
 const showRegisterPassword = ref(false)
 const showConfirmPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
 const success = ref('')
+const showRecovery = ref(false)
+const recoveryEmail = ref('')
+const recoveryToken = ref('')
+const newPassword = ref('')
+const confirmNewPassword = ref('')
+const recoveryLoading = ref(false)
+const recoveryMessage = ref('')
+const recoveryError = ref('')
+
+const openRecovery = () => {
+  showRecovery.value = true
+  recoveryMessage.value = ''
+  recoveryError.value = ''
+}
+
+const requestReset = async () => {
+  recoveryLoading.value = true
+  recoveryError.value = ''
+  try {
+    await authService.forgotPassword(recoveryEmail.value.trim())
+    recoveryMessage.value = '如果邮箱已注册，重置邮件将在几分钟内送达。'
+  } catch (err) {
+    recoveryError.value = err?.response?.data?.message || err.message || '发送失败，请稍后重试'
+  } finally {
+    recoveryLoading.value = false
+  }
+}
+
+const resetPassword = async () => {
+  if (newPassword.value.length < 12) { recoveryError.value = '密码至少需要12位'; return }
+  if (newPassword.value !== confirmNewPassword.value) { recoveryError.value = '两次密码不一致'; return }
+  recoveryLoading.value = true
+  recoveryError.value = ''
+  try {
+    await authService.resetPassword({ token: recoveryToken.value, newPassword: newPassword.value, confirmPassword: confirmNewPassword.value })
+    recoveryMessage.value = '密码重置成功，请使用新密码登录。'
+    recoveryToken.value = ''
+  } catch (err) {
+    recoveryError.value = err?.response?.data?.message || err.message || '重置失败，请重新获取链接'
+  } finally {
+    recoveryLoading.value = false
+  }
+}
+
+const recoveryQueryToken = router.currentRoute.value?.query?.resetToken
+if (typeof recoveryQueryToken === 'string' && recoveryQueryToken) {
+  recoveryToken.value = recoveryQueryToken
+  showRecovery.value = true
+}
 
 // 表单验证错误
 const validationErrors = reactive({

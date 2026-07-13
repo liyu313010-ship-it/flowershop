@@ -1,13 +1,20 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RegionsController(IWebHostEnvironment environment, ILogger<RegionsController> logger) : ControllerBase
+    public class RegionsController : ControllerBase
     {
-        private readonly IWebHostEnvironment _environment = environment;
-        private readonly ILogger<RegionsController> _logger = logger;
+        private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<RegionsController> _logger;
+
+        public RegionsController(IWebHostEnvironment environment, ILogger<RegionsController> logger)
+        {
+            _environment = environment;
+            _logger = logger;
+        }
 
         [HttpGet("pcas")]
         public async Task<IActionResult> GetPcas()

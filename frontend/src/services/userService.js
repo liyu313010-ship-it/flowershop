@@ -36,10 +36,6 @@ const userService = {
         if (data.FullName && !data.name) {
           data.name = data.FullName
         }
-        // 映射性别字段
-        if (typeof data.gender === 'undefined' && typeof data.Gender !== 'undefined') {
-          data.gender = data.Gender
-        }
         // 确保id字段存在
         if (!data.id && data.Id) {
           data.id = data.Id

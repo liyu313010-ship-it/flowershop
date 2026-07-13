@@ -1,97 +1,22 @@
-# ASP.NET Core
+.env
+.env.*
+!.env.production.example
+
 **/bin/
 **/obj/
+frontend/node_modules/
+frontend/dist/
+backend/HuanyuFlowerShop/uploads/
+backend/HuanyuFlowerShop/wwwroot/uploads/
+backups/
+/*.png
+/*.log
+/*.zip
+/.agents/
+/.codex/
+/.trae/
+/deploy_bundle/
+/temp_scripts/
+frontend/tests/coverage/
 *.user
 *.suo
-*.userosscache
-*.sln.docstates
-.vs/
-
-# Entity Framework Core
-*.db
-*.sqlite
-**/Migrations/*
-!**/Migrations/*.cs
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Node.js dependencies
-node_modules/
-*.node
-*.pem
-
-# Vue/Vite
-.DS_Store
-*.local
-/dist/
-frontend/dist/
-*.local
-vite.config.js.timestamp-*
-
-# Element Plus
-.element-plus/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Database
-*.db
-*.mdf
-*.ldf
-
-# Temp files
-*.tmp
-*.temp
-
-# OS generated files
-Thumbs.db
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-
-# Trae AI tool
-trae/
-.trae/
-
-# Uploads
-**/uploads/
-
-# Frontend assets
-前端素材图库/
-鲜花产品图片/
-
-# Build outputs
-*.dll
-*.exe
-*.pdb
-*.deps.json
-*.runtimeconfig.json
-*.runtimeconfig.dev.json
-
-# Documentation
-*.md
-!README.md
-!README.*.md
-!Gitee部署与使用指南.md

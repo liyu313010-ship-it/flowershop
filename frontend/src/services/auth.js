@@ -28,8 +28,8 @@ export const authService = {
         throw new Error('注册失败：用户名长度不足')
       }
       
-      if (userData.password.length < 6) {
-        throw new Error('注册失败：密码长度不足')
+      if (userData.password.length < 12) {
+        throw new Error('注册失败：密码至少需要12位')
       }
       
       // 添加请求来源标记，帮助后端识别是否为正常用户操作

@@ -1,0 +1,193 @@
+/* 欢雨flower 统一品牌视觉层
+ * 只保留一套可复用的颜色、间距、卡片和表单规则，覆盖旧页面的默认粉色。 */
+:root {
+  --brand-ink: #2a1822;
+  --brand-plum: #4a2335;
+  --brand-coral: #d9644f;
+  --brand-coral-deep: #b7493d;
+  --brand-cream: #fbf7f2;
+  --brand-paper: #fffaf5;
+  --brand-sage: #758774;
+  --brand-muted: #76666b;
+  --brand-line: rgba(74, 35, 53, .14);
+  --brand-shadow: 0 18px 45px rgba(74, 35, 53, .11);
+}
+
+body {
+  background: var(--brand-cream);
+  color: var(--brand-ink);
+}
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  background: var(--brand-cream);
+}
+
+.home-page > section { width: 100%; }
+.home-page > .home-quick-categories { order: 2; }
+.home-page > .home-products-section { order: 3; }
+.home-page > .home-services-section { order: 4; }
+.home-page > .home-recommended-section { order: 5; }
+.home-page > .home-reviews-section { order: 6; }
+.home-page > .home-brand-section { order: 7; }
+.home-page > .home-video-section { order: 8; }
+
+.home-quick-categories {
+  padding: 1.2rem 0;
+  background: var(--brand-paper);
+  border-bottom: 1px solid var(--brand-line);
+}
+
+.quick-category-link {
+  min-width: 7.5rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--brand-line);
+  border-radius: 999px;
+  background: rgba(255,255,255,.7);
+  color: var(--brand-plum);
+  text-align: center;
+  transition: transform .25s ease, color .25s ease, background .25s ease, border-color .25s ease;
+}
+
+.quick-category-link:hover,
+.quick-category-link:focus-visible {
+  transform: translateY(-3px);
+  color: #fff;
+  background: var(--brand-coral);
+  border-color: var(--brand-coral);
+}
+
+.quick-category-link small {
+  display: block;
+  margin-top: .2rem;
+  color: var(--brand-muted);
+  font-size: .7rem;
+}
+
+.quick-category-link:hover small,
+.quick-category-link:focus-visible small { color: rgba(255,255,255,.82); }
+
+.home-section-heading { max-width: 44rem; margin-inline: auto; }
+.home-section-eyebrow {
+  margin-bottom: .65rem;
+  color: var(--brand-coral);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+
+.home-products-section .card,
+.home-recommended-section .card {
+  border: 1px solid var(--brand-line) !important;
+  background: var(--brand-paper) !important;
+  box-shadow: 0 8px 24px rgba(74,35,53,.07) !important;
+}
+
+.home-products-section .card .w-full.h-48,
+.home-recommended-section .card .w-full.h-48 { height: 16.5rem !important; background: #f3e9e1 !important; }
+
+.brand-empty-state {
+  max-width: 32rem;
+  margin: 1rem auto;
+  padding: 3rem 1.5rem;
+  border: 1px dashed rgba(74,35,53,.22);
+  border-radius: 1.5rem;
+  background: rgba(255,250,245,.72);
+  text-align: center;
+}
+
+.brand-empty-state-icon {
+  display: block;
+  width: 5.5rem;
+  height: 5.5rem;
+  margin: 0 auto 1rem;
+  object-fit: contain;
+}
+
+.site-nav {
+  background: rgba(251,247,242,.92) !important;
+  border-bottom-color: var(--brand-line) !important;
+}
+
+.site-nav .nav-shop-cta {
+  padding: .65rem 1rem;
+  border-radius: 999px;
+  background: var(--brand-plum);
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.site-nav .nav-shop-cta:hover { background: var(--brand-coral-deep); }
+
+.site-nav .nav-link,
+.site-nav .mobile-nav-link { color: var(--brand-ink) !important; }
+.site-nav .mobile-menu-toggle { display: none; }
+.site-nav .nav-link:hover,
+.site-nav .nav-link-active,
+.site-nav .mobile-nav-link:hover { color: var(--brand-coral-deep) !important; }
+
+.page-heading {
+  background: var(--brand-paper) !important;
+  border-bottom: 1px solid var(--brand-line) !important;
+}
+
+.page-heading h1,
+.page-heading h2 { color: var(--brand-ink) !important; font-family: Georgia, "Songti SC", serif; }
+.page-heading p { color: var(--brand-muted) !important; }
+
+.products-page { background: var(--brand-cream) !important; }
+.products-page .filter-panel,
+.products-page .products-panel {
+  border: 1px solid var(--brand-line);
+  border-radius: 1.25rem;
+  background: var(--brand-paper);
+  box-shadow: 0 10px 28px rgba(74,35,53,.06);
+}
+
+.products-page .filter-panel { position: sticky; top: 5.5rem; }
+.products-page .filter-heading { color: var(--brand-plum); font-family: Georgia, "Songti SC", serif; }
+.products-page .mobile-filter-trigger { display: none; }
+
+.auth-page {
+  min-height: calc(100vh - 2rem);
+  background: radial-gradient(circle at 12% 20%, rgba(217,100,79,.16), transparent 30%), var(--brand-cream);
+}
+
+.auth-page .auth-card {
+  border: 1px solid var(--brand-line);
+  background: rgba(255,250,245,.9);
+  box-shadow: var(--brand-shadow);
+}
+
+.auth-page .auth-title { color: var(--brand-plum); font-family: Georgia, "Songti SC", serif; }
+.auth-page .auth-submit { background: var(--brand-plum) !important; }
+.auth-page .auth-submit:hover { background: var(--brand-coral-deep) !important; }
+
+.contact-page,
+.policy-page { background: var(--brand-cream) !important; }
+.contact-page .contact-card,
+.policy-page .policy-card { background: var(--brand-paper); border-color: var(--brand-line); box-shadow: 0 10px 28px rgba(74,35,53,.07); }
+.contact-page h2,
+.policy-page h2,
+.policy-page h1 { color: var(--brand-plum) !important; font-family: Georgia, "Songti SC", serif; }
+.policy-page .bg-white { background: var(--brand-paper) !important; border: 1px solid var(--brand-line); box-shadow: 0 10px 28px rgba(74,35,53,.06); }
+
+.toast-container,
+.el-message { z-index: 100 !important; }
+
+@media (max-width: 767px) {
+  .site-nav .mobile-menu-toggle { display: flex !important; }
+  .site-nav .nav-shop-cta { display: none; }
+  .products-page .filter-panel { display: none; position: fixed; inset: 4.5rem 1rem auto; z-index: 60; max-height: calc(100vh - 6rem); overflow: auto; }
+  .products-page .filter-panel.is-open { display: block; }
+  .products-page .mobile-filter-trigger { display: inline-flex; }
+  .products-page .products-panel > .flex:first-child { flex-direction: column; align-items: stretch; }
+  .products-page .products-panel > .flex:first-child > .flex { flex-direction: column; align-items: stretch; gap: .45rem; }
+  .products-page .products-panel select { width: 100% !important; }
+  .home-quick-categories { overflow-x: auto; }
+  .home-quick-categories .container { min-width: max-content; }
+}

@@ -13,12 +13,19 @@ namespace HuanyuFlowerShop.Controllers
     [Authorize(Roles = "admin")]
     [ApiController]
     [Route("api/[controller]")]
-public class AdminController(ApplicationDbContext context, IWebHostEnvironment environment, ICacheService cacheService) : ControllerBase
+public class AdminController : ControllerBase
 {
-    private readonly ApplicationDbContext _context = context;
-    private readonly IWebHostEnvironment _environment = environment;
-    private readonly ICacheService _cacheService = cacheService;
-    private static readonly string[] AllowedImageExtensions = [ ".jpg", ".jpeg", ".png", ".gif", ".webp" ];
+    private readonly ApplicationDbContext _context;
+    private readonly IWebHostEnvironment _environment;
+    private readonly ICacheService _cacheService;
+    private static readonly string[] AllowedImageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+
+        public AdminController(ApplicationDbContext context, IWebHostEnvironment environment, ICacheService cacheService)
+        {
+            _context = context;
+            _environment = environment;
+            _cacheService = cacheService;
+        }
 
     
 
@@ -32,9 +39,8 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
 
                 // 用户统计
                 var totalUsers = await _context.Users.CountAsync();
-                var newUsers = await _context.Users.CountAsync(u => u.CreatedAt >= startOfMonth);
-                var activeUsers = await _context.Users.CountAsync(u => u.Status == "active");
-                var vipUsers = await _context.Users.CountAsync(u => u.Role == "vip");
+                var newUsers = await _context.Users
+                    .CountAsync(u => u.CreatedAt >= startOfMonth);
 
                 // 订单统计
                 var totalOrders = await _context.Orders.CountAsync();
@@ -59,8 +65,6 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                 {
                     totalUsers,
                     newUsers,
-                    activeUsers,
-                    vipUsers,
                     totalOrders,
                     pendingOrders,
                     totalProducts,
@@ -82,26 +86,19 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
             {
                 var startDate = from?.Date ?? DateTime.Today.AddDays(-days);
                 var endDate = to?.Date ?? DateTime.Today;
-                var salesData = await _context.Orders
+                var sales = await _context.Orders
                     .Where(o => o.CreatedAt.Date >= startDate && o.CreatedAt.Date <= endDate && o.Status != "cancelled")
                     .GroupBy(o => o.CreatedAt.Date)
                     .Select(g => new
                     {
-                        Date = g.Key,
-                        Revenue = g.Sum(o => o.TotalAmount),
-                        Orders = g.Count()
+                        date = g.Key.ToString("yyyy-MM-dd"),
+                        revenue = g.Sum(o => o.TotalAmount),
+                        orders = g.Count()
                     })
-                    .OrderBy(x => x.Date)
+                    .OrderBy(x => x.date)
                     .ToListAsync();
 
-                var result = salesData.Select(x => new
-                {
-                    date = x.Date.ToString("yyyy-MM-dd"),
-                    revenue = x.Revenue,
-                    orders = x.Orders
-                });
-
-                return Ok(result);
+                return Ok(sales);
             }
             catch (Exception ex)
             {
@@ -114,64 +111,38 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
         {
             try
             {
-                // 1. 先统计商品销售数据，仅按商品ID和基本信息分组
-                var productStats = await _context.OrderItems
-                    .Include(oi => oi.Order)
-                    .Where(oi => oi.Order.Status != "cancelled")
-                    .GroupBy(oi => new { 
-                        oi.ProductId, 
-                        oi.Product.Name, 
-                        oi.Product.ImageUrl, 
-                        oi.Product.Price, 
-                        oi.Product.CategoryId 
-                    })
-                    .Select(g => new
-                    {
-                        Id = g.Key.ProductId,
-                        g.Key.Name,
-                        g.Key.ImageUrl,
-                        g.Key.Price,
-                        g.Key.CategoryId,
-                        SalesCount = g.Sum(x => x.Quantity),
-                        TotalRevenue = g.Sum(x => x.Subtotal)
-                    })
-                    .OrderByDescending(x => x.SalesCount)
+                // 使用Include来获取商品的分类信息
+                var query = from oi in _context.OrderItems
+                            join o in _context.Orders on oi.OrderId equals o.Id
+                            where o.Status != "cancelled"
+                            join p in _context.Products on oi.ProductId equals p.Id
+                            join c in _context.Categories on p.CategoryId equals c.Id into categories
+                            from category in categories.DefaultIfEmpty()
+                            group new { oi, p, category } by new
+                            {
+                                p.Id,
+                                p.Name,
+                                p.ImageUrl,
+                                p.Price,
+                                CategoryName = category != null ? category.Name : "未分类"
+                            } into g
+                            select new
+                            {
+                                id = g.Key.Id,
+                                name = g.Key.Name,
+                                image = g.Key.ImageUrl,
+                                price = g.Key.Price,
+                                category = g.Key.CategoryName,
+                                salesCount = g.Sum(x => x.oi.Quantity),
+                                totalRevenue = g.Sum(x => x.oi.Subtotal)
+                            };
+
+                var topProducts = await query
+                    .OrderByDescending(x => x.salesCount)
                     .Take(limit)
                     .ToListAsync();
 
-                // 2. 获取相关分类名称
-                var categoryIds = productStats
-                    .Select(p => p.CategoryId)
-                    .Where(id => id.HasValue)
-                    .Select(id => id!.Value)
-                    .Distinct()
-                    .ToList();
-
-                var categories = await _context.Categories
-                    .Where(c => categoryIds.Contains(c.Id))
-                    .ToDictionaryAsync(c => c.Id, c => c.Name);
-
-                // 3. 组合结果
-                var result = productStats.Select(p =>
-                {
-                    var catName = "未分类";
-                    if (p.CategoryId.HasValue && categories.TryGetValue(p.CategoryId.Value, out var n))
-                    {
-                        catName = n;
-                    }
-                    return new
-                    {
-                        id = p.Id,
-                        name = p.Name,
-                        image = p.ImageUrl,
-                        price = p.Price,
-                        category = catName,
-                        salesCount = p.SalesCount,
-                        totalRevenue = p.TotalRevenue
-                    };
-                });
-
-                return Ok(result);
+                return Ok(topProducts);
             }
             catch (Exception ex)
             {
@@ -186,22 +157,16 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
             {
                 var startDate = from?.Date ?? DateTime.Today.AddDays(-days);
                 var endDate = to?.Date ?? DateTime.Today;
-                var userGrowthData = await _context.Users
+                var userGrowth = await _context.Users
                     .Where(u => u.CreatedAt.Date >= startDate && u.CreatedAt.Date <= endDate)
                     .GroupBy(u => u.CreatedAt.Date)
                     .Select(g => new
                     {
-                        Date = g.Key,
-                        NewUsers = g.Count()
+                        date = g.Key.ToString("yyyy-MM-dd"),
+                        newUsers = g.Count()
                     })
-                    .OrderBy(x => x.Date)
+                    .OrderBy(x => x.date)
                     .ToListAsync();
-
-                var userGrowth = userGrowthData.Select(x => new
-                {
-                    date = x.Date.ToString("yyyy-MM-dd"),
-                    newUsers = x.NewUsers
-                });
 
                 return Ok(userGrowth);
             }
@@ -255,7 +220,11 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                     return NotFound(new { message = "用户不存在" });
                 }
 
-                var newPassword = string.IsNullOrWhiteSpace(dto?.NewPassword) ? "123456" : dto!.NewPassword!;
+                var newPassword = dto?.NewPassword?.Trim();
+                if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8 || newPassword.Length > 128)
+                {
+                    return BadRequest(new { message = "新密码长度必须为8到128位，且不能为空" });
+                }
                 user.Password = BCrypt.Net.BCrypt.HashPassword(newPassword);
                 user.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -655,6 +624,49 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
             }
         }
 
+        [HttpPut("orders/{id}/shipping")]
+        public async Task<IActionResult> UpdateOrderShipping(int id, [FromBody] ShippingUpdateDto request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Company) || string.IsNullOrWhiteSpace(request.TrackingNumber))
+            {
+                return BadRequest(new { message = "物流公司和运单号不能为空" });
+            }
+
+            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
+            if (order == null) return NotFound(new { message = "订单不存在" });
+            if (order.Status is "delivered" or "cancelled")
+            {
+                return BadRequest(new { message = "已完成或已取消的订单不能发货" });
+            }
+
+            var oldStatus = order.Status;
+            order.Status = "shipped";
+            order.ShippedAt = DateTime.UtcNow;
+            order.UpdatedAt = DateTime.UtcNow;
+            var note = $"物流公司：{request.Company.Trim()}；运单号：{request.TrackingNumber.Trim()}";
+            _context.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                OrderId = order.Id,
+                OldStatus = oldStatus,
+                NewStatus = "shipped",
+                OperatorName = User?.Identity?.Name ?? "admin",
+                Note = note,
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _cacheService.RemoveAsync($"order_{id}_{order.UserId}");
+                await _cacheService.RemoveAsync($"order_history_{id}");
+                await _cacheService.RemoveAsync($"order_history_{order.UserId}_{id}");
+                await _cacheService.RemoveAsync($"user_orders_{order.UserId}");
+            }
+            catch { }
+
+            return Ok(new { message = "发货信息更新成功", orderId = id, status = order.Status });
+        }
+
         [HttpPut("orders/{id}/status")]
         public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request)
         {
@@ -665,33 +677,56 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                     return BadRequest(new { message = "状态不能为空" });
                 }
 
+                var requestedStatus = request.Status.Trim().ToLowerInvariant();
                 var allowedStatuses = new[] { "pending", "processing", "shipped", "delivered", "cancelled" };
-                if (!allowedStatuses.Contains(request.Status))
+                if (!allowedStatuses.Contains(requestedStatus))
                 {
                     return BadRequest(new { message = "非法的订单状态" });
                 }
 
-                var order = await _context.Orders.FindAsync(id);
+                var order = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .FirstOrDefaultAsync(o => o.Id == id);
                 if (order == null)
                 {
                     return NotFound(new { message = "订单不存在" });
                 }
 
                 var oldStatus = order.Status;
-                order.Status = request.Status;
-                order.UpdatedAt = DateTime.UtcNow;
-                var note = (request.Note ?? request.Reason ?? string.Empty).Trim();
-                if (note.Length > 480) note = note[..480];
-                if (!string.IsNullOrEmpty(note))
+                var transitions = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
                 {
-                    order.Message = note;
+                    ["pending"] = new[] { "processing", "cancelled" },
+                    ["processing"] = new[] { "shipped", "cancelled" },
+                    ["shipped"] = new[] { "delivered" },
+                    ["delivered"] = Array.Empty<string>(),
+                    ["cancelled"] = Array.Empty<string>()
+                };
+                if (!string.Equals(oldStatus, requestedStatus, StringComparison.OrdinalIgnoreCase) &&
+                    (!transitions.TryGetValue(oldStatus ?? string.Empty, out var next) || !next.Contains(requestedStatus)))
+                {
+                    return BadRequest(new { message = $"订单不能从{oldStatus}变更为{requestedStatus}" });
+                }
+                order.Status = requestedStatus;
+                order.UpdatedAt = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(request.Note))
+                {
+                    order.Message = request.Note;
                 }
 
-                if (request.Status == "shipped")
+                if (requestedStatus == "cancelled" && !string.Equals(oldStatus, "cancelled", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 取消订单时仅恢复一次库存，避免重复取消造成库存虚增。
+                    foreach (var item in order.OrderItems)
+                    {
+                        var product = await _context.Products.FindAsync(item.ProductId);
+                        if (product != null) product.Stock += item.Quantity;
+                    }
+                }
+                if (requestedStatus == "shipped")
                 {
                     order.ShippedAt = DateTime.UtcNow;
                 }
-                else if (request.Status == "delivered")
+                else if (requestedStatus == "delivered")
                 {
                     order.DeliveredAt = DateTime.UtcNow;
                 }
@@ -701,10 +736,10 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                 {
                     OrderId = order.Id,
                     OldStatus = oldStatus,
-                    NewStatus = request.Status,
+                    NewStatus = requestedStatus,
                     OperatorId = null,
                     OperatorName = operatorName,
-                    Note = note,
+                    Note = request.Note,
                     CreatedAt = DateTime.UtcNow
                 });
 
@@ -714,6 +749,7 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                 {
                     await _cacheService.RemoveAsync($"order_{id}_{order.UserId}");
                     await _cacheService.RemoveAsync($"order_history_{id}");
+                    await _cacheService.RemoveAsync($"order_history_{order.UserId}_{id}");
                     await _cacheService.RemoveAsync($"user_orders_{order.UserId}");
                     await _cacheService.RemoveAsync($"user_order_stats_{order.UserId}");
                 }
@@ -917,7 +953,6 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                         Email = user.Email,
                         Phone = user.Phone,
                         FullName = user.FullName,
-                        Gender = user.Gender,
                         Role = user.Role,
                         Status = user.Status,
                         Avatar = user.Avatar,
@@ -985,7 +1020,6 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                     Email = user.Email,
                     Phone = user.Phone,
                     FullName = user.FullName,
-                    Gender = user.Gender,
                     Role = user.Role,
                     Status = user.Status,
                     Avatar = user.Avatar,
@@ -1110,8 +1144,24 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
                     return BadRequest(new { message = "图片文件大小不能超过 5MB" });
                 }
 
+                // 仅校验扩展名不足以阻止伪装文件，检查常见图片魔数。
+                await using (var input = file.OpenReadStream())
+                {
+                    var header = new byte[12];
+                    var read = await input.ReadAsync(header.AsMemory(0, header.Length));
+                    var validHeader = fileExtension switch
+                    {
+                        ".jpg" or ".jpeg" => read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF,
+                        ".png" => read >= 8 && header.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
+                        ".gif" => read >= 6 && (header.AsSpan(0, 6).SequenceEqual("GIF87a"u8) || header.AsSpan(0, 6).SequenceEqual("GIF89a"u8)),
+                        ".webp" => read >= 12 && header.AsSpan(0, 4).SequenceEqual("RIFF"u8) && header.AsSpan(8, 4).SequenceEqual("WEBP"u8),
+                        _ => false
+                    };
+                    if (!validHeader) return BadRequest(new { message = "文件内容不是有效的图片" });
+                }
+
                 // 创建上传目录
-                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "products");
+                var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "products");
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);
@@ -1194,7 +1244,12 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
     {
         public string Status { get; set; } = string.Empty;
         public string? Note { get; set; }
-        public string? Reason { get; set; }
+    }
+
+    public class ShippingUpdateDto
+    {
+        public string Company { get; set; } = string.Empty;
+        public string TrackingNumber { get; set; } = string.Empty;
     }
 
     public class UpdateUserRoleRequest
@@ -1215,7 +1270,6 @@ public class AdminController(ApplicationDbContext context, IWebHostEnvironment e
         public int Id { get; set; }
         public string Username { get; set; } = null!;
         public string Email { get; set; } = null!;
-        public string? Gender { get; set; }
         public string? Phone { get; set; }
         public string? FullName { get; set; }
         public string Role { get; set; } = null!;

@@ -75,8 +75,7 @@
               <div v-if="userInfo?.role === 'vip'" class="flex justify-center mb-2">
                 <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">VIP</span>
               </div>
-              <p class="text-gray-600 mb-4">{{ userInfo?.email || userInfo?.Email || '未设置' }}</p>
-              <p class="text-gray-600 mb-4">性别：{{ getGenderText(userInfo?.gender || userInfo?.Gender || '') }}</p>
+              <p class="text-gray-600 mb-4">{{ userInfo?.email || '未设置' }}</p>
               <div class="flex justify-center space-x-4">
                 <span :class="['px-3 py-1 rounded-full text-sm', getRoleClass(userInfo?.role || '')]">
                   {{ getRoleText(userInfo?.role || '') }}
@@ -102,10 +101,6 @@
               <div>
                 <h3 class="text-sm font-medium text-gray-700 mb-1">联系电话</h3>
                 <p class="text-gray-600">{{ userInfo?.phone || '未设置' }}</p>
-              </div>
-              <div>
-                <h3 class="text-sm font-medium text-gray-700 mb-1">地址</h3>
-                <p class="text-gray-600">{{ (userInfo?.address || '').trim() || '未设置' }}</p>
               </div>
               <div>
                 <h3 class="text-sm font-medium text-gray-700 mb-1">上次登录</h3>
@@ -140,19 +135,6 @@
                     class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
                   />
                 </div>
-              </div>
-              <div>
-                <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">性别</label>
-                <select 
-                  id="gender" 
-                  v-model="userInfo.gender"
-                  class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
-                >
-                  <option value="">未设置</option>
-                  <option value="男">男</option>
-                  <option value="女">女</option>
-                  <option value="其他">其他</option>
-                </select>
               </div>
               <div>
                 <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">联系电话</label>
@@ -227,7 +209,7 @@
         <div class="flex justify-between items-center">
           <h2 class="text-xl font-semibold">收货地址</h2>
           <button 
-            @click="openAddModal" 
+            @click="showAddAddress = true" 
             class="px-4 py-2 bg-huanyu-pink-600 text-white rounded-md hover:bg-huanyu-pink-700 transition-colors"
           >
             添加地址
@@ -249,7 +231,7 @@
               </div>
               <div class="flex space-x-2">
                 <button 
-                  @click="openEditModal(address)" 
+                  @click="editAddress(address)" 
                   class="text-sm text-huanyu-pink-600 hover:text-huanyu-pink-800"
                 >
                   编辑
@@ -288,52 +270,84 @@
         <div v-if="showAddAddress" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
             <h3 class="text-xl font-semibold mb-6">添加收货地址</h3>
-            <div class="space-y-4">
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">所在地区</span>
-                <div class="grid grid-cols-3 gap-2 flex-1">
-                  <select v-model="addressForm.province" @change="handleProvinceChange($event.target.value)" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent">
+            <form @submit.prevent="addAddress" class="space-y-4">
+              <div>
+                <label for="newAddress.name" class="block text-sm font-medium text-gray-700 mb-1">收货人</label>
+                <input 
+                  type="text" 
+                  v-model="newAddress.name" 
+                  class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label for="newAddress.phone" class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                <input 
+                  type="tel" 
+                  v-model="newAddress.phone" 
+                  class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">所在地区</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <select 
+                    v-model="newAddress.province" 
+                    @change="handleProvinceChange(newAddress.province)" 
+                    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                  >
                     <option value="">选择省</option>
-                    <option v-for="item in provinces" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    <option v-for="p in provinces" :key="p.code" :value="p.code">{{ p.name }}</option>
                   </select>
-                  <select v-model="addressForm.city" @change="handleCityChange($event.target.value)" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent">
+                  <select 
+                    v-model="newAddress.city" 
+                    @change="handleCityChange(newAddress.city)" 
+                    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                  >
                     <option value="">选择市</option>
-                    <option v-for="item in cities" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    <option v-for="c in cities" :key="c.code" :value="c.code">{{ c.name }}</option>
                   </select>
-                  <select v-model="addressForm.district" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent">
+                  <select 
+                    v-model="newAddress.district" 
+                    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                  >
                     <option value="">选择区/县</option>
-                    <option v-for="item in districts" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    <option v-for="d in districts" :key="d.code" :value="d.code">{{ d.name }}</option>
                   </select>
                 </div>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">详细地址</span>
-                <textarea v-model="addressForm.detailAddress" class="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent" placeholder="请输入街道、门牌号等"></textarea>
+              <div>
+                <label for="newAddress.detailAddress" class="block text-sm font-medium text-gray-700 mb-1">详细地址</label>
+                <textarea 
+                  v-model="newAddress.detailAddress" 
+                  rows="3" 
+                  class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                ></textarea>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">收货人</span>
-                <input v-model="addressForm.name" type="text" class="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent" placeholder="请填写收货人姓名">
+              <div class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  id="isDefault" 
+                  v-model="newAddress.isDefault" 
+                  class="mr-2"
+                />
+                <label for="isDefault" class="text-sm text-gray-700">设为默认地址</label>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">手机号码</span>
-                <input v-model="addressForm.phone" type="tel" class="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent" placeholder="请填写手机号码">
+              <div class="flex justify-end space-x-3">
+                <button 
+                  type="button" 
+                  @click="showAddAddress = false" 
+                  class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  取消
+                </button>
+                <button 
+                  type="submit" 
+                  class="px-4 py-2 bg-huanyu-pink-600 text-white rounded-md hover:bg-huanyu-pink-700 transition-colors"
+                >
+                  保存
+                </button>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="w-20"></span>
-                <label class="flex items-center">
-                  <input v-model="addressForm.isDefault" type="checkbox" class="form-checkbox text-huanyu-pink-500 rounded border-gray-300 focus:ring-huanyu-pink-500">
-                  <span class="ml-2 text-sm text-gray-600">设为默认地址</span>
-                </label>
-              </div>
-            </div>
-            <div class="mt-6 flex justify-end space-x-4">
-              <button @click="showAddAddress = false" class="px-6 py-2 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition-colors">
-                取消
-              </button>
-              <button @click="submitAddressForm" class="px-6 py-2 bg-gradient-to-r from-huanyu-pink-500 to-huanyu-red-500 text-white rounded-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-                {{ loading ? '保存中...' : '保存' }}
-              </button>
-            </div>
+            </form>
           </div>
         </div>
         
@@ -341,52 +355,84 @@
         <div v-if="showEditAddress" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
             <h3 class="text-xl font-semibold mb-6">编辑收货地址</h3>
-            <div class="space-y-4">
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">所在地区</span>
-                <div class="grid grid-cols-3 gap-2 flex-1">
-                  <select v-model="addressForm.province" @change="handleProvinceChange($event.target.value)" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent">
+            <form @submit.prevent="saveEditAddress" class="space-y-4">
+              <div>
+                <label for="editAddress.name" class="block text-sm font-medium text-gray-700 mb-1">收货人</label>
+                <input 
+                  type="text" 
+                  v-model="newAddress.name" 
+                  class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label for="editAddress.phone" class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                <input 
+                  type="tel" 
+                  v-model="newAddress.phone" 
+                  class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">所在地区</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <select 
+                    v-model="newAddress.province" 
+                    @change="handleProvinceChange(newAddress.province)" 
+                    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                  >
                     <option value="">选择省</option>
-                    <option v-for="item in provinces" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    <option v-for="p in provinces" :key="p.code" :value="p.code">{{ p.name }}</option>
                   </select>
-                  <select v-model="addressForm.city" @change="handleCityChange($event.target.value)" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent">
+                  <select 
+                    v-model="newAddress.city" 
+                    @change="handleCityChange(newAddress.city)" 
+                    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                  >
                     <option value="">选择市</option>
-                    <option v-for="item in cities" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    <option v-for="c in cities" :key="c.code" :value="c.code">{{ c.name }}</option>
                   </select>
-                  <select v-model="addressForm.district" class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent">
+                  <select 
+                    v-model="newAddress.district" 
+                    class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                  >
                     <option value="">选择区/县</option>
-                    <option v-for="item in districts" :key="item.code" :value="item.code">{{ item.name }}</option>
+                    <option v-for="d in districts" :key="d.code" :value="d.code">{{ d.name }}</option>
                   </select>
                 </div>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">详细地址</span>
-                <textarea v-model="addressForm.detailAddress" class="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent" placeholder="请输入街道、门牌号等"></textarea>
+              <div>
+                <label for="editAddress.detailAddress" class="block text-sm font-medium text-gray-700 mb-1">详细地址</label>
+                <textarea 
+                  v-model="newAddress.detailAddress" 
+                  rows="3" 
+                  class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent"
+                ></textarea>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">收货人</span>
-                <input v-model="addressForm.name" type="text" class="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent" placeholder="请填写收货人姓名">
+              <div class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  id="editIsDefault" 
+                  v-model="newAddress.isDefault" 
+                  class="mr-2"
+                />
+                <label for="editIsDefault" class="text-sm text-gray-700">设为默认地址</label>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="text-gray-500 w-20">手机号码</span>
-                <input v-model="addressForm.phone" type="tel" class="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-huanyu-pink-500 focus:border-transparent" placeholder="请填写手机号码">
+              <div class="flex justify-end space-x-3">
+                <button 
+                  type="button" 
+                  @click="showEditAddress = false" 
+                  class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  取消
+                </button>
+                <button 
+                  type="submit" 
+                  class="px-4 py-2 bg-huanyu-pink-600 text-white rounded-md hover:bg-huanyu-pink-700 transition-colors"
+                >
+                  保存
+                </button>
               </div>
-              <div class="flex items-center space-x-2">
-                <span class="w-20"></span>
-                <label class="flex items-center">
-                  <input v-model="addressForm.isDefault" type="checkbox" class="form-checkbox text-huanyu-pink-500 rounded border-gray-300 focus:ring-huanyu-pink-500">
-                  <span class="ml-2 text-sm text-gray-600">设为默认地址</span>
-                </label>
-              </div>
-            </div>
-            <div class="mt-6 flex justify-end space-x-4">
-              <button @click="showEditAddress = false" class="px-6 py-2 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition-colors">
-                取消
-              </button>
-              <button @click="submitAddressForm" class="px-6 py-2 bg-gradient-to-r from-huanyu-pink-500 to-huanyu-red-500 text-white rounded-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-                {{ loading ? '保存中...' : '保存' }}
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
@@ -445,41 +491,23 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { getAvatarUrl, handleAvatarError, getDefaultAvatarUrl } from '@/utils/avatar.js'
 import userService from '@/services/userService.js'
 import { useUserStore } from '@/stores/user'
-import { useAddress } from '@/composables/useAddress'
+import { getProvinces, getCities, getDistricts, ensureRegionDataLoaded } from '@/utils/regionData'
 import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import { couponService } from '@/services/coupon'
 
 // 获取用户存储
 const userStore = useUserStore()
 
-// 地址管理组合式函数
-const { 
-  addresses, 
-  loading: addressLoading, 
-  showAddModal: showAddAddress, 
-  showEditModal: showEditAddress,
-  form: addressForm, 
-  provinces, 
-  cities, 
-  districts, 
-  initRegionData, 
-  loadAddresses, 
-  openAddModal, 
-  openEditModal, 
-  handleProvinceChange, 
-  handleCityChange, 
-  submitForm: submitAddressForm, 
-  removeAddress: deleteAddress, 
-  setAsDefault: setDefault 
-} = useAddress()
-
 // 响应式数据
 const activeSection = ref('info')
+const showAddAddress = ref(false)
+const showEditAddress = ref(false)
 const showChangePassword = ref(false)
 const loading = ref(false)
 const error = ref('')
 const uploadingAvatar = ref(false)
 const avatarInput = ref(null)
+const editingAddressId = ref(null)
 const refreshInterval = ref(null)
 let storageHandler = null
 
@@ -493,12 +521,24 @@ const userInfo = ref({
   role: '',
   createdAt: '',
   lastLoginAt: '',
-  address: '',
-  gender: ''
+  address: ''
 })
 
 // 地址相关
+const addresses = ref([])
 const myCoupons = ref([])
+const provinces = ref([])
+const cities = ref([])
+const districts = ref([])
+const newAddress = ref({
+  name: '',
+  phone: '',
+  province: '',
+  city: '',
+  district: '',
+  detailAddress: '',
+  isDefault: false
+})
 
 const defaultAddressText = computed(() => {
   const list = addresses.value || []
@@ -536,8 +576,7 @@ const avatarKey = ref(0)
       avatar: userStore.user.avatar || '',
       role: userStore.user.role || '',
       createdAt: userStore.user.createdAt || '',
-      lastLoginAt: userStore.user.lastLoginAt || '',
-      gender: userStore.user.gender || userStore.user.Gender || ''
+      lastLoginAt: userStore.user.lastLoginAt || ''
     }
   } else {
     try {
@@ -553,16 +592,15 @@ const avatarKey = ref(0)
             avatar: u.avatar || u.Avatar || '',
             role: u.role || u.Role || '',
             createdAt: u.createdAt || '',
-            lastLoginAt: u.lastLoginAt || u.LastLoginAt || '',
-            gender: u.gender || u.Gender || ''
+            lastLoginAt: u.lastLoginAt || u.LastLoginAt || ''
           }
         }
       }
     } catch {}
   }
   await loadUserInfo()
-  await initRegionData()
   await loadAddresses()
+  await loadProvinces()
   await refreshCoupons()
   refreshInterval.value = setInterval(async () => {
     await loadUserInfo()
@@ -604,9 +642,7 @@ const loadUserInfo = async () => {
           avatar: userData.avatar || userData.Avatar || userInfo.value.avatar || '',
           role: userData.role || userData.Role || userInfo.value.role || '',
           createdAt: userData.createdAt || userInfo.value.createdAt || '',
-          lastLoginAt: userData.lastLoginAt || userData.LastLoginAt || userInfo.value.lastLoginAt || '',
-          address: userData.address || userData.Address || userInfo.value.address || '',
-          gender: userData.gender || userData.Gender || userInfo.value.gender || ''
+          lastLoginAt: userData.lastLoginAt || userData.LastLoginAt || userInfo.value.lastLoginAt || ''
         }
         userInfo.value = normalized
         try { localStorage.setItem('user', JSON.stringify(normalized)) } catch {}
@@ -619,7 +655,213 @@ const loadUserInfo = async () => {
   }
 }
 
-// 地址管理逻辑已迁移至 useAddress composable
+// 加载地址列表
+const loadAddresses = async () => {
+  try {
+    const res = await userService.getAddresses()
+    if (res.success) {
+      addresses.value = res.data || []
+    } else {
+      notifyError(res.data?.message || '获取地址列表失败')
+      addresses.value = []
+    }
+  } catch (err) {
+    notifyError('获取地址列表失败')
+    addresses.value = []
+  }
+}
+
+// 加载省份数据
+const loadProvinces = async () => {
+  try {
+    await ensureRegionDataLoaded()
+    provinces.value = getProvinces()
+  } catch (err) {
+    // 忽略错误，不影响用户体验
+  }
+}
+
+// 重置城市和区县
+const resetCitiesAndDistricts = () => {
+  cities.value = []
+  districts.value = []
+  newAddress.value.city = ''
+  newAddress.value.district = ''
+}
+
+// 省份变化处理
+const handleProvinceChange = (value) => {
+  resetCitiesAndDistricts()
+  if (value) {
+    cities.value = getCities(value)
+  }
+}
+
+// 城市变化处理
+const handleCityChange = (value) => {
+  districts.value = []
+  newAddress.value.district = ''
+  if (value) {
+    districts.value = getDistricts(newAddress.value.province, value)
+  }
+}
+
+// 将地区代码转换为名称，确保写入数据库为人类可读名称
+const getProvinceName = (code) => {
+  try {
+    const list = getProvinces()
+    const item = list.find(p => String(p.code) === String(code))
+    return item?.name || code || ''
+  } catch { return code || '' }
+}
+const getCityName = (pCode, cCode) => {
+  try {
+    const list = getCities(pCode)
+    const item = list.find(c => String(c.code) === String(cCode))
+    return item?.name || cCode || ''
+  } catch { return cCode || '' }
+}
+const getDistrictName = (pCode, cCode, dCode) => {
+  try {
+    const list = getDistricts(pCode, cCode)
+    const item = list.find(d => String(d.code) === String(dCode))
+    return item?.name || dCode || ''
+  } catch { return dCode || '' }
+}
+
+// 打开添加地址
+const openAddAddress = () => {
+  resetCitiesAndDistricts()
+  newAddress.value = {
+    name: '',
+    phone: '',
+    province: '',
+    city: '',
+    district: '',
+    detailAddress: '',
+    isDefault: false
+  }
+  showAddAddress.value = true
+}
+
+// 编辑地址
+const editAddress = (address) => {
+  editingAddressId.value = address.id
+  // 填充表单数据
+  newAddress.value = {
+    name: address.recipientName || '',
+    phone: address.phoneNumber || '',
+    province: address.province || '',
+    city: address.city || '',
+    district: address.district || '',
+    detailAddress: address.detailAddress || '',
+    isDefault: address.isDefault || false
+  }
+  
+  // 加载对应城市和区县
+  cities.value = getCities(address.province)
+  districts.value = getDistricts(address.province, address.city)
+  
+  showEditAddress.value = true
+}
+
+// 保存编辑地址
+const saveEditAddress = async () => {
+  try {
+    loading.value = true
+    const res = await userService.updateAddress(editingAddressId.value, {
+      RecipientName: newAddress.value.name,
+      PhoneNumber: newAddress.value.phone,
+      Province: getProvinceName(newAddress.value.province),
+      City: getCityName(newAddress.value.province, newAddress.value.city),
+      District: getDistrictName(newAddress.value.province, newAddress.value.city, newAddress.value.district),
+      DetailAddress: newAddress.value.detailAddress,
+      IsDefault: newAddress.value.isDefault
+    })
+    if (res.success) {
+      notifySuccess('地址更新成功')
+      await loadAddresses()
+      showEditAddress.value = false
+    } else {
+      notifyError(res.data?.message || '更新地址失败')
+    }
+  } catch (err) {
+    notifyError('更新地址失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 添加地址
+const addAddress = async () => {
+  try {
+    loading.value = true
+    const res = await userService.addAddress({
+      RecipientName: newAddress.value.name,
+      PhoneNumber: newAddress.value.phone,
+      Province: getProvinceName(newAddress.value.province),
+      City: getCityName(newAddress.value.province, newAddress.value.city),
+      District: getDistrictName(newAddress.value.province, newAddress.value.city, newAddress.value.district),
+      DetailAddress: newAddress.value.detailAddress,
+      IsDefault: newAddress.value.isDefault
+    })
+    if (res.success) {
+      notifySuccess('地址添加成功')
+      await loadAddresses()
+      showAddAddress.value = false
+      resetCitiesAndDistricts()
+      newAddress.value = {
+        name: '',
+        phone: '',
+        province: '',
+        city: '',
+        district: '',
+        detailAddress: '',
+        isDefault: false
+      }
+    } else {
+      notifyError(res.data?.message || '添加地址失败')
+    }
+  } catch (err) {
+    notifyError('添加地址失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 删除地址
+const deleteAddress = async (addressId) => {
+  try {
+    const res = await userService.deleteAddress(addressId)
+    if (res.success) {
+      notifySuccess('地址删除成功')
+      // 乐观更新，立即移除本地列表中的该地址（统一数值比较）
+      const targetId = Number(addressId)
+      addresses.value = (addresses.value || []).filter(a => Number(a.id || a.Id) !== targetId)
+      // 再从服务器刷新，确保与数据库一致
+      await loadAddresses()
+    } else {
+      notifyError(res.data?.message || '删除地址失败')
+    }
+  } catch (err) {
+    notifyError('删除地址失败')
+  }
+}
+
+// 设置默认地址
+const setDefault = async (addressId) => {
+  try {
+    const res = await userService.setDefaultAddress(addressId)
+    if (res.success) {
+      notifySuccess('已设置为默认地址')
+      await loadAddresses()
+    } else {
+      notifyError(res.data?.message || '设置默认地址失败')
+    }
+  } catch (err) {
+    notifyError('设置默认地址失败')
+  }
+}
 
 // 更新用户信息
 const updateUserInfo = async () => {
@@ -630,9 +872,7 @@ const updateUserInfo = async () => {
       name: userInfo.value.name,
       email: userInfo.value.email,
       phone: userInfo.value.phone,
-      address: userInfo.value.address,
-      gender: userInfo.value.gender,
-      avatar: userInfo.value.avatar
+      avatar: userInfo.value.avatar // 包含当前的头像信息
     })
     if (res.success) {
       notifySuccess('用户信息更新成功')
@@ -645,7 +885,6 @@ const updateUserInfo = async () => {
       // 使用正确的方法更新用户存储
       await userStore.fetchUserProfile()
       localStorage.setItem('user', JSON.stringify(updatedUser))
-      await loadUserInfo()
     } else {
       notifyError(res.data?.message || '更新用户信息失败')
     }
@@ -759,12 +998,6 @@ const getRoleClass = (role) => {
     default:
       return 'bg-gray-100 text-gray-800'
   }
-}
-
-const getGenderText = (gender) => {
-  if (!gender) return '未设置'
-  const m = { male: '男', female: '女', other: '其他', 男: '男', 女: '女', 其他: '其他' }
-  return m[gender] || '未设置'
 }
 
 // 获取角色文本

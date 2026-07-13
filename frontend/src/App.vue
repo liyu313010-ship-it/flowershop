@@ -1,11 +1,11 @@
 <template>
   <div id="app" class="min-h-screen">
     <!-- 导航栏组件 -->
-    <Navbar />
-    <AdminNav v-if="isAdminRoute" />
+    <Navbar v-if="!isStandaloneRoute" />
+    <AdminNav v-if="isAdminRoute && !isStandaloneRoute" />
     
     <!-- 主要内容区域 -->
-    <main class="pt-16">
+    <main :class="{ 'pt-16': !isStandaloneRoute }">
       <!-- 路由视图 - 根据路由显示不同页面 -->
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
@@ -15,10 +15,7 @@
     </main>
     
     <!-- 页脚组件 -->
-    <Footer />
-    
-    <!-- 返回顶部组件 -->
-    <BackToTop />
+    <Footer v-if="!isStandaloneRoute && !isAdminRoute" />
   </div>
 </template>
 
@@ -30,12 +27,12 @@ import { useCartStore } from '@/stores/cart'
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
-import BackToTop from './components/BackToTop.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+const isStandaloneRoute = computed(() => ['Auth', 'AdminLogin'].includes(route.name))
 
 // 应用初始化
 onMounted(async () => {

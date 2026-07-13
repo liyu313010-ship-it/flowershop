@@ -79,8 +79,8 @@ export const validatePassword = (password) => {
     return { isValid: false, message: '密码不能为空' }
   }
   
-  if (password.length < 6) {
-    return { isValid: false, message: '密码长度至少6位' }
+  if (password.length < 12) {
+    return { isValid: false, message: '密码长度至少12位' }
   }
   
   if (password.length > 50) {

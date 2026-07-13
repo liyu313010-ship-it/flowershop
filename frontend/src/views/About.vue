@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-8">
+  <div class="policy-page min-h-screen py-8">
     <div class="container mx-auto px-4">
       <h1 class="text-3xl font-bold text-gray-800 mb-8">关于我们</h1>
       
-      <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+      <div class="policy-card rounded-lg shadow-lg p-8 mb-8">
         <h2 class="text-2xl font-bold text-pink-600 mb-4">品牌故事</h2>
         <p class="text-gray-700 leading-relaxed mb-4">
           欢雨flower成立于2025年，源于对美好生活的向往和对鲜花艺术的热爱。我们的名字"欢雨"是我和我爱人的名字拼凑起来的，寓意着就欢乐如雨露般滋润人心，鲜花如彩虹般点缀生活。
@@ -13,7 +13,7 @@
         </p>
       </div>
 
-      <div class="bg-white rounded-lg shadow-lg p-8">
+      <div class="policy-card rounded-lg shadow-lg p-8">
         <h2 class="text-2xl font-bold text-pink-600 mb-4">联系我们</h2>
         <div class="grid md:grid-cols-2 gap-8">
           <div>

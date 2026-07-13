@@ -22,19 +22,19 @@ const orderService = {
   // 更新订单状态
   async updateOrderStatus(orderId, statusData) {
     // 确保状态数据格式正确，后端期望的是 { Status: 'delivered' } 格式
-    let status;
-    if (typeof statusData === 'string') {
-      // 处理字符串参数，如 'paid'、'delivered' 等
-      status = statusData;
-    } else {
-      // 处理对象参数，如 { status: 'delivered' } 或 { Status: 'delivered' }
-      status = statusData.status || statusData.Status || statusData;
-    }
-    
+    const status = typeof statusData === 'string'
+      ? statusData
+      : (statusData?.status || statusData?.Status)
+    if (!status) throw new Error('订单状态不能为空')
     const formattedData = {
       Status: status
     };
     const data = await api.put(`/Orders/${orderId}/status`, formattedData)
+    return { success: true, data }
+  },
+
+  async confirmReceipt(orderId) {
+    const data = await api.put(`/Orders/${orderId}/confirm-receipt`)
     return { success: true, data }
   },
 
@@ -49,7 +49,12 @@ const orderService = {
    */
   async updatePaymentInfo(orderId, paymentInfo) {
     try {
-      const data = await api.put(`/Orders/${orderId}/payment`, paymentInfo)
+      // 支付信息统一通过 payment-status 端点更新，/payment 并不存在。
+      const data = await api.put(`/Orders/${orderId}/payment-status`, {
+        paymentStatus: paymentInfo.paymentStatus ?? paymentInfo.PaymentStatus,
+        paymentMethod: paymentInfo.paymentMethod ?? paymentInfo.PaymentMethod,
+        paymentReference: paymentInfo.paymentReference ?? paymentInfo.PaymentReference
+      })
       return { success: true, data }
     } catch (error) {
       console.error('更新支付信息失败:', error)
@@ -73,22 +78,19 @@ const orderService = {
   },
 
   /**
-   * 重新支付订单/获取支付链接
+   * 重新支付订单
    * @param {string} orderId - 订单ID
    * @returns {Promise} - 支付链接信息
    */
-  async getPaymentLink(orderId) {
+  async repayOrder(orderId) {
     try {
+      // 后端没有 /repay 路由；在线支付由服务端生成支付链接。
       const data = await api.get(`/Orders/${orderId}/payment-link`)
       return { success: true, data }
     } catch (error) {
-      console.error('获取支付链接失败:', error)
+      console.error('重新支付失败:', error)
       throw error
     }
-  },
-
-  async repayOrder(orderId) {
-    return this.getPaymentLink(orderId)
   },
 
   // 取消订单
@@ -117,14 +119,8 @@ const orderService = {
       const data = await api.get(`/Orders/${orderId}/status-history`, { ...options, silent: true })
       return { success: true, data }
     } catch (error) {
-      // 如果API调用失败，返回模拟数据
-      return [
-        {
-          status: 'created',
-          description: '订单创建',
-          timestamp: new Date().toISOString()
-        }
-      ]
+      // 不伪造订单轨迹；由调用方决定如何展示错误和重试
+      return { success: false, data: [], message: error.response?.data?.message || error.message || '获取订单状态失败' }
     }
   },
 
@@ -136,35 +132,36 @@ const orderService = {
   },
 
   /**
-   * 验证支付结果
-   * @param {string} orderId 
-   * @param {string} paymentReference 
-   * @returns 
-   */
-  async verifyPayment(orderId, paymentReference) {
-    try {
-      const data = await api.post(`/Orders/${orderId}/verify-payment`, { paymentReference })
-      return { success: true, data }
-    } catch (error) {
-      console.error('验证支付失败:', error)
-      throw error
-    }
-  },
-
-  /**
    * 更新订单物流信息
    * @param {string} orderId - 订单ID
    * @param {Object} shippingInfo - 物流信息
    * @returns {Promise} - 更新结果
    */
   async updateShippingInfo(orderId, shippingInfo) {
-    try {
-      const data = await api.put(`/Orders/${orderId}/shipping`, shippingInfo)
-      return { success: true, data }
-    } catch (error) {
-      console.error('更新物流信息失败:', error)
-      throw error
-    }
+    const company = shippingInfo?.company || shippingInfo?.Company || ''
+    const tracking = shippingInfo?.trackingNumber || shippingInfo?.TrackingNumber || ''
+    if (!company.trim() || !tracking.trim()) throw new Error('物流公司和运单号不能为空')
+    const data = await api.put(`/admin/orders/${orderId}/shipping`, {
+      company: company.trim(),
+      trackingNumber: tracking.trim()
+    })
+    return { success: true, data }
+  },
+
+  // 通过服务端生成支付单/支付链接，不在客户端伪造支付成功。
+  async processPayment(orderId, paymentMethod = 'online') {
+    const data = await api.post(`/Orders/${orderId}/process-payment`, { paymentMethod })
+    return { success: true, data }
+  },
+
+  async generatePaymentLink(orderId) {
+    const data = await api.get(`/Orders/${orderId}/payment-link`)
+    return { success: true, data }
+  },
+
+  async verifyPayment(orderId, paymentReference) {
+    const data = await api.post(`/Orders/${orderId}/verify-payment`, { paymentReference })
+    return { success: true, data }
   }
 }
 

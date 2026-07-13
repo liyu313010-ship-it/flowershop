@@ -84,7 +84,7 @@ namespace HuanyuFlowerShop.DTOs
         public string CurrentPassword { get; set; } = string.Empty;
         
         [Required(ErrorMessage = "新密码不能为空")]
-        [MinLength(6, ErrorMessage = "新密码长度至少为6个字符")]
+        [MinLength(12, ErrorMessage = "新密码长度至少为12个字符")]
         public string NewPassword { get; set; } = string.Empty;
         
         [Required(ErrorMessage = "确认密码不能为空")]
@@ -101,5 +101,21 @@ namespace HuanyuFlowerShop.DTOs
     public class AdminResetPasswordDto
     {
         public string? NewPassword { get; set; }
+    }
+
+    public class ForgotPasswordDto
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordDto
+    {
+        [Required]
+        public string Token { get; set; } = string.Empty;
+        [Required, MinLength(12)]
+        public string NewPassword { get; set; } = string.Empty;
+        [Required, Compare("NewPassword")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

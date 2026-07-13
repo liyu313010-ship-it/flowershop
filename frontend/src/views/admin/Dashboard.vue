@@ -164,7 +164,7 @@
             <div class="space-y-3">
               <div v-for="product in topProducts" :key="product.id" class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                  <img :src="getProductImageUrl(product.image || product.ImageUrl || product.imageUrl || '')" :alt="product.name" class="w-10 h-10 rounded-lg object-cover">
+                  <img :src="((product.image || product.ImageUrl || product.imageUrl) ? (((product.image || product.ImageUrl || product.imageUrl).startsWith('http') ? (product.image || product.ImageUrl || product.imageUrl) : (((product.image || product.ImageUrl || product.imageUrl).startsWith('/uploads') || (product.image || product.ImageUrl || product.imageUrl).startsWith('/images')) ? (product.image || product.ImageUrl || product.imageUrl) : '/api' + (product.image || product.ImageUrl || product.imageUrl)))) : '/images/product-placeholder.svg')" :alt="product.name" class="w-10 h-10 rounded-lg object-cover">
                   <div>
                     <p class="font-medium text-gray-900">{{ product.name }}</p>
                     <p class="text-sm text-gray-600">销量: {{ product.salesCount }}</p>
@@ -186,7 +186,6 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import adminService from '@/services/adminService.js'
-import { getProductImageUrl } from '@/utils/avatar.js'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -253,52 +252,9 @@ const loadDashboardData = async () => {
       }
     } catch (err) {
       error.value = '加载数据失败，请稍后重试'
-      
-      // 使用模拟数据作为后备
-      stats.value = {
-        totalUsers: 1234,
-        newUsers: 56,
-        totalOrders: 5678,
-        pendingOrders: 23,
-        totalProducts: 89,
-        lowStockProducts: 5,
-        totalRevenue: 123456,
-        todayRevenue: 2340
-      }
-      
-      recentOrders.value = [
-        {
-          id: 1001,
-          customerName: '张三',
-          status: 'pending',
-          totalAmount: 299,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 1002,
-          customerName: '李四',
-          status: 'processing',
-          totalAmount: 599,
-          createdAt: new Date(Date.now() - 3600000).toISOString()
-        }
-      ]
-      
-      topProducts.value = [
-        {
-          id: 1,
-          name: '红玫瑰束',
-          price: 299,
-          salesCount: 156,
-          image: 'https://images.unsplash.com/photo-1560419015-7c427e8ae5ba?w=50&h=50&auto=format&fit=crop&crop=center'
-        },
-        {
-          id: 2,
-          name: '粉色康乃馨',
-          price: 199,
-          salesCount: 98,
-          image: 'https://images.unsplash.com/photo-1587872364533-1b6c9e5c9d1b?w=50&h=50&auto=format&fit=crop&crop=center'
-        }
-      ]
+      stats.value = {}
+      recentOrders.value = []
+      topProducts.value = []
     } finally {
       loading.value = false
     }
@@ -327,14 +283,12 @@ const getStatusText = (status) => {
 }
 
 const formatDate = (dateString) => {
-  if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-      timeZone: 'Asia/Shanghai'
-    })
-  } catch { return '' }
+  return new Date(dateString).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const viewOrder = (orderId) => {

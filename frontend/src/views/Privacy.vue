@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-8">
+  <div class="policy-page min-h-screen py-8">
     <div class="container mx-auto px-4">
       <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">隐私政策</h1>
       <p class="text-gray-600 text-center mb-10 max-w-3xl mx-auto">
@@ -339,6 +339,9 @@
         <p class="text-gray-700 mb-6">
           欢雨鲜花致力于为您提供优质的产品和服务，同时保护您的隐私和个人信息安全。我们期待与您建立长期的信任关系。
         </p>
+        <button @click="window.scrollTo({ top: 0, behavior: 'smooth' })" class="inline-flex items-center px-6 py-3 bg-pink-500 text-white font-medium rounded-lg hover:bg-pink-600 transition-colors duration-300">
+          <i class="fas fa-arrow-up mr-2"></i>返回顶部
+        </button>
       </div>
     </div>
   </div>

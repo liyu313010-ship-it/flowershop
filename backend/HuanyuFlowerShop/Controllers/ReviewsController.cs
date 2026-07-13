@@ -3,15 +3,22 @@ using Microsoft.AspNetCore.Authorization;
 using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 
 namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ReviewsController(IReviewService reviewService, ILogger<ReviewsController> logger) : ControllerBase
+    public class ReviewsController : ControllerBase
     {
-        private readonly IReviewService _reviewService = reviewService;
-        private readonly ILogger<ReviewsController> _logger = logger;
+        private readonly IReviewService _reviewService;
+        private readonly ILogger<ReviewsController> _logger;
+
+        public ReviewsController(IReviewService reviewService, ILogger<ReviewsController> logger)
+        {
+            _reviewService = reviewService;
+            _logger = logger;
+        }
 
         /// <summary>
         /// 获取产品的评价列表

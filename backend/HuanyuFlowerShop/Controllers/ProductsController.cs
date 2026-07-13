@@ -9,38 +9,22 @@ using HuanyuFlowerShop.DTOs;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
 using HuanyuFlowerShop.Middleware;
-using System;
 
 namespace HuanyuFlowerShop.Controllers
 {
-    /// <summary>
-    /// 商品控制器
-    /// 负责处理商品相关的API请求
-    /// 对应前端商品列表、商品详情、商品搜索等功能
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductsController(IProductService productService, ILogger<ProductsController> logger) : ControllerBase
+    public class ProductsController : ControllerBase
     {
-        /// <summary>
-        /// 商品服务接口
-        /// 提供商品相关的业务逻辑
-        /// </summary>
-        private readonly IProductService _productService = productService;
-        
-        /// <summary>
-        /// 日志记录器
-        /// 用于记录API请求和响应日志
-        /// </summary>
-        private readonly ILogger<ProductsController> _logger = logger;
+        private readonly IProductService _productService;
+        private readonly ILogger<ProductsController> _logger;
 
-        
+        public ProductsController(IProductService productService, ILogger<ProductsController> logger)
+        {
+            _productService = productService;
+            _logger = logger;
+        }
 
-        /// <summary>
-        /// 获取所有商品列表
-        /// GET: api/Products
-        /// </summary>
-        /// <returns>商品列表</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
         {
@@ -58,12 +42,6 @@ namespace HuanyuFlowerShop.Controllers
             }
         }
 
-        /// <summary>
-        /// 获取商品详情
-        /// GET: api/Products/{id}
-        /// </summary>
-        /// <param name="id">商品ID</param>
-        /// <returns>商品详情</returns>
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductDto>> GetProduct(int id)
         {
@@ -73,11 +51,6 @@ namespace HuanyuFlowerShop.Controllers
             return Ok(product);
         }
 
-        /// <summary>
-        /// 获取推荐商品列表
-        /// GET: api/Products/featured
-        /// </summary>
-        /// <returns>推荐商品列表</returns>
         [HttpGet("featured")]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetFeaturedProducts()
         {
@@ -95,11 +68,6 @@ namespace HuanyuFlowerShop.Controllers
             }
         }
 
-        /// <summary>
-        /// 获取首页商品列表
-        /// GET: api/Products/home
-        /// </summary>
-        /// <returns>首页商品列表</returns>
         [HttpGet("home")]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetHomeProducts()
         {
@@ -117,12 +85,6 @@ namespace HuanyuFlowerShop.Controllers
             }
         }
 
-        /// <summary>
-        /// 根据分类获取商品列表
-        /// GET: api/Products/category/{categoryId}
-        /// </summary>
-        /// <param name="categoryId">分类ID</param>
-        /// <returns>分类商品列表</returns>
         [HttpGet("category/{categoryId}")]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetProductsByCategory(int categoryId)
         {
@@ -137,14 +99,8 @@ namespace HuanyuFlowerShop.Controllers
             return Ok(products);
         }
         
-        /// <summary>
-        /// 搜索商品
-        /// GET: api/Products/search
-        /// </summary>
-        /// <param name="searchDto">搜索条件</param>
-        /// <returns>分页搜索结果</returns>
         [HttpGet("search")]
-        public async Task<ActionResult<HuanyuFlowerShop.DTOs.PagedResult<ProductDto>>> SearchProducts([FromQuery] ProductSearchDto searchDto)
+        public async Task<ActionResult<PagedResult<ProductDto>>> SearchProducts([FromQuery] ProductSearchDto searchDto)
         {
             _logger.LogInformation("开始搜索商品，关键词: {Keyword}", searchDto.Keyword);
             
@@ -162,13 +118,6 @@ namespace HuanyuFlowerShop.Controllers
             }
         }
 
-        /// <summary>
-        /// 创建商品
-        /// POST: api/Products
-        /// 需要管理员权限
-        /// </summary>
-        /// <param name="createProductDto">创建商品请求</param>
-        /// <returns>创建的商品</returns>
         [HttpPost]
         [Authorize]
         [AdminOnly]
@@ -185,13 +134,6 @@ namespace HuanyuFlowerShop.Controllers
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
         }
 
-        /// <summary>
-        /// 更新商品
-        /// PUT: api/Products/{id}
-        /// </summary>
-        /// <param name="id">商品ID</param>
-        /// <param name="updateProductDto">更新商品请求</param>
-        /// <returns>更新后的商品</returns>
         [HttpPut("{id}")]
         public async Task<ActionResult<ProductDto>> UpdateProduct(int id, UpdateProductDto updateProductDto)
         {
@@ -206,12 +148,6 @@ namespace HuanyuFlowerShop.Controllers
             return Ok(product);
         }
 
-        /// <summary>
-        /// 删除商品
-        /// DELETE: api/Products/{id}
-        /// </summary>
-        /// <param name="id">商品ID</param>
-        /// <returns>删除结果</returns>
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteProduct(int id)
         {

@@ -15,6 +15,6 @@ namespace HuanyuFlowerShop.Interfaces
         Task<OrderDto?> UpdatePaymentStatusAsync(int userId, int orderId, string paymentStatus, string? paymentReference = null, string? paymentMethod = null);
         Task<OrderDto?> ProcessPaymentAsync(int userId, int orderId, string paymentMethod);
         Task<bool> VerifyPaymentAsync(int userId, int orderId, string paymentReference);
-        Task<IEnumerable<OrderStatusHistoryDto>> GetOrderStatusHistoryAsync(int orderId);
+        Task<IEnumerable<OrderStatusHistoryDto>> GetOrderStatusHistoryAsync(int userId, int orderId);
     }
 }

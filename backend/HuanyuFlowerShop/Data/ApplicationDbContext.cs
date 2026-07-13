@@ -28,9 +28,7 @@ namespace HuanyuFlowerShop.Data
         public DbSet<Coupon> Coupons { get; set; } = null!;
         public DbSet<UserCoupon> UserCoupons { get; set; } = null!;
         public DbSet<ProductRecommendation> ProductRecommendations { get; set; } = null!;
-        public DbSet<Message> Messages { get; set; } = null!;
-        public DbSet<Conversation> Conversations { get; set; } = null!;
-        public DbSet<Video> Videos { get; set; } = null!;
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -51,6 +49,17 @@ namespace HuanyuFlowerShop.Data
                 entity.Property(e => e.Gender).HasMaxLength(20);
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
+            });
+
+            modelBuilder.Entity<PasswordResetToken>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.ExpiresAt });
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // 配置Category实体
@@ -110,6 +119,10 @@ namespace HuanyuFlowerShop.Data
                 entity.Property(e => e.RecipientPhone).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.DeliveryAddress).HasMaxLength(200).IsRequired();
                 entity.Property(e => e.Message).HasMaxLength(500);
+                entity.Property(e => e.ShippingMethod).HasMaxLength(30).IsRequired();
+                entity.Property(e => e.SenderName).HasMaxLength(50);
+                entity.Property(e => e.CardMessage).HasMaxLength(500);
+                entity.Property(e => e.SubstitutionPreference).HasMaxLength(30).IsRequired();
                 entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.PaymentMethod).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.PaymentStatus).HasMaxLength(20).IsRequired();

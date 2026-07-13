@@ -1,183 +1,107 @@
 <template>
   <PageTransition>
-    <div class="min-h-screen">
-      <LoadingSpinner :visible="loading" text="正在加载首页..." />
-      <!-- 英雄区域 - 全屏沉浸式设计 -->
-      <section class="relative h-[85vh] min-h-[600px] w-full overflow-hidden hero-section">
+    <div class="min-h-screen home-page">
+      <LoadingSpinner :visible="isLoading" text="正在加载首页..." />
+      <!-- 英雄区域：以花为主角，让用户第一眼就能开始选购 -->
+      <section class="hero-section relative min-h-[34rem] md:min-h-[42rem] overflow-hidden" aria-label="欢雨flower精选花礼">
         <!-- 背景容器 -->
         <div class="absolute inset-0 w-full h-full">
           <!-- 背景图片 -->
-          <transition name="fade-slow" mode="out-in">
-            <div 
+          <transition name="fade" mode="out-in">
+            <img 
               v-if="heroBackgroundType === 'image'"
               :key="heroImagePath"
-              class="absolute inset-0 w-full h-full"
-            >
-              <img 
-                :src="heroImagePath" 
-                alt="欢雨flower横幅" 
-                class="absolute inset-0 w-full h-full object-cover object-center transform scale-105 animate-slow-zoom"
-                loading="eager"
-                @load="onHeroBackgroundLoad"
-                @error="fallbackToDefaultImage"
-              />
-              <!-- 渐变遮罩：底部加深，顶部微暗，中间透亮 -->
-              <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
-            </div>
+              :src="heroImagePath" 
+              alt="欢雨flower横幅" 
+              class="absolute inset-0 w-full h-full object-cover object-center hero-image"
+              style="object-position: center center; image-rendering: -webkit-optimize-contrast; image-rendering: auto;"
+              loading="eager"
+              @load="onHeroBackgroundLoad"
+              @error="fallbackToDefaultImage"
+            />
             
             <!-- 背景视频 -->
-            <div 
+            <video 
               v-else
-              class="absolute inset-0 w-full h-full"
-            >
-              <video 
-                ref="heroVideoRef"
-                :src="heroVideoPath"
-                class="absolute inset-0 w-full h-full object-cover object-center"
-                autoplay
-                muted
-                loop
-                playsinline
-                @loadeddata="onHeroBackgroundLoad"
-                @error="onHeroVideoError"
-              ></video>
-              <div class="absolute inset-0 bg-black/40 pointer-events-none"></div>
-            </div>
+              :key="heroVideoPath"
+              ref="heroVideoRef"
+              :src="heroVideoPath"
+              class="absolute inset-0 w-full h-full object-cover object-center hero-video"
+              autoplay
+              muted
+              loop
+              playsinline
+              @loadeddata="onHeroBackgroundLoad"
+              @error="onHeroBackgroundLoad"
+              style="object-position: center center;"
+            ></video>
           </transition>
         </div>
-        
-        <!-- 管理员上传按钮 -->
-        <div v-if="userStore.isAdmin" class="absolute top-24 right-8 z-50">
-          <input ref="heroVideoUploadInput" type="file" accept="video/*" class="hidden" @change="handleHeroVideoFileSelected" />
-          <button 
-            @click.stop="triggerHeroVideoUpload"
-            class="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white border border-white/30 px-4 py-2 rounded-full text-sm transition-all flex items-center gap-2"
-            :disabled="uploadingHeroVideo"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-            {{ uploadingHeroVideo ? '上传中...' : '更换背景视频' }}
-          </button>
-        </div>
+        <div class="hero-wash absolute inset-0" aria-hidden="true"></div>
 
-        <!-- 内容区域 -->
-        <div class="absolute inset-0 flex items-center justify-center text-center text-white px-4 z-10">
-          <div class="relative w-full max-w-7xl mx-auto" @mouseenter="heroAutoRotatePaused = true" @mouseleave="heroAutoRotatePaused = false" @touchstart="handleHeroTouchStart" @touchmove="handleHeroTouchMove" @touchend="handleHeroTouchEnd">
-            <transition name="slide-up" mode="out-in">
-              <div :key="currentHeroSlide" class="w-full">
-                <!-- Slide 1: 品牌主视觉 -->
-                <div v-if="heroSlides[currentHeroSlide] === 'hero'" class="mx-auto max-w-4xl py-12">
-                  <div class="mb-6 inline-block px-4 py-1 rounded-full border border-white/30 bg-white/10 backdrop-blur-sm text-sm tracking-widest uppercase font-light animate-fade-in-up">Welcome to Huanyu Flower</div>
-                  <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight text-white drop-shadow-lg font-serif animate-fade-in-up delay-100">
-                    让美好<br class="md:hidden" />自然发生
-                  </h1>
-                  <p class="text-xl md:text-2xl mb-10 text-white/90 max-w-2xl mx-auto font-light leading-relaxed animate-fade-in-up delay-200">
-                    用心传递每一份情感，让鲜花点亮生活的每一个瞬间
-                  </p>
-                  <div class="flex flex-col sm:flex-row gap-6 justify-center animate-fade-in-up delay-300">
-                    <router-link to="/products" class="group relative overflow-hidden bg-white text-huanyu-pink-600 px-8 py-4 rounded-full font-medium transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.5)] hover:-translate-y-1">
-                      <span class="relative z-10">浏览当季花束</span>
-                      <div class="absolute inset-0 bg-huanyu-pink-50 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
-                    </router-link>
-                    <router-link to="/about" class="group relative overflow-hidden px-8 py-4 rounded-full font-medium border border-white text-white hover:border-transparent transition-all hover:-translate-y-1">
-                      <span class="relative z-10">了解品牌故事</span>
-                      <div class="absolute inset-0 bg-white/20 backdrop-blur-sm transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
-                    </router-link>
-                  </div>
-                </div>
-
-                <!-- Slide 2: 热销推荐 -->
-                <div v-else-if="heroSlides[currentHeroSlide] === 'hot'" class="mx-auto max-w-6xl">
-                  <div class="flex items-end justify-between mb-8 px-4 border-b border-white/20 pb-4">
-                    <div class="text-left">
-                      <span class="block text-sm text-huanyu-pink-200 uppercase tracking-widest mb-1">本周热门</span>
-                      <h3 class="text-3xl md:text-4xl font-serif font-bold">大家都爱的花束</h3>
-                    </div>
-                    <router-link to="/products" class="text-white/80 hover:text-white flex items-center gap-2 group transition-colors">
-                      查看全部 
-                      <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                    </router-link>
-                  </div>
-                  <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8 px-4">
-                    <router-link v-for="p in (featuredProducts || []).slice(0,3)" :key="p.id" :to="`/product/${p.id}`" class="group relative bg-white/10 backdrop-blur-md rounded-2xl p-3 md:p-4 hover:bg-white/20 transition-all duration-300 hover:-translate-y-2">
-                      <div class="aspect-[3/4] rounded-xl overflow-hidden mb-4 relative">
-                        <img :src="p.image" :alt="p.name" class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
-                        <div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-                          <span class="bg-white/90 text-huanyu-pink-600 text-xs font-bold px-2 py-1 rounded shadow-sm">Hot</span>
-                        </div>
-                      </div>
-                      <div class="text-left">
-                        <h4 class="text-lg font-medium truncate mb-1">{{ p.name }}</h4>
-                        <div class="text-xl font-serif">¥{{ p.price }}</div>
-                      </div>
-                    </router-link>
-                  </div>
-                </div>
-
-                <!-- Slide 3: 节日促销 -->
-                <div v-else class="mx-auto max-w-5xl">
-                  <div class="relative rounded-3xl overflow-hidden shadow-2xl bg-white/10 backdrop-blur-md border border-white/20">
-                    <div class="grid md:grid-cols-2">
-                      <div class="h-64 md:h-96 relative overflow-hidden">
-                        <img :src="promoStaticSrc" alt="促销" class="absolute inset-0 w-full h-full object-cover transition-transform hover:scale-105 duration-700" />
-                      </div>
-                      <div class="p-8 md:p-12 flex flex-col justify-center text-left bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl text-gray-900">
-                        <span class="text-huanyu-pink-600 font-bold tracking-wider uppercase text-sm mb-2">Limited Offer</span>
-                        <h2 class="text-4xl md:text-5xl font-serif font-bold mb-4 leading-tight">岁岁年年<br>花相似</h2>
-                        <p class="text-gray-600 text-lg mb-8 leading-relaxed">在这个特别的日子里，选一束最特别的花，送给最特别的人。</p>
-                        <router-link to="/products" class="self-start bg-black text-white px-8 py-3 rounded-full hover:bg-gray-800 transition-colors shadow-lg flex items-center gap-2">
-                          立即选购
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                        </router-link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </transition>
-            
-            <!-- 轮播控制器 -->
-            <div class="absolute -bottom-12 left-0 right-0 flex items-center justify-center gap-4">
-              <button @click="prevHeroSlide" class="w-10 h-10 rounded-full border border-white/30 bg-white/10 hover:bg-white/30 text-white backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-              </button>
-              <div class="flex gap-2">
-                <button v-for="(s,i) in heroSlides" :key="i" @click="currentHeroSlide = i" class="h-1.5 rounded-full transition-all duration-300" :class="i === currentHeroSlide ? 'w-8 bg-white' : 'w-2 bg-white/40 hover:bg-white/60'"></button>
-              </div>
-              <button @click="nextHeroSlide" class="w-10 h-10 rounded-full border border-white/30 bg-white/10 hover:bg-white/30 text-white backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-              </button>
+        <!-- 文字内容：左侧叙事 + 右侧购买提示 -->
+        <div class="hero-inner relative z-10 mx-auto flex min-h-[34rem] max-w-7xl items-center px-6 py-16 md:min-h-[42rem] md:px-12 lg:px-16">
+          <div class="hero-copy max-w-xl fade-in">
+            <p class="hero-kicker"><span class="hero-kicker-dot"></span> 每一束，都有它想说的话</p>
+            <h1 class="hero-title">把心意<br /><em>开成一束花</em></h1>
+            <p class="hero-subtitle">新鲜花材 · 花艺师手作 · 城市当日送达</p>
+            <div class="hero-actions">
+              <router-link to="/products" class="hero-cta-primary">挑一束喜欢的 <span aria-hidden="true">→</span></router-link>
+              <router-link to="/about" class="hero-cta-quiet">了解欢雨flower</router-link>
             </div>
+            <div class="hero-proof" aria-label="服务承诺">
+              <span><strong>2h</strong> 最快送达</span>
+              <span class="hero-proof-divider"></span>
+              <span><strong>100%</strong> 鲜花质检</span>
+              <span class="hero-proof-divider"></span>
+              <span><strong>7×24</strong> 用心服务</span>
+            </div>
+          </div>
+
+          <router-link to="/products" class="hero-note hidden lg:block" aria-label="查看当季花礼">
+            <span class="hero-note-label">今日精选</span>
+            <span class="hero-note-title">当季花礼</span>
+            <span class="hero-note-price">¥129 <small>起</small></span>
+            <span class="hero-note-link">查看花礼 <span>↗</span></span>
+          </router-link>
+        </div>
+      </section>
+
+      <!-- 快速选花：把购买入口放到首屏之后，减少用户决策成本 -->
+      <section class="home-quick-categories" aria-label="快速选花">
+        <div class="container mx-auto flex items-center gap-3 px-4">
+          <span class="hidden shrink-0 text-sm font-semibold text-[color:var(--brand-muted)] md:block">按心意选</span>
+          <div class="flex gap-3">
+            <router-link v-for="category in quickCategories" :key="category.name" :to="category.to" class="quick-category-link">
+              <span>{{ category.name }}</span>
+              <small>{{ category.caption }}</small>
+            </router-link>
           </div>
         </div>
       </section>
     
-    <!-- 视频展示区域 - 影院级体验 -->
-    <section class="py-24 bg-gray-900 text-white relative overflow-hidden">
-      <!-- 氛围背景 -->
-      <div class="absolute inset-0 bg-[url('/images/pattern.svg')] opacity-5"></div>
-      <div class="absolute top-0 left-1/4 w-96 h-96 bg-huanyu-pink-600/20 rounded-full blur-[100px]"></div>
-      <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px]"></div>
-
-      <div class="container mx-auto px-4 relative z-10">
-        <div class="text-center mb-16">
-          <span class="text-huanyu-pink-400 font-bold tracking-widest uppercase text-sm block mb-2">Brand Video</span>
-          <h2 class="text-3xl md:text-4xl font-serif font-bold mb-4">探索花艺之美</h2>
-          <p class="text-gray-400 max-w-2xl mx-auto font-light">
-            通过镜头，感受每一朵花盛开的瞬间，聆听花艺师与自然对话的故事
+    <!-- 视频展示区域 -->
+    <section class="py-16 bg-gradient-to-br from-huanyu-pink-50 to-white home-video-section">
+      <div class="container mx-auto px-4">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl md:text-4xl font-bold text-huanyu-pink-700 mb-4">
+            品牌故事视频
+          </h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">
+            了解欢雨flower的品牌理念和服务承诺
           </p>
         </div>
         
-        <!-- 视频播放器容器 -->
-        <div class="max-w-5xl mx-auto">
-          <div class="relative rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 group">
+        <!-- 视频播放器 -->
+        <div class="max-w-4xl mx-auto">
+          <div class="relative rounded-2xl overflow-hidden shadow-2xl">
             <!-- 视频播放器 -->
-              <div ref="videoSection" class="relative video-container bg-black rounded-2xl overflow-hidden w-full" :style="`padding-bottom: ${videoAspectRatio ? getPaddingBottom(videoAspectRatio) : '56.25%'}; min-height: 400px;`">
+              <div ref="videoSection" class="relative video-container bg-gray-900 rounded-2xl overflow-hidden w-full" :style="`padding-bottom: ${videoAspectRatio ? getPaddingBottom(videoAspectRatio) : '56.25%'}; min-height: 400px;`">
               <!-- 视频封面图片 -->
               <img 
-                src="/images/视频封面图片.png" 
+                src="/images/视屏壁纸图片.png" 
                 alt="视频封面" 
-                class="absolute inset-0 w-full h-full object-cover hero-image transition-transform duration-700 group-hover:scale-105"
+                class="absolute inset-0 w-full h-full object-cover hero-image"
                 style="image-rendering: -webkit-optimize-contrast; image-rendering: auto; object-position: center; width: 100%; height: 100%;"
                 v-if="!videoPlaying"
               />
@@ -185,31 +109,19 @@
               <!-- 播放按钮覆盖层 -->
               <div 
                 v-if="!videoPlaying"
-                class="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition-colors w-full h-full"
+                class="absolute inset-0 bg-black/30 flex items-center justify-center cursor-pointer hover:bg-black/40 transition-colors w-full h-full"
                 @click="playVideo"
               >
-                <div class="play-button rounded-full p-6 bg-transparent backdrop-blur-md border border-white/30 hover:bg-white/10 transition-all transform hover:scale-110 shadow-2xl relative flex items-center justify-center">
-                  <!-- 脉冲动画 -->
-                  <div class="absolute inset-0 rounded-full border border-white/50 animate-ping opacity-75 pointer-events-none"></div>
-                  <svg class="w-12 h-12 text-white relative z-10 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <div class="play-button rounded-full p-6 bg-white/90 hover:bg-white transition-colors">
+                  <svg class="w-12 h-12 text-huanyu-pink-500" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>
                   </svg>
-                </div>
-                <div v-if="userStore.isAdmin" class="absolute top-3 right-3 flex items-center gap-2">
-                  <input ref="videoUploadInput" type="file" accept="video/*" class="hidden" @change="handleVideoFileSelected" />
-                  <button 
-                    @click.stop="triggerVideoUpload"
-                    class="bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded-lg text-sm backdrop-blur-sm border border-white/20"
-                    :disabled="uploadingVideo"
-                  >
-                    {{ uploadingVideo ? '上传中...' : '上传视频' }}
-                  </button>
                 </div>
               </div>
               
               <!-- 视频播放器 -->
               <video 
-                v-show="videoPlaying"
+                v-if="videoPlaying"
                 ref="videoPlayer"
                 class="absolute inset-0 w-full h-full"
                 style="object-fit: cover; background: black;"
@@ -226,7 +138,8 @@
                 @playing="onVideoPlaying"
                 @touchstart="handleMobileVideoPlay"
                 @touchend.prevent="preventDoubleTapZoom">
-                <source :src="storyVideoPath" type="video/mp4">
+                <!-- 使用本地视频文件 -->
+                <source src="/videos/2.mp4" type="video/mp4">
                 <p>您的浏览器不支持视频播放</p>
               </video>
               
@@ -234,7 +147,7 @@
               <div v-if="!videoPlaying && hasPlayed" class="absolute inset-0 flex items-center justify-center bg-gray-900">
                 <div class="text-center text-white">
                   <div class="mb-4">
-                    <svg class="w-16 h-16 mx-auto text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
@@ -243,110 +156,112 @@
                   <p class="text-sm text-gray-400 mb-4">请稍后重试或联系客服</p>
                   <button 
                     @click="retryVideoLoad"
-                    class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                   >
                     重新加载
                   </button>
                 </div>
               </div>
+              
             </div>
             
-            <!-- 视频信息栏 -->
-              <div class="bg-gray-800/80 backdrop-blur p-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div>
-                  <h3 class="text-lg font-semibold text-white mb-1">欢雨flower - 用心传递每一份美好</h3>
-                  <p class="text-gray-400 text-sm">
-                    从花田到花束，从花艺师到配送员，每一个环节我们都用心对待。
-                  </p>
+            <!-- 视频信息 -->
+            <div class="bg-white p-6 border-t">
+              <h3 class="text-xl font-semibold text-gray-800 mb-2">欢雨flower - 用心传递每一份美好</h3>
+              <p class="text-gray-600 mb-4">
+                从花田到花束，从花艺师到配送员，每一个环节我们都用心对待。让我们一起见证鲜花的美丽旅程。
+              </p>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4 text-sm text-gray-500">
+                  <span>时长: {{ videoDuration || '3:45' }}</span>
+                  <span>发布时间: 2024年1月</span>
+                  <span v-if="videoDimensions">{{ videoDimensions.width }}x{{ videoDimensions.height }}</span>
                 </div>
-                <div class="video-controls flex space-x-2 shrink-0">
-                    <button 
-                      v-if="videoPlaying"
-                      @click="pauseVideo"
-                      class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20 text-sm"
-                    >
-                      暂停
-                    </button>
-                    <button 
-                      v-if="!videoPlaying && hasPlayed"
-                      @click="replayVideo"
-                      class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors border border-white/20 text-sm"
-                    >
-                      重播
-                    </button>
-                    <button 
-                      @click="shareVideo"
-                      class="bg-huanyu-pink-600 hover:bg-huanyu-pink-700 text-white px-4 py-2 rounded-lg transition-colors shadow-lg text-sm"
-                    >
-                      分享
-                    </button>
+                <div class="video-controls flex space-x-2">
+                  <button 
+                    v-if="videoPlaying"
+                    @click="pauseVideo"
+                    class="bg-huanyu-pink-100 hover:bg-huanyu-pink-200 text-huanyu-pink-600 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    暂停
+                  </button>
+                  <button 
+                    v-if="!videoPlaying && hasPlayed"
+                    @click="replayVideo"
+                    class="bg-huanyu-pink-100 hover:bg-huanyu-pink-200 text-huanyu-pink-600 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    重播
+                  </button>
+                  <button 
+                    @click="shareVideo"
+                    class="bg-huanyu-pink-500 hover:bg-huanyu-pink-600 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    分享
+                  </button>
                 </div>
               </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
     
-    <!-- 特色服务区域 - 悬浮卡片设计 -->
-    <section class="py-20 bg-gradient-to-b from-white to-huanyu-pink-50/30 relative overflow-hidden">
-      <!-- 装饰背景 -->
-      <div class="absolute top-0 left-0 w-64 h-64 bg-huanyu-pink-100/40 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-      <div class="absolute bottom-0 right-0 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
-
-      <div class="container mx-auto px-4 relative z-10">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+    <!-- 特色服务区域 -->
+    <section class="py-16 bg-white home-services-section">
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           
           <!-- 特色卡片1 -->
-          <div class="group bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_60px_-15px_rgba(236,72,153,0.15)] transition-all duration-500 hover:-translate-y-2 border border-white/50 text-center">
-            <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-huanyu-pink-50 to-white rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-500">
+          <div class="text-center group">
+            <div class="w-20 h-20 mx-auto mb-4 bg-huanyu-pink-50 rounded-full flex items-center justify-center group-hover:bg-huanyu-pink-100 transition-colors">
               <svg class="w-10 h-10 text-huanyu-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-bold mb-3 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">当日极速达</h3>
-            <p class="text-gray-500 leading-relaxed">同城下单后最快 2 小时送达，让爱意不再等待，每一刻新鲜如初。</p>
+            <h3 class="text-xl font-semibold mb-2">当日配送</h3>
+            <p class="text-gray-600">下单后最快2小时送达，让爱意及时传递</p>
           </div>
           
           <!-- 特色卡片2 -->
-          <div class="group bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_60px_-15px_rgba(236,72,153,0.15)] transition-all duration-500 hover:-translate-y-2 border border-white/50 text-center">
-            <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-huanyu-pink-50 to-white rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-500">
+          <div class="text-center group">
+            <div class="w-20 h-20 mx-auto mb-4 bg-huanyu-pink-50 rounded-full flex items-center justify-center group-hover:bg-huanyu-pink-100 transition-colors">
               <svg class="w-10 h-10 text-huanyu-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-bold mb-3 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">严选A级花材</h3>
-            <p class="text-gray-500 leading-relaxed">源头直采，精选每一朵鲜花，确保花苞饱满、色泽艳丽，品质更有保障。</p>
+            <h3 class="text-xl font-semibold mb-2">品质保证</h3>
+            <p class="text-gray-600">精选优质花材，确保每一朵花都新鲜美丽</p>
           </div>
           
           <!-- 特色卡片3 -->
-          <div class="group bg-white/80 backdrop-blur-sm p-8 rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_60px_-15px_rgba(236,72,153,0.15)] transition-all duration-500 hover:-translate-y-2 border border-white/50 text-center">
-            <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-huanyu-pink-50 to-white rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-500">
+          <div class="text-center group">
+            <div class="w-20 h-20 mx-auto mb-4 bg-huanyu-pink-50 rounded-full flex items-center justify-center group-hover:bg-huanyu-pink-100 transition-colors">
               <svg class="w-10 h-10 text-huanyu-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-bold mb-3 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">专属花艺定制</h3>
-            <p class="text-gray-500 leading-relaxed">资深花艺师一对一服务，为您量身定制专属花礼，传递最真挚的情感。</p>
+            <h3 class="text-xl font-semibold mb-2">用心服务</h3>
+            <p class="text-gray-600">专业花艺师精心搭配，传递最真挚的情感</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 热门商品区域 - 瀑布流/网格布局优化 -->
-    <section class="py-24 bg-white">
+    <!-- 热门商品区域 -->
+    <section class="py-16 bg-gradient-to-br from-huanyu-pink-50 to-white home-products-section">
       <div class="container mx-auto px-4">
-        <div class="text-center mb-16 relative">
-          <span class="text-huanyu-pink-500 font-bold tracking-widest uppercase text-sm block mb-2">Our Selection</span>
-          <h2 class="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-6">当季热销花礼</h2>
-          <div class="w-24 h-1 bg-gradient-to-r from-transparent via-huanyu-pink-400 to-transparent mx-auto"></div>
-          <p class="text-gray-500 max-w-2xl mx-auto mt-6 text-lg font-light">
-            每一束花都是大自然的馈赠，为您精选最受欢迎的鲜花产品，传递美好祝福
+        <div class="text-center mb-12">
+          <h2 class="text-3xl md:text-4xl font-bold text-huanyu-pink-700 mb-4">
+            本周热卖花礼
+          </h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">
+            花艺师正在为你准备最受欢迎的心意，每一束都可以当日送达
           </p>
         </div>
         
         <!-- 商品网格 -->
         <div 
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
           @touchstart="handleTouchStart"
           @touchmove="handleTouchMove"
           @touchend="handleTouchEnd"
@@ -357,96 +272,138 @@
             <div 
               v-for="product in featuredProducts" 
               :key="product.id" 
-              class="group relative bg-white rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border border-gray-100"
+              class="card group cursor-pointer relative"
               @touchstart="handleCardTouch(product, $event)"
               @touchend.prevent="preventDoubleTapZoom"
             >
-              <!-- 图片容器 -->
-              <div class="aspect-[3/4] overflow-hidden relative bg-gray-50">
+            <div class="relative overflow-hidden rounded-xl">
+              <!-- 商品图片 -->
+              <div class="w-full h-48 bg-gray-50 overflow-hidden relative">
                 <img 
                   :src="product.image" 
                   :alt="product.name"
-                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
                   @error="handleProductImageError($event, product)"
                 />
-                
-                <!-- 遮罩层 -->
-                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <!-- 标签 -->
-                <div class="absolute top-4 left-4 flex flex-col gap-2">
-                  <span v-if="product.isHot" class="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 text-xs font-bold rounded-full shadow-lg">HOT</span>
-                  <span v-if="product.isNew" class="bg-white/90 backdrop-blur text-huanyu-pink-600 px-3 py-1 text-xs font-bold rounded-full shadow-lg">NEW</span>
-                </div>
-
-                <!-- 悬停操作按钮组 -->
-                <div class="absolute bottom-6 left-0 right-0 flex justify-center gap-3 translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 px-4">
-                  <button 
-                    @click.stop="quickView(product)"
-                    class="w-10 h-10 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-huanyu-pink-500 hover:text-white transition-all shadow-lg hover:scale-110"
-                    title="快速查看"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                  </button>
-                  <button 
-                    v-if="!userStore.isAdmin"
-                    @click.stop="handleAddToCart(product)"
-                    class="w-10 h-10 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-huanyu-pink-500 hover:text-white transition-all shadow-lg hover:scale-110"
-                    title="加入购物车"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                  </button>
-                  <button 
-                    v-if="!userStore.isAdmin"
-                    @click.stop="toggleFavorite(product)"
-                    class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-red-50 transition-all shadow-lg hover:scale-110"
-                    :class="isFavorite(product) ? 'text-red-500' : 'text-gray-700 hover:text-red-500'"
-                    title="收藏"
-                  >
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                  </button>
-                </div>
               </div>
               
-              <!-- 信息区域 -->
-              <div class="p-6 text-center">
-                <h3 class="font-serif text-lg font-bold mb-2 text-gray-900 group-hover:text-huanyu-pink-600 transition-colors truncate">{{ product.name }}</h3>
-                <p class="text-gray-500 text-sm mb-4 line-clamp-1 font-light">{{ product.description }}</p>
-                
-                <div class="flex items-center justify-center gap-2 mb-4">
-                  <span class="text-xl font-bold text-gray-900">¥{{ product.price }}</span>
-                  <span v-if="product.originalPrice" class="text-sm text-gray-400 line-through">¥{{ product.originalPrice }}</span>
-                </div>
-
-                <!-- 评分星级 -->
-                <div class="flex items-center justify-center gap-1 mb-4">
-                   <div class="flex text-yellow-400 text-xs">
-                    <svg v-for="i in 5" :key="i" class="w-3 h-3" :class="((product.reviewCount && product.reviewCount > 0) ? (product.averageRating || 0) : 5) >= i ? 'fill-current' : 'text-gray-200 fill-current'" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  </div>
-                  <span class="text-xs text-gray-400 ml-1">({{ product.salesCount }}人付款)</span>
-                </div>
-
+              <!-- 商品标签 -->
+              <span v-if="product.isHot" class="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 text-xs rounded-full z-10">
+                热卖
+              </span>
+              <span v-if="product.isNew" class="absolute top-2 right-2 bg-huanyu-pink-400 text-white px-2 py-1 text-xs rounded-full z-10">
+                新品
+              </span>
+              
+              <!-- 悬停操作按钮 -->
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
+                <button 
+                  @click.stop="goToProduct(product.id)"
+                  class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
+                  title="快速查看"
+                >
+                  <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                </button>
                 <button 
                   v-if="!userStore.isAdmin"
                   @click.stop="handleAddToCart(product)"
-                  class="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-huanyu-pink-600 hover:text-white hover:border-transparent transition-all duration-300"
-                  :disabled="cartStore.loading"
+                  class="w-10 h-10 bg-huanyu-pink-500 text-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-600 transition-colors shadow-lg"
+                  title="加入购物车"
                 >
-                  加入购物车
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                  </svg>
+                </button>
+                <button 
+                  @click.stop="toggleFavorite(product)"
+                  class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
+                  :class="isFavorite(product) ? 'text-red-500' : 'text-gray-700'"
+                  title="收藏"
+                >
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
                 </button>
               </div>
             </div>
+            
+            <div class="p-4">
+              <h3 class="font-semibold text-lg mb-2 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">{{ product.name }}</h3>
+              <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ product.description }}</p>
+              
+              <!-- 评分和销量 -->
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-1">
+                  <div class="flex text-yellow-400">
+                    <svg v-for="i in 5" :key="i" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </div>
+                  <span class="text-sm text-gray-500">(4.8)</span>
+                </div>
+                <span class="text-sm text-gray-500">已售 {{ product.salesCount || 0 }}</span>
+              </div>
+              
+              <!-- 价格和操作 -->
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-xl font-bold text-huanyu-pink-500">¥{{ product.price }}</span>
+                  <span v-if="product.originalPrice" class="text-sm text-gray-400 line-through ml-2">¥{{ product.originalPrice }}</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <!-- 数量选择器 -->
+                  <div v-if="showQuantitySelector[product.id]" class="flex items-center space-x-1 mr-2">
+                    <button 
+                      @click.stop="decreaseQuantity(product)"
+                      class="w-6 h-6 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                      </svg>
+                    </button>
+                    <span class="w-8 text-center text-sm font-medium">{{ getProductQuantity(product) }}</span>
+                    <button 
+                      @click.stop="increaseQuantity(product)"
+                      class="w-6 h-6 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center transition-colors"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <!-- 加入购物车按钮 - 仅对非管理员显示 -->
+                  <button 
+                    v-if="!userStore.isAdmin"
+                    @click.stop="handleAddToCart(product)"
+                    class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white p-2 rounded-full transition-all transform hover:scale-110"
+                    :disabled="cartStore.loading"
+                    :title="showQuantitySelector[product.id] ? '确认添加' : '加入购物车'"
+                  >
+                    <svg v-if="!showQuantitySelector[product.id]" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
           </template>
           
           <!-- 空状态显示 -->
           <template v-else>
-            <div class="col-span-full text-center py-12">
-              <div class="bg-gray-50 p-8 rounded-xl inline-block">
-                <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <h3 class="text-xl font-medium text-gray-800 mb-2">暂无商品</h3>
-                <p class="text-gray-600">商品数据正在加载中，或暂无可用商品</p>
+            <div class="col-span-full">
+              <div class="brand-empty-state">
+                <img src="/images/flower-empty.svg" alt="暂无花礼" class="brand-empty-state-icon" />
+                <h3 class="text-xl font-medium text-gray-800 mb-2">花束正在上架</h3>
+                <p class="text-gray-600 mb-5">新的花礼很快就会来到这里，先去看看全部商品吧。</p>
+                <router-link to="/products" class="btn-primary">浏览全部花礼</router-link>
               </div>
             </div>
           </template>
@@ -464,241 +421,195 @@
       </div>
     </section>
 
-    <!-- 推荐商品区域 - 风格统一 -->
-    <section class="py-24 bg-gray-50">
+    <!-- 推荐商品区域 -->
+    <section class="py-16 bg-white home-recommended-section">
       <div class="container mx-auto px-4">
-        <div class="flex flex-col md:flex-row justify-between items-end mb-12 px-2">
-          <div class="text-left">
-            <span class="text-huanyu-pink-500 font-bold tracking-widest uppercase text-sm block mb-2">Recommended</span>
-            <h2 class="text-3xl md:text-4xl font-serif font-bold text-gray-900">为您推荐</h2>
-          </div>
-          <p class="text-gray-500 mt-4 md:mt-0 max-w-md text-right font-light">基于您的喜好与当季流行趋势，为您甄选的特别花礼</p>
+        <div class="text-center mb-12">
+          <h2 class="text-3xl md:text-4xl font-bold text-huanyu-pink-700 mb-4">
+            为你推荐
+          </h2>
+          <p class="text-gray-600 max-w-2xl mx-auto">
+            基于你的偏好与全站热度的推荐花款
+          </p>
         </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <template v-if="recommendedProducts.length > 0">
             <div 
-              v-for="product in visibleRecommended" 
+              v-for="product in recommendedProducts" 
               :key="product.id" 
-              class="group relative bg-white rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border border-gray-100"
+              class="card group cursor-pointer relative"
               @click="goToProduct(product.id)"
               @touchstart="handleCardTouch(product, $event)"
               @touchend.prevent="preventDoubleTapZoom"
             >
-              <!-- 图片容器 -->
-              <div class="aspect-[3/4] overflow-hidden relative bg-gray-50">
-                <img 
-                  :src="product.image" 
-                  :alt="product.name"
-                  class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  @error="handleProductImageError($event, product)"
-                />
-                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
-                <!-- 悬停操作按钮组 -->
-                <div class="absolute bottom-6 left-0 right-0 flex justify-center gap-3 translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 px-4">
+              <div class="relative overflow-hidden rounded-xl">
+                <div class="w-full h-48 bg-gray-50 overflow-hidden relative">
+                  <img 
+                    :src="product.image" 
+                    :alt="product.name"
+                    class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
+                    @error="handleProductImageError($event, product)"
+                  />
+                </div>
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
                   <button 
-                    @click.stop="quickView(product)"
-                    class="w-10 h-10 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-huanyu-pink-500 hover:text-white transition-all shadow-lg hover:scale-110"
+                    @click.stop="goToProduct(product.id)"
+                    class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
                     title="快速查看"
                   >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
                   </button>
                   <button 
                     v-if="!userStore.isAdmin"
                     @click.stop="handleAddToCart(product)"
-                    class="w-10 h-10 bg-white text-gray-700 rounded-full flex items-center justify-center hover:bg-huanyu-pink-500 hover:text-white transition-all shadow-lg hover:scale-110"
+                    class="w-10 h-10 bg-huanyu-pink-500 text-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-600 transition-colors shadow-lg"
                     title="加入购物车"
                   >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                  </button>
-                  <button 
-                    v-if="!userStore.isAdmin"
-                    @click.stop="toggleFavorite(product)"
-                    class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-red-50 transition-all shadow-lg hover:scale-110"
-                    :class="isFavorite(product) ? 'text-red-500' : 'text-gray-700 hover:text-red-500'"
-                    title="收藏"
-                  >
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
                   </button>
                 </div>
               </div>
-
-              <div class="p-6 text-center">
-                <h3 class="font-serif text-lg font-bold mb-2 text-gray-900 group-hover:text-huanyu-pink-600 transition-colors truncate">{{ product.name }}</h3>
-                <p class="text-gray-500 text-sm mb-4 line-clamp-1 font-light">{{ product.description }}</p>
-                <div class="flex items-center justify-center gap-2 mb-4">
-                  <span class="text-xl font-bold text-gray-900">¥{{ product.price }}</span>
+              <div class="p-4">
+                <h3 class="font-semibold text-lg mb-2 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">{{ product.name }}</h3>
+                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ product.description }}</p>
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-sm text-gray-500">已售 {{ product.salesCount || 0 }}</span>
                 </div>
-                <button 
-                  v-if="!userStore.isAdmin"
-                  @click.stop="handleAddToCart(product)"
-                  class="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-huanyu-pink-600 hover:text-white hover:border-transparent transition-all duration-300"
-                  :disabled="cartStore.loading"
-                >
-                  加入购物车
-                </button>
+                <div class="flex items-center justify-between">
+                  <span class="text-xl font-bold text-huanyu-pink-500">¥{{ product.price }}</span>
+                  <button 
+                    v-if="!userStore.isAdmin"
+                    @click.stop="handleAddToCart(product)"
+                    class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white p-2 rounded-full transition-all transform hover:scale-110"
+                    :disabled="cartStore.loading"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </template>
           <template v-else>
-            <div class="col-span-full text-center text-gray-500 py-12 bg-white rounded-2xl border border-dashed border-gray-200">
-              <p>暂无个性化推荐，快去浏览更多商品吧</p>
-            </div>
+            <div class="col-span-full text-center text-gray-500">暂无推荐</div>
           </template>
-        </div>
-        
-        <div class="text-center mt-12" v-if="recommendedProducts.length > 4">
-          <button v-if="recommendedLimit <= 4" @click="recommendedLimit = recommendedProducts.length" class="inline-flex items-center gap-2 px-8 py-3 bg-white border border-gray-200 rounded-full text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hover:shadow">
-            <span>查看更多推荐</span>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </button>
-          <button v-else @click="recommendedLimit = 4" class="inline-flex items-center gap-2 px-8 py-3 bg-white border border-gray-200 rounded-full text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm hover:shadow">
-            <span>收起推荐</span>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
-          </button>
         </div>
       </div>
     </section>
     
-    <!-- 品牌故事区域 - 非对称重叠布局 -->
-    <section class="py-24 bg-white relative overflow-hidden">
-      <!-- 装饰背景字 -->
-      <div class="absolute top-10 right-0 text-[12rem] font-serif text-gray-50 opacity-50 select-none pointer-events-none leading-none z-0">Story</div>
-
-      <div class="container mx-auto px-4 relative z-10">
+    <!-- 品牌故事区域 -->
+    <section class="py-16 bg-white home-brand-section">
+      <div class="container mx-auto px-4">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           
           <!-- 左侧文字内容 -->
-          <div class="lg:pr-12 relative">
-            <span class="text-huanyu-pink-500 font-bold tracking-widest uppercase text-sm block mb-4">About Us</span>
-            <h2 class="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-8 leading-tight">
-              用鲜花<br>讲述你的故事
+          <div>
+            <h2 class="text-3xl md:text-4xl font-bold text-huanyu-pink-700 mb-6">
+              关于欢雨flower
             </h2>
-            <div class="space-y-6 text-gray-600 text-lg font-light leading-relaxed">
+            <div class="space-y-4 text-gray-600">
               <p>
-                <span class="text-huanyu-pink-500 font-medium">欢雨flower</span> 成立于2025年，我们不仅仅是一家花店，更是情感的传递者。从田间清晨的第一缕阳光，到您手中的那一束芬芳，我们用心守护每一朵花的生命旅程。
+                欢雨flower成立于2025年，我们致力于为每一位客户提供最优质的鲜花产品和服务。从一朵玫瑰到一束精心搭配的花束，我们都用心对待。
               </p>
               <p>
-                我们相信，鲜花是自然的语言。无论是热烈的告白、温馨的祝福，还是无声的陪伴，一束恰到好处的鲜花，总能替您说出心中最真挚的情感。
+                我们相信，鲜花不仅仅是装饰品，更是情感的载体。无论是生日、纪念日、表白还是道歉，一束恰到好处的鲜花都能传递您内心最真挚的情感。
               </p>
               <p>
-                我们的花艺师团队拥有超过10年的专业经验，每一束花礼都经过精心设计与搭配，只为呈现最完美的艺术效果。
+                我们的花艺师都经过专业培训，拥有丰富的插花经验。每一束花都经过精心设计和搭配，确保为您呈现出最美的效果。
               </p>
             </div>
             
             <!-- 品牌数据 -->
-            <div class="grid grid-cols-3 gap-8 mt-12 pt-8 border-t border-gray-100">
-              <div class="text-center lg:text-left">
-                <div class="text-3xl font-bold text-gray-900 mb-1">10k+</div>
-                <div class="text-sm text-gray-500 uppercase tracking-wider">Happy Clients</div>
+            <div class="grid grid-cols-3 gap-4 mt-8">
+              <div class="text-center">
+                <div class="text-2xl font-bold text-huanyu-pink-500">10000+</div>
+                <div class="text-sm text-gray-600">满意客户</div>
               </div>
-              <div class="text-center lg:text-left">
-                <div class="text-3xl font-bold text-gray-900 mb-1">50+</div>
-                <div class="text-sm text-gray-500 uppercase tracking-wider">Varieties</div>
+              <div class="text-center">
+                <div class="text-2xl font-bold text-huanyu-pink-500">50+</div>
+                <div class="text-sm text-gray-600">花品种类</div>
               </div>
-              <div class="text-center lg:text-left">
-                <div class="text-3xl font-bold text-gray-900 mb-1">4.9</div>
-                <div class="text-sm text-gray-500 uppercase tracking-wider">Rating</div>
+              <div class="text-center">
+                <div class="text-2xl font-bold text-huanyu-pink-500">4.9</div>
+                <div class="text-sm text-gray-600">用户评分</div>
               </div>
-            </div>
-
-            <div class="mt-10">
-               <router-link to="/about" class="inline-block border-b-2 border-gray-900 text-gray-900 pb-1 hover:text-huanyu-pink-600 hover:border-huanyu-pink-600 transition-colors font-medium">
-                阅读完整的品牌故事
-               </router-link>
             </div>
           </div>
           
-          <!-- 右侧图片 - 拍立得风格堆叠 -->
-          <div class="relative mt-12 lg:mt-0 h-[500px]">
-             <!-- 背景装饰 -->
-            <div class="absolute inset-0 bg-huanyu-pink-50 rounded-full blur-3xl opacity-50 transform scale-75"></div>
-            
-            <!-- 主图 -->
-            <div class="absolute top-0 right-0 w-4/5 h-4/5 z-20 transform transition-transform hover:-translate-y-2 duration-500">
-              <img 
-                src="/images/封面3.png" 
-                alt="欢雨花店" 
-                class="w-full h-full object-cover rounded-2xl shadow-2xl"
-                loading="lazy"
-              >
-            </div>
-            
-            <!-- 叠加图 -->
-            <div class="absolute bottom-0 left-0 w-3/5 h-3/5 z-30 transform translate-x-4 -translate-y-4 border-8 border-white rounded-2xl shadow-xl overflow-hidden hover:scale-105 transition-transform duration-500">
-               <img 
-                src="/images/12.jpg" 
-                alt="花艺师工作" 
-                class="w-full h-full object-cover"
-                loading="lazy"
-                @error="(e) => e.target.src = '/images/封面1.png'"
-              >
-            </div>
-
-            <!-- 装饰圆点 -->
-            <div class="absolute -top-4 right-1/4 w-24 h-24 border-2 border-huanyu-pink-200 rounded-full opacity-50 z-10"></div>
+          <!-- 右侧图片 -->
+          <div class="relative">
+            <img 
+              src="/images/封面3.png" 
+              alt="欢雨花店" 
+              class="rounded-2xl shadow-2xl w-full h-auto object-contain bg-gray-50"
+              style="image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; image-rendering: pixelated;"
+              loading="lazy"
+            >
+            <!-- 装饰元素 -->
+            <div class="absolute -bottom-6 -left-6 w-32 h-32 bg-huanyu-pink-100 rounded-full opacity-50 -z-10"></div>
+            <div class="absolute -top-6 -right-6 w-24 h-24 bg-huanyu-pink-200 rounded-full opacity-50 -z-10"></div>
           </div>
         </div>
       </div>
     </section>
     
-    <!-- 客户评价区域 - 现代卡片 -->
-    <section class="py-24 bg-white">
+    <!-- 客户评价区域 -->
+    <section class="py-16 bg-gradient-to-br from-huanyu-pink-50 to-white home-reviews-section">
       <div class="container mx-auto px-4">
-        <div class="text-center mb-16">
-          <span class="text-huanyu-pink-500 font-bold tracking-widest uppercase text-sm block mb-2">Testimonials</span>
-          <h2 class="text-3xl md:text-4xl font-serif font-bold text-gray-900 mb-4">客户心声</h2>
-          <p class="text-gray-500 font-light">每一条评价，都是对我们最大的鼓励</p>
+        <div class="text-center mb-12">
+          <h2 class="text-3xl md:text-4xl font-bold text-huanyu-pink-800 mb-4">
+            客户评价
+          </h2>
+          <p class="text-gray-600">听听客户对我们的评价</p>
         </div>
         
         <!-- 评价卡片 -->
-        <div v-if="reviewsLoaded && !reviews.length" class="text-center py-12 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-          <div class="text-4xl mb-3">💬</div>
-          <p>暂无评价，期待您的分享</p>
+        <div v-if="!reviews.length" class="text-center py-12 text-gray-500">
+          <div class="text-4xl mb-2">💬</div>
+          <p>暂无评价</p>
         </div>
-
-        <div v-if="reviews.length" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div v-for="review in visibleReviews" :key="review.id" class="bg-gray-50 p-8 rounded-2xl relative group hover:bg-white hover:shadow-xl transition-all duration-300 border border-transparent hover:border-gray-100">
-            <!-- 引用符号装饰 -->
-            <div class="absolute top-6 right-8 text-6xl text-huanyu-pink-200 font-serif opacity-50 group-hover:opacity-100 transition-opacity">"</div>
-            
-            <div class="flex items-center mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div v-for="review in visibleReviews" :key="review.id" class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition">
+            <div class="flex items-center mb-4">
               <!-- 用户头像 -->
-              <div class="relative">
-                <img 
-                  :src="review.avatar"
-                  :alt="review.userName"
-                  class="w-14 h-14 rounded-full mr-4 object-cover border-2 border-white shadow-md"
-                  @error="handleAvatarError"
-                />
-                <div class="absolute -bottom-1 -right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
-              </div>
+              <div 
+                :style="{ backgroundImage: `url(${review.avatar})` }" 
+                :alt="review.userName"
+                class="w-12 h-12 bg-center bg-cover rounded-full mr-3 ring-2 ring-huanyu-pink-200"
+                @error="handleAvatarError"
+              ></div>
               <div>
-                <h4 class="font-bold text-gray-900 text-lg">{{ review.userName }}</h4>
-                <div class="flex text-yellow-400 text-sm mt-1">
+                <h4 class="font-semibold">{{ review.userName }}</h4>
+                <div class="flex text-yellow-400">
                   <!-- 星级评分 -->
-                  <span v-for="star in 5" :key="star">
+                  <span v-for="star in 5" :key="star" class="text-sm">
                     {{ star <= review.rating ? '★' : '☆' }}
                   </span>
                 </div>
               </div>
             </div>
-            
-            <div class="relative z-10">
-               <AutoLinkText class="text-gray-600 leading-relaxed line-clamp-4 italic" :text="review.comment" />
+            <p class="text-gray-700 leading-relaxed line-clamp-3 mt-1">{{ review.comment }}</p>
+            <div class="mt-2 text-xs text-gray-500 flex flex-wrap gap-2">
+              <span class="px-2 py-0.5 bg-gray-100 rounded-full">评价ID: {{ review.id || review.Id }}</span>
+              <span class="px-2 py-0.5 bg-gray-100 rounded-full">产品ID: {{ review.productId || review.ProductId }}</span>
+              <span class="px-2 py-0.5 bg-gray-100 rounded-full">时间: {{ formatReviewDate(review.createdAt) }}</span>
             </div>
-            
-            <div class="mt-6 pt-6 border-t border-gray-200 flex justify-between items-center text-xs text-gray-400">
-              <span>{{ formatReviewDate(review.createdAt).split(' ')[0] }}</span>
-              <span class="bg-white px-2 py-1 rounded border border-gray-200 group-hover:border-huanyu-pink-200 transition-colors">已购商品</span>
+            <a href="#" @click.prevent="toggleReviewDetail(review)" class="mt-4 inline-block text-huanyu-pink-600 hover:text-huanyu-pink-700 hover:underline">查看评价详情</a>
+            <div v-if="activeReviewId === (review.id || review.Id)" class="mt-3 border-t pt-3">
+              <div class="text-sm text-gray-500 mb-2">{{ formatReviewDate(review.createdAt) }}</div>
+              <div class="text-gray-700">{{ activeReviewDetail?.Comment || activeReviewDetail?.comment || review.comment }}</div>
             </div>
           </div>
         </div>
-        
-        <div v-if="reviews.length > 3" class="text-center mt-12">
-          <button @click="toggleShowAllReviews" class="px-8 py-3 bg-white border border-gray-300 rounded-full hover:bg-gray-50 hover:border-gray-400 transition-all text-gray-700 font-medium shadow-sm">
-            {{ showAllReviews ? '收起评价' : `查看更多评价 (${reviews.length - 3})` }}
+        <div v-if="reviews.length > 3" class="text-center mt-6">
+          <button @click="toggleShowAllReviews" class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+            {{ showAllReviews ? '收起评价' : `查看更多评价（剩余 ${reviews.length - 3} 条）` }}
           </button>
         </div>
       </div>
@@ -758,7 +669,7 @@
           <!-- 商品标题 -->
           <div>
             <h2 class="text-2xl font-bold text-gray-800 mb-2">{{ quickViewProduct.name }}</h2>
-            <AutoLinkText class="text-gray-600" :text="quickViewProduct.description" />
+            <p class="text-gray-600">{{ quickViewProduct.description }}</p>
           </div>
           
           <!-- 评分 -->
@@ -768,7 +679,7 @@
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
               </svg>
             </div>
-            <span class="text-gray-600">{{ (quickViewProduct.averageRating || 0).toFixed(1) }}分</span>
+            <span class="text-gray-600">4.8分</span>
             <span class="text-gray-400">|</span>
             <span class="text-gray-600">已售 {{ quickViewProduct.salesCount || 0 }} 件</span>
           </div>
@@ -856,8 +767,6 @@
     </div>
   </div>
   
-  
-
   </div>
   </PageTransition>
 </template>
@@ -870,15 +779,12 @@ import { useCartStore } from '@/stores/cart'
 import { useProductStore } from '@/stores/product'
 import { useUserStore } from '@/stores/user'
 import { productService } from '@/services/product'
- 
 import { recommendationService } from '@/services/recommendation'
 import { favoriteService } from '@/services/favorite'
-import { getAvatarUrl, handleAvatarError, getProductImageUrl } from '@/utils/avatar.js'
+import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
-import AutoLinkText from '@/components/AutoLinkText.vue'
 import api from '@/services/api'
-import { videoService } from '@/services/video'
 
 // 路由和状态管理
 const router = useRouter()
@@ -896,91 +802,67 @@ const fallbackToDefaultImage = () => {
 }
 
 // 英雄区域背景设置 - 这里可以修改默认背景路径
+// 首页首屏默认使用静态主视觉，避免视频加载阻塞购买入口；用户仍可在后台切换视频背景
 const heroBackgroundType = ref('image')
-const heroImagePath = ref('/images/主页背景.png')
-const heroVideoPath = ref('')
-const storyVideoPath = ref('')
+const heroImagePath = ref('/images/主图.jpg') // 修改这里的路径来更改默认图片背景
+const heroVideoPath = ref('/videos/2.mp4') // 设置视频背景路径
 const heroVideoRef = ref(null)
 const heroBackgroundLoaded = ref(false)
-const heroSlides = ref(['hero','hot','promo'])
-const currentHeroSlide = ref(0)
-let heroRotateTimer = null
-const heroAutoRotatePaused = ref(false)
-const heroTouchStartX = ref(0)
-const heroTouchEndX = ref(0)
-const heroIsDragging = ref(false)
-const promoBannerPath = ref('')
-  const promoBannerTitle = ref('')
-  
-
-// 规范化 /uploads 资源路径，移除端口与域名，避免开发端口变更导致的资源失效
-const normalizeUploadsPath = (p) => {
-  try {
-    if (!p || typeof p !== 'string') return ''
-    let s = p.trim()
-    if (s.startsWith('http://') || s.startsWith('https://')) {
-      const u = new URL(s)
-      s = u.pathname || s
-    }
-    if (!s.startsWith('/')) s = '/' + s
-    // 仅允许 /uploads 前缀资源
-    if (s.startsWith('/uploads/')) return s
-    return s
-  } catch { return p }
-}
 
 // 响应式数据
 const featuredProducts = ref([])
 const recommendedProducts = ref([])
-const recommendedLimit = ref(4)
-const visibleRecommended = computed(() => (recommendedProducts.value || []).slice(0, recommendedLimit.value))
 const reviews = ref([])
-const reviewsLoaded = ref(false)
+const quickCategories = [
+  { name: '送女友', caption: '浪漫告白', to: '/products?occasion=love' },
+  { name: '送妈妈', caption: '温柔感恩', to: '/products?occasion=family' },
+  { name: '生日花礼', caption: '为你庆祝', to: '/products?occasion=birthday' },
+  { name: '表白心意', caption: '说出喜欢', to: '/products?occasion=confession' },
+  { name: '同城急送', caption: '最快 2 小时', to: '/products?delivery=same_day' }
+]
 const REVIEW_POLL_MS = 600000
 let reviewsPoll = null
-const lastReviewsFetchAt = ref(0)
-let reviewsFetching = false
-let reviewsController = null
  
 // 直接使用store中的categories，不创建本地副本
 
-// 获取所有评价（去重与防抖）
+// 获取所有评价
 const fetchReviews = async () => {
-  if (reviewsFetching) return
-  const now = Date.now()
-  if (now - lastReviewsFetchAt.value < 1200) return
-  reviewsFetching = true
   try {
-    // 为本次请求建立可取消的控制器，避免导航/隐藏导致 ERR_ABORTED 噪音
-    if (reviewsController) { try { reviewsController.abort() } catch {} }
-    reviewsController = new AbortController()
-    const data = await productService.getAllReviews({}, { signal: reviewsController.signal })
-    console.log('获取到的评价数据:', data);
+    const response = await api.get('/ProductReview/all', { params: { pageSize: 10 }, silent: true })
     
-    reviews.value = (data || []).map(review => ({
-      ...review,
-      userName: review.UserName || review.userName,
-      comment: review.Comment || review.comment || '',
-      rating: review.Rating || review.rating || 0,
-      avatar: getAvatarUrl(review.Avatar || review.avatar || review.UserName || review.userName || ''),
-      id: review.Id || review.id,
-      userId: review.UserId || review.userId,
-      productId: review.ProductId || review.productId,
-      createdAt: review.CreatedAt || review.createdAt,
-      updatedAt: review.UpdatedAt || review.updatedAt
-    }));
-    console.log('处理后的评价数据:', reviews.value);
-  } catch (error) {
-    // 静默处理被取消的请求
-    if (error?.code === 'ERR_CANCELED' || /aborted/i.test(error?.message || '')) {
-      reviewsFetching = false
-      return
+    // 处理不同的响应格式
+    let reviewList = []
+    if (Array.isArray(response)) {
+      reviewList = response
+    } else if (response.data && Array.isArray(response.data)) {
+      reviewList = response.data
+    } else if (response.data && response.data.Items) {
+      // 处理 ProductReviewListResponse 格式
+      reviewList = response.data.Items
     }
+    
+    if (reviewList.length > 0) {
+      // 为每个评价添加avatar属性，并统一字段名
+      reviews.value = reviewList.map(review => ({
+        ...review,
+        // 统一字段名，后端返回的是 UserName (大写开头)，前端使用 userName (小写开头)
+        userName: review.UserName || review.userName,
+        // 确保评论内容存在
+        comment: review.Comment || review.comment || '',
+        // 确保评分存在
+        rating: review.Rating || review.rating || 0,
+        // 添加头像
+        avatar: getAvatarUrl(review.Avatar || review.avatar || review.UserName || review.userName || ''),
+        id: review.Id || review.id,
+        userId: review.UserId || review.userId,
+        productId: review.ProductId || review.productId,
+        createdAt: review.CreatedAt || review.createdAt,
+        updatedAt: review.UpdatedAt || review.updatedAt
+      }))
+    }
+  } catch (error) {
+    // 清空评价列表，不使用默认虚拟数据
     reviews.value = []
-  } finally {
-    lastReviewsFetchAt.value = Date.now()
-    reviewsFetching = false
-    reviewsLoaded.value = true
   }
 }
 
@@ -991,20 +873,10 @@ const startReviewsPolling = () => {
 
 const stopReviewsPolling = () => {
   if (reviewsPoll) { clearInterval(reviewsPoll); reviewsPoll = null }
-  if (reviewsController) { try { reviewsController.abort() } catch {} }
 }
 
 const handleVisibilityReview = () => {
-  if (document.hidden) {
-    stopReviewsPolling()
-  } else {
-    // 防抖：避免在快速切换焦点时触发多次
-    const now = Date.now()
-    if (now - lastReviewsFetchAt.value > 1500) {
-      fetchReviews()
-    }
-    startReviewsPolling()
-  }
+  if (!document.hidden) fetchReviews()
 }
 
 const goToReviewDetail = async (review) => {
@@ -1018,6 +890,8 @@ const goToReviewDetail = async (review) => {
   }
 }
 
+const activeReviewId = ref(null)
+const activeReviewDetail = ref(null)
 
 const showAllReviews = ref(false)
 const visibleReviews = computed(() => {
@@ -1026,7 +900,23 @@ const visibleReviews = computed(() => {
 })
 const toggleShowAllReviews = () => { showAllReviews.value = !showAllReviews.value }
 
-// 已移除“查看评价详情”模块
+const toggleReviewDetail = async (review) => {
+  const rid = review.id || review.Id
+  if (!rid) return
+  if (activeReviewId.value === rid) {
+    activeReviewId.value = null
+    activeReviewDetail.value = null
+    return
+  }
+  activeReviewId.value = rid
+  try {
+    const r = await productService.getReviewById(rid)
+    const d = r?.data || r
+    activeReviewDetail.value = d
+  } catch {
+    activeReviewDetail.value = null
+  }
+}
 
 const canDeleteReview = (review) => {
   const uid = userStore.user?.id
@@ -1054,13 +944,7 @@ const deleteReview = async (review) => {
 
 const formatReviewDate = (val) => {
   if (!val) return ''
-  try {
-    return new Date(val).toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-      timeZone: 'Asia/Shanghai'
-    })
-  } catch { return '' }
+  try { return new Date(val).toLocaleString('zh-CN') } catch { return '' }
 }
 
 // 加载分类数据
@@ -1137,12 +1021,10 @@ const loadFeaturedProducts = async () => {
         name: product.Name || product.name || '未命名商品',
         description: product.Description || product.description || '暂无描述',
         price: product.Price || product.price || 0,
-        image: getProductImageUrl(imageUrl),
+        image: imageUrl,
         isHot: (product.SalesCount || product.salesCount || 0) > 10,
         isNew: product.CreatedAt ? new Date(product.CreatedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) : false,
         salesCount: product.SalesCount || product.salesCount || 0,
-        averageRating: product.AverageRating || product.averageRating || 0,
-        reviewCount: product.ReviewCount || product.reviewCount || 0,
         // 添加额外字段用于完整展示
         originalPrice: null, // 可以根据需要从数据库映射
         isActive: product.IsActive || product.isActive || true,
@@ -1171,7 +1053,7 @@ const loadRecommendedProducts = async () => {
     }
     const items = res?.data || res || []
     const ids = items.map(i => i.productId || i.ProductId || i.id || i.Id).filter(Boolean)
-        const details = await Promise.all(ids.map(async (id) => {
+    const details = await Promise.all(ids.map(async (id) => {
       try {
         const r = await productService.getProductById(id)
         const p = r?.data || r
@@ -1180,16 +1062,13 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
-          salesCount: p.SalesCount || p.salesCount || 0,
-          popularity: p.Popularity || p.popularity || 0,
-          averageRating: p.AverageRating || p.averageRating || 0,
-          reviewCount: p.ReviewCount || p.reviewCount || 0
+          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          salesCount: p.SalesCount || p.salesCount || 0
         }
       } catch { return null }
     }))
     const list = details.filter(Boolean)
-  if (list.length > 0) {
+    if (list.length > 0) {
       recommendedProducts.value = list
   } else {
     // 回退到管理员设置的首页推荐/特色商品
@@ -1201,11 +1080,8 @@ const loadRecommendedProducts = async () => {
         name: p.Name || p.name || '未命名商品',
         description: p.Description || p.description || '暂无描述',
         price: p.Price || p.price || 0,
-        image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
-        salesCount: p.SalesCount || p.salesCount || 0,
-        popularity: p.Popularity || p.popularity || 0,
-        averageRating: p.AverageRating || p.averageRating || 0,
-        reviewCount: p.ReviewCount || p.reviewCount || 0
+        image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+        salesCount: p.SalesCount || p.salesCount || 0
       }))
     } else {
       const h = await productService.getHomeProducts()
@@ -1216,11 +1092,8 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
-          salesCount: p.SalesCount || p.salesCount || 0,
-          popularity: p.Popularity || p.popularity || 0,
-          averageRating: p.AverageRating || p.averageRating || 0,
-          reviewCount: p.ReviewCount || p.reviewCount || 0
+          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          salesCount: p.SalesCount || p.salesCount || 0
         }))
       } else {
         const all = await productService.getProducts({ Page: 1, PageSize: 12 })
@@ -1230,11 +1103,8 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
-          salesCount: p.SalesCount || p.salesCount || 0,
-          popularity: p.Popularity || p.popularity || 0,
-          averageRating: p.AverageRating || p.averageRating || 0,
-          reviewCount: p.ReviewCount || p.reviewCount || 0
+          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          salesCount: p.SalesCount || p.salesCount || 0
         }))
       }
     }
@@ -1249,11 +1119,8 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
-          salesCount: p.SalesCount || p.salesCount || 0,
-          popularity: p.Popularity || p.popularity || 0,
-          averageRating: p.AverageRating || p.averageRating || 0,
-          reviewCount: p.ReviewCount || p.reviewCount || 0
+          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          salesCount: p.SalesCount || p.salesCount || 0
         }))
         return
       }
@@ -1265,11 +1132,8 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: p.Description || p.description || '暂无描述',
           price: p.Price || p.price || 0,
-          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
-          salesCount: p.SalesCount || p.salesCount || 0,
-          popularity: p.Popularity || p.popularity || 0,
-          averageRating: p.AverageRating || p.averageRating || 0,
-          reviewCount: p.ReviewCount || p.reviewCount || 0
+          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          salesCount: p.SalesCount || p.salesCount || 0
         }))
         return
       }
@@ -1280,17 +1144,13 @@ const loadRecommendedProducts = async () => {
         name: p.Name || p.name || '未命名商品',
         description: p.Description || p.description || '暂无描述',
         price: p.Price || p.price || 0,
-        image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
-        salesCount: p.SalesCount || p.salesCount || 0,
-        popularity: p.Popularity || p.popularity || 0,
-        averageRating: p.AverageRating || p.averageRating || 0,
-        reviewCount: p.ReviewCount || p.reviewCount || 0
+        image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+        salesCount: p.SalesCount || p.salesCount || 0
       }))
     } catch {
       recommendedProducts.value = []
     }
   }
-
 }
 
 // 英雄区域背景加载处理
@@ -1301,42 +1161,10 @@ const onHeroBackgroundLoad = () => {
     isLoading.value = false
   }, 800)
 }
-const onHeroVideoError = () => {
-  if (storyVideoPath.value) {
-    heroBackgroundType.value = 'video'
-    heroVideoPath.value = storyVideoPath.value
-    return
-  }
-  heroBackgroundType.value = 'image'
-}
 
 // 监听背景类型变化
 watch(heroBackgroundType, () => {
   heroBackgroundLoaded.value = false
-})
-
-watch(heroVideoPath, (val) => {
-  try {
-    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
-      const p = normalizeUploadsPath(val)
-      if (p !== val) {
-        heroVideoPath.value = p
-        try { localStorage.setItem('heroVideoPath', p) } catch {}
-      }
-    }
-  } catch {}
-})
-
-watch(storyVideoPath, (val) => {
-  try {
-    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
-      const p = normalizeUploadsPath(val)
-      if (p !== val) {
-        storyVideoPath.value = p
-        try { localStorage.setItem('storyVideoPath', p) } catch {}
-      }
-    }
-  } catch {}
 })
 
 // 自动播放视频
@@ -1380,122 +1208,54 @@ const useDefaultImageBackground = () => {
   heroImagePath.value = '/images/主图.jpg' // 与上面的默认路径保持一致
 }
 
-const useDefaultVideoBackground = async () => {
-  try {
-    const v = await videoService.getBySlot('hero')
-    const data = v?.data || v
-    const path = data?.FilePath || data?.filePath
-    if (path) {
-      heroBackgroundType.value = 'video'
-      heroVideoPath.value = path
-    } else {
-      notifyInfo('暂无数据库视频可用')
-    }
-  } catch {
-    notifyInfo('获取首页视频失败')
-  }
+const useDefaultVideoBackground = () => {
+  heroBackgroundType.value = 'video'
+  heroVideoPath.value = '/videos/2.mp4'
 }
 
 // 组件挂载时加载数据
 onMounted(async () => {
   // 设置超时以确保即使图片加载失败也能显示内容
-  setTimeout(() => { if (isLoading.value) { isLoading.value = false } }, 3000)
-
+  setTimeout(() => {
+    if (isLoading.value) {
+      isLoading.value = false
+    }
+  }, 3000)
+  
   try {
-    // 先用本地缓存的英雄视频，避免刷新瞬间回落图片
-    try {
-      const cachedHero = localStorage.getItem('heroVideoPath')
-      if (cachedHero && typeof cachedHero === 'string' && cachedHero.trim()) {
-        heroBackgroundType.value = 'video'
-        const p = normalizeUploadsPath(cachedHero)
-        heroVideoPath.value = p
-        try { localStorage.setItem('heroVideoPath', p) } catch {}
-      }
-    } catch {}
-    // 先用本地缓存的故事视频，避免刷新后出现暂无可播放
-    try {
-      const cachedStory = localStorage.getItem('storyVideoPath')
-      if (cachedStory && typeof cachedStory === 'string' && cachedStory.trim()) {
-        const p = normalizeUploadsPath(cachedStory)
-        storyVideoPath.value = p
-        try { localStorage.setItem('storyVideoPath', p) } catch {}
-      }
-    } catch {}
-
-    await loadCategories()
-    await loadFeaturedProducts()
-    await loadRecommendedProducts()
-    try {
-      const heroRes = await videoService.getBySlot('hero')
-      const heroData = heroRes?.data || heroRes
-      const path = heroData?.FilePath || heroData?.filePath
-      if (path) {
-        const normalized = normalizeUploadsPath(path)
-        if (heroVideoPath.value !== normalized) {
-          heroBackgroundType.value = 'video'
-          heroVideoPath.value = normalized
-          try { localStorage.setItem('heroVideoPath', normalized) } catch {}
-        }
-      } else {
-        // 如果后端没有返回视频，清除本地缓存，避免显示旧视频导致404
-        if (heroBackgroundType.value === 'video') {
-           heroBackgroundType.value = 'image'
-        }
-        if (heroVideoPath.value !== '') {
-          heroVideoPath.value = ''
-          try { localStorage.removeItem('heroVideoPath') } catch {}
-        }
-      }
-    } catch {}
-    try {
-      const storyRes = await videoService.getBySlot('story')
-      const storyData = storyRes?.data || storyRes
-      const path = storyData?.FilePath || storyData?.filePath
-      if (path) {
-        const normalized = normalizeUploadsPath(path)
-        if (storyVideoPath.value !== normalized) {
-          storyVideoPath.value = normalized
-          try { localStorage.setItem('storyVideoPath', normalized) } catch {}
-        }
-      } else {
-        // 如果后端没有返回视频，清除本地缓存
-        if (storyVideoPath.value !== '') {
-          storyVideoPath.value = ''
-          try { localStorage.removeItem('storyVideoPath') } catch {}
-        }
-      }
-    } catch {}
-    try {
-      
-    } catch {}
-    // 直接调用获取评价数据，不使用延迟调度
-    await fetchReviews()
+    await Promise.all([
+      loadCategories(),
+      loadFeaturedProducts(),
+      loadRecommendedProducts(),
+      fetchReviews()
+    ])
     startReviewsPolling()
-
     document.addEventListener('visibilitychange', handleVisibilityReview)
-
     try {
       const token = localStorage.getItem('token')
       if (token) {
         const favRes = await favoriteService.list(1, 100)
         const items = favRes?.data || favRes || []
-        favoriteProducts.value = items.map(i => i.productId || i.ProductId || i.id || i.Id).filter(Boolean)
+        favoriteProducts.value = items
+          .map(i => i.productId || i.ProductId || i.id || i.Id)
+          .filter(Boolean)
       } else {
         favoriteProducts.value = []
       }
-    } catch {}
+    } catch (e) {}
   } catch (error) {
     console.error('Failed to load initial data:', error)
   }
-
+  
   // 添加移动端滚动优化
   if (typeof window !== 'undefined') {
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('touchend', preventDoubleTapZoom, { passive: false })
-    nextTick(() => { playHeroVideo() })
-    if (!heroRotateTimer) {
-      heroRotateTimer = setInterval(() => { if (!heroAutoRotatePaused.value) { currentHeroSlide.value = (currentHeroSlide.value + 1) % heroSlides.value.length } }, 2000)
-    }
+    
+    // 尝试自动播放视频（在用户交互后）
+    nextTick(() => {
+      playHeroVideo()
+    })
   }
 })
 
@@ -1504,14 +1264,7 @@ watch(() => userStore.user?.avatar, () => { fetchReviews() })
 onUnmounted(() => {
   stopReviewsPolling()
   document.removeEventListener('visibilitychange', handleVisibilityReview)
-  if (heroRotateTimer) { clearInterval(heroRotateTimer); heroRotateTimer = null }
 })
-
-if (import.meta && import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    stopReviewsPolling()
-  })
-}
 
 // 方法
 const goToProduct = async (productId) => {
@@ -1558,12 +1311,6 @@ const videoSection = ref(null)
 const videoAspectRatio = ref('')
 const videoDimensions = ref(null)
 const videoDuration = ref('')
-const videoUploadInput = ref(null)
-const uploadingVideo = ref(false)
-const heroVideoUploadInput = ref(null)
-const uploadingHeroVideo = ref(false)
-  const promoUploadInput = ref(null)
-  const uploadingPromo = ref(false)
 
 // 商品相关状态
 const showQuantitySelector = ref({})
@@ -1571,27 +1318,6 @@ const productQuantities = ref({})
 const favoriteProducts = ref([])
 const quickViewProduct = ref(null)
 const showQuickViewModal = ref(false)
-
-const topPromo = computed(() => {
-  const fp = featuredProducts.value || []
-  const rp = recommendedProducts.value || []
-  const all = [...fp, ...rp]
-  if (all.length === 0) return null
-  return all.reduce((max, p) => ((p.salesCount || 0) > ((max?.salesCount) || 0) ? p : max), all[0])
-})
-
-const promoImageUrl = computed(() => {
-  const p = topPromo.value
-  if (p && p.image) return p.image
-  return '/images/封面3.png'
-})
-
-const promoPlaceholderUrl = computed(() => {
-  return getAvatarUrl('2.jpg')
-})
-
-const promoStaticSrc = 'images/12.jpg'
-
 
 const retryVideoLoad = () => {
   videoDimensions.value = null
@@ -1606,38 +1332,26 @@ const retryVideoLoad = () => {
 }
 
 // 视频控制方法
-const playVideo = async () => {
+const playVideo = () => {
   if (videoPlaying.value) {
     pauseVideo()
     return
   }
-  if (!storyVideoPath.value) {
-    try {
-      const v = await videoService.getBySlot('story')
-      const data = v?.data || v
-      const path = data?.FilePath || data?.filePath
-      if (path) {
-        storyVideoPath.value = normalizeUploadsPath(path)
-      }
-    } catch {}
-  }
-  if (!storyVideoPath.value) {
-    showNotification('暂无视频可播放', 'warning')
-    return
-  }
+  
   videoPlaying.value = true
   hasPlayed.value = true
+  
   nextTick(() => {
     if (videoPlayer.value) {
-      try {
-        // 重新加载当前源，避免之前的请求残留引起中断
-        videoPlayer.value.pause()
-        videoPlayer.value.currentTime = 0
-        videoPlayer.value.load()
-      } catch {}
+      // 尝试自动播放视频
       const playPromise = videoPlayer.value.play()
+      
       if (playPromise !== undefined) {
-        playPromise.then(() => { showNotification('视频开始播放', 'success') }).catch(() => { showNotification('请点击视频播放按钮开始播放', 'info') })
+        playPromise.then(() => {
+          showNotification('视频开始播放', 'success')
+        }).catch((error) => {
+          showNotification('请点击视频播放按钮开始播放', 'info')
+        })
       }
     }
   })
@@ -1732,79 +1446,6 @@ const onVideoError = (event) => {
   videoPlaying.value = false
   hasPlayed.value = true // 标记已尝试播放，显示占位符
 }
-
-const triggerVideoUpload = () => {
-  if (!userStore.isAdmin) return
-  if (videoUploadInput.value) videoUploadInput.value.click()
-}
-
-const handleVideoFileSelected = async (e) => {
-  if (!userStore.isAdmin) return
-  const file = e.target.files?.[0]
-  if (!file) return
-  const form = new FormData()
-  form.append('file', file)
-  form.append('title', file.name || '品牌故事视频')
-  form.append('slot', 'story')
-  uploadingVideo.value = true
-  try {
-    const res = await videoService.upload(form)
-    const data = res?.data || res
-    if (data && (data.FilePath || data.filePath)) {
-      const path = normalizeUploadsPath(data.FilePath || data.filePath)
-      storyVideoPath.value = path
-      try { localStorage.setItem('storyVideoPath', path) } catch {}
-      showNotification('视频上传成功', 'success')
-    } else {
-      showNotification('上传成功，但未返回路径', 'warning')
-    }
-  } catch (err) {
-    showNotification('视频上传失败', 'error')
-  } finally {
-    uploadingVideo.value = false
-    if (videoUploadInput.value) videoUploadInput.value.value = ''
-  }
-}
-
-const triggerHeroVideoUpload = () => {
-  if (!userStore.isAdmin) return
-  if (heroVideoUploadInput.value) heroVideoUploadInput.value.click()
-}
-
-const handleHeroVideoFileSelected = async (e) => {
-  if (!userStore.isAdmin) return
-  const file = e.target.files?.[0]
-  if (!file) return
-  const form = new FormData()
-  form.append('file', file)
-  form.append('title', file.name || '首页英雄背景视频')
-  form.append('slot', 'hero')
-  uploadingHeroVideo.value = true
-  try {
-    const res = await videoService.upload(form)
-    const data = res?.data || res
-    if (data && (data.FilePath || data.filePath)) {
-      const path = normalizeUploadsPath(data.FilePath || data.filePath)
-      heroBackgroundType.value = 'video'
-      heroVideoPath.value = path
-      try { localStorage.setItem('heroVideoPath', path) } catch {}
-      showNotification('背景视频上传成功', 'success')
-    } else {
-      showNotification('上传成功，但未返回路径', 'warning')
-    }
-  } catch (err) {
-    showNotification('背景视频上传失败', 'error')
-  } finally {
-    uploadingHeroVideo.value = false
-    if (heroVideoUploadInput.value) heroVideoUploadInput.value.value = ''
-  }
-}
-
-  const triggerPromoUpload = () => { }
-
-  const handlePromoFileSelected = async (e) => {
-  return
-  }
 
 const shareVideo = () => {
   if (navigator.share) {
@@ -1925,23 +1566,27 @@ const handleAddToCart = async (product) => {
     router.push('/auth')
     return
   }
-  
-  // 确认添加到购物车
-  const quantity = getProductQuantity(product)
-  const result = await cartStore.addToCart({
-    ...product,
-    quantity
-  })
-  
-  if (result.success) {
-    // 显示数量选择器
+  if (!showQuantitySelector.value[product.id]) {
+    // 首次点击，显示数量选择器
     showQuantitySelector.value[product.id] = true
-    productQuantities.value[product.id] = 1
-    
-    // 显示成功提示
-    notifySuccess('成功添加到购物车！', 'success')
   } else {
-    showNotification(result.message, 'error')
+    // 确认添加到购物车
+    const quantity = getProductQuantity(product)
+    const result = await cartStore.addToCart({
+      ...product,
+      quantity
+    })
+    
+    if (result.success) {
+      // 重置状态
+      showQuantitySelector.value[product.id] = false
+      productQuantities.value[product.id] = 1
+      
+      // 显示成功提示
+      showNotification('成功添加到购物车！', 'success')
+    } else {
+      showNotification(result.message, 'error')
+    }
   }
 }
 
@@ -1955,14 +1600,10 @@ const toggleFavorite = async (product) => {
     if (index > -1) {
       await favoriteService.remove(product.id)
       favoriteProducts.value.splice(index, 1)
-      const idx = recommendedProducts.value.findIndex(p => p.id === product.id)
-      if (idx !== -1) { recommendedProducts.value[idx].popularity = Math.max(0, (recommendedProducts.value[idx].popularity || 0) - 1) }
       showNotification('已取消收藏', 'info')
     } else {
       await favoriteService.add(product.id)
       favoriteProducts.value.push(product.id)
-      const idx = recommendedProducts.value.findIndex(p => p.id === product.id)
-      if (idx !== -1) { recommendedProducts.value[idx].popularity = (recommendedProducts.value[idx].popularity || 0) + 1 }
       showNotification('已添加到收藏', 'success')
     }
   } catch (e) {
@@ -1979,8 +1620,6 @@ const closeQuickView = () => {
   showQuickViewModal.value = false
   quickViewProduct.value = null
 }
-
- 
 
 const showNotification = (message, type = 'info') => {
   // 创建通知元素
@@ -2075,36 +1714,6 @@ const handleScroll = () => {
   })
 }
 
-const prevHeroSlide = () => {
-  currentHeroSlide.value = (currentHeroSlide.value - 1 + heroSlides.value.length) % heroSlides.value.length
-}
-
-const nextHeroSlide = () => {
-  currentHeroSlide.value = (currentHeroSlide.value + 1) % heroSlides.value.length
-}
-
-const handleHeroTouchStart = (event) => {
-  heroTouchStartX.value = event.touches[0].clientX
-  heroIsDragging.value = true
-  heroAutoRotatePaused.value = true
-}
-
-const handleHeroTouchMove = (event) => {
-  if (!heroIsDragging.value) return
-  heroTouchEndX.value = event.touches[0].clientX
-}
-
-const handleHeroTouchEnd = () => {
-  if (!heroIsDragging.value) return
-  heroIsDragging.value = false
-  const swipeDistance = heroTouchEndX.value - heroTouchStartX.value
-  const minSwipeDistance = 50
-  if (Math.abs(swipeDistance) > minSwipeDistance) {
-    if (swipeDistance > 0) { prevHeroSlide() } else { nextHeroSlide() }
-  }
-  setTimeout(() => { heroAutoRotatePaused.value = false }, 800)
-}
-
 // 移动端视频播放优化
 const handleMobileVideoPlay = () => {
   const video = videoRef.value
@@ -2124,7 +1733,7 @@ const handleProductImageError = (event, product) => {
   if (featuredProducts.value.length > 0) {
     const index = featuredProducts.value.findIndex(p => p.id === product.id)
     if (index !== -1) {
-      featuredProducts.value[index].image = '/images/product-placeholder.svg'
+      featuredProducts.value[index].image = '/images/default-product.svg'
     }
   }
 }
@@ -2134,7 +1743,7 @@ const handleQuickViewImageError = (event) => {
   console.warn('快速查看模态框中的图片加载失败，使用默认图片')
   // 更新quickViewProduct对象中的image属性，使用默认图片
   if (quickViewProduct.value) {
-    quickViewProduct.value.image = '/images/product-placeholder.svg'
+    quickViewProduct.value.image = '/images/default-product.svg'
   }
 }
 </script>
@@ -2327,35 +1936,15 @@ const handleQuickViewImageError = (event) => {
 /* 播放按钮优化 */
 .play-button {
   backdrop-filter: blur(10px);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
 }
 .play-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 1);
   transform: scale(1.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
-
-.skeleton {
-  animation: skeletonPulse 1.4s ease-in-out infinite;
-  background: linear-gradient(90deg, rgba(255,255,255,0.25) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.25) 75%);
-  background-size: 200% 100%;
-}
-
-@keyframes skeletonPulse {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.promo-hero { height: 16rem; }
-@media (min-width: 768px) { .promo-hero { height: 20rem; } }
-@media (min-width: 1024px) { .promo-hero { height: 28rem; } }
-.promo-bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(0.9); }
-.promo-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.5)); }
-.promo-content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; padding: 1rem; }
-.carousel-btn { padding: 0.5rem 1rem; border-radius: 9999px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transition: transform .2s ease, box-shadow .2s ease; }
-.carousel-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(0,0,0,0.25); }
 
 /* 视频控制按钮组优化 */
 .video-controls {
@@ -2393,28 +1982,6 @@ const handleQuickViewImageError = (event) => {
   .hero-section {
     min-height: 70vh;
     padding: 2rem 0;
-  }
-  
-  .hero-content h1 {
-    font-size: 2rem;
-    line-height: 1.2;
-  }
-  
-  .hero-content p {
-    font-size: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .hero-buttons {
-    flex-direction: column;
-    gap: 1rem;
-    width: 100%;
-  }
-  
-  .hero-buttons .btn {
-    width: 100%;
-    padding: 1rem;
-    font-size: 1rem;
   }
   
   /* 商品卡片移动端优化 */
@@ -2542,51 +2109,6 @@ const handleQuickViewImageError = (event) => {
     opacity: 0;
   }
   
-  /* 确保英雄区域内容始终可见 */
-  .hero-content {
-    z-index: 10;
-    transition: opacity 0.5s ease;
-  }
-  
-  /* 背景控制面板样式 */
-  .background-control-panel {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    z-index: 20;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 8px;
-    padding: 12px;
-    backdrop-filter: blur(10px);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .control-button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 14px;
-  }
-  
-  .control-button.active {
-    background: #ec4899;
-    color: white;
-  }
-  
-  .control-button:not(.active) {
-    background: rgba(255, 255, 255, 0.8);
-    color: #333;
-  }
-  
-  .control-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-  
   /* 触摸反馈 */
   button:active, .btn:active {
     transform: scale(0.95);
@@ -2618,15 +2140,6 @@ const handleQuickViewImageError = (event) => {
     padding-right: 1rem;
   }
   
-  .hero-content h1 {
-    font-size: 1.75rem;
-  }
-  
-  .hero-buttons .btn {
-    padding: 0.875rem;
-    font-size: 0.875rem;
-  }
-  
   .card img {
     height: 180px;
   }
@@ -2654,28 +2167,126 @@ const handleQuickViewImageError = (event) => {
     min-height: 90vh;
   }
   
-  .hero-content {
-    padding-top: 1rem;
-  }
-  
-  .hero-content h1 {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .hero-content p {
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-  }
-  
-  .hero-buttons {
-    flex-direction: row;
-    gap: 0.5rem;
-  }
-  
-  .hero-buttons .btn {
-    padding: 0.75rem 1.5rem;
-    font-size: 0.875rem;
-  }
+}
+
+/* --------------------------------------------------------------------------
+ * Brand refresh: a calm, editorial hero that keeps the purchase CTA visible
+ * over both the image and optional video background.
+ * ------------------------------------------------------------------------ */
+.hero-section {
+  isolation: isolate;
+  background: #f2d4d2;
+}
+
+.hero-section::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 5rem;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(40, 20, 22, .06));
+}
+
+.hero-image,
+.hero-video {
+  transform: scale(1.01);
+  filter: saturate(.92) contrast(.96);
+}
+
+.hero-wash {
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(38, 19, 23, .58) 0%, rgba(38, 19, 23, .24) 38%, rgba(38, 19, 23, .02) 72%),
+    linear-gradient(180deg, rgba(13, 8, 9, .12), transparent 40%, rgba(13, 8, 9, .12));
+}
+
+.hero-inner { color: #fff; }
+.hero-copy { text-align: left; }
+.hero-kicker {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: 1.1rem;
+  color: rgba(255,255,255,.9);
+  font-size: .78rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.hero-kicker-dot {
+  width: .55rem;
+  height: .55rem;
+  border-radius: 999px;
+  background: #ffd0c8;
+  box-shadow: 0 0 0 .3rem rgba(255,208,200,.16);
+}
+.hero-title {
+  margin: 0;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: clamp(3.3rem, 7vw, 6.5rem);
+  font-weight: 600;
+  letter-spacing: -.06em;
+  line-height: 1.03;
+  text-shadow: 0 3px 28px rgba(40, 15, 16, .2);
+}
+.hero-title em {
+  color: #ffe0d9;
+  font-style: normal;
+}
+.hero-subtitle {
+  margin: 1.35rem 0 2rem;
+  color: rgba(255,255,255,.9);
+  font-size: 1.04rem;
+  letter-spacing: .08em;
+}
+.hero-actions { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+.hero-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .95rem 1.45rem;
+  border-radius: 999px;
+  color: #7e2938;
+  background: #fff8f4;
+  box-shadow: 0 10px 25px rgba(61, 20, 25, .2);
+  font-size: .95rem;
+  font-weight: 700;
+  transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+}
+.hero-cta-primary:hover { transform: translateY(-3px); background: #fff; box-shadow: 0 15px 32px rgba(61, 20, 25, .28); }
+.hero-cta-primary span { font-size: 1.25rem; line-height: 1; transition: transform .25s ease; }
+.hero-cta-primary:hover span { transform: translateX(3px); }
+.hero-cta-quiet { color: rgba(255,255,255,.95); font-size: .92rem; text-decoration: underline; text-decoration-color: rgba(255,255,255,.45); text-underline-offset: .35rem; }
+.hero-cta-quiet:hover { color: #fff; text-decoration-color: #fff; }
+.hero-proof { display: flex; align-items: center; gap: .95rem; margin-top: 3rem; color: rgba(255,255,255,.8); font-size: .72rem; letter-spacing: .04em; }
+.hero-proof strong { display: block; margin-bottom: .18rem; color: #fff; font-size: .95rem; letter-spacing: 0; }
+.hero-proof-divider { width: 1px; height: 1.8rem; background: rgba(255,255,255,.35); }
+.hero-note {
+  position: absolute;
+  right: 7%;
+  bottom: 9%;
+  width: 12.5rem;
+  padding: 1.3rem 1.25rem 1.15rem;
+  border: 1px solid rgba(255,255,255,.5);
+  border-radius: 1.1rem;
+  background: rgba(255, 249, 245, .22);
+  box-shadow: 0 20px 50px rgba(54, 16, 21, .17);
+  backdrop-filter: blur(14px);
+}
+.hero-note-label { display: block; color: rgba(255,255,255,.75); font-size: .65rem; letter-spacing: .13em; }
+.hero-note-title { display: block; margin: .4rem 0 .8rem; color: #fff; font-family: 'Noto Serif SC', serif; font-size: 1.2rem; }
+.hero-note-price { display: block; color: #fff; font-size: 1.3rem; font-weight: 700; }
+.hero-note-price small { font-size: .7rem; font-weight: 400; }
+.hero-note-link { display: block; margin-top: .9rem; color: rgba(255,255,255,.85); font-size: .72rem; }
+.hero-note-link span { float: right; font-size: 1rem; }
+
+@media (max-width: 640px) {
+  .hero-wash { background: linear-gradient(90deg, rgba(38, 19, 23, .55), rgba(38, 19, 23, .12)); }
+  .hero-inner { min-height: 35rem; padding-top: 7.5rem; padding-bottom: 5rem; }
+  .hero-title { font-size: clamp(3rem, 15vw, 4.4rem); }
+  .hero-subtitle { max-width: 18rem; line-height: 1.7; }
+  .hero-proof { gap: .6rem; margin-top: 2.2rem; }
+  .hero-proof span { font-size: .65rem; }
+  .hero-proof-divider { height: 1.45rem; }
 }
 </style>

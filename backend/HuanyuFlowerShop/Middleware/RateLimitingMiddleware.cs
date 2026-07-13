@@ -35,22 +35,11 @@ namespace HuanyuFlowerShop.Middleware
                 return;
             }
 
-            // 对管理员用户的后台接口放宽限流（仅已认证且角色为admin）
-            if (path != null && path.StartsWith("/admin") && context.User?.Identity?.IsAuthenticated == true)
-            {
-                var role = context.User.FindFirst("role")?.Value ?? context.User.FindFirst("Role")?.Value;
-                if (string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
-                {
-                    await _next(context);
-                    return;
-                }
-            }
-
             // 获取客户端标识 - 优先使用用户ID（已认证），否则使用IP地址
             string clientKey;
-            if (context.User?.Identity?.IsAuthenticated == true && context.User.FindFirst("userId") != null)
+            if (context.User?.Identity?.IsAuthenticated == true && context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) != null)
             {
-                var userIdClaim = context.User.FindFirst("userId");
+                var userIdClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
                 clientKey = "user_" + (userIdClaim?.Value ?? "unknown");
             }
             else

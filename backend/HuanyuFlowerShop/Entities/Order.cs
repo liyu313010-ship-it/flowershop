@@ -92,6 +92,22 @@ namespace HuanyuFlowerShop.Entities
         [Column(TypeName = "varchar(100)")]
         public string? DeliveryTime { get; set; }
 
+        public DateTime? DeliveryDate { get; set; }
+
+        [StringLength(30)]
+        public string ShippingMethod { get; set; } = "standard";
+
+        [StringLength(50)]
+        public string? SenderName { get; set; }
+
+        [StringLength(500)]
+        public string? CardMessage { get; set; }
+
+        public bool IsAnonymous { get; set; }
+
+        [StringLength(30)]
+        public string SubstitutionPreference { get; set; } = "contact_me";
+
         /// <summary>
         /// 留言
         /// </summary>

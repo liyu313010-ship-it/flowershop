@@ -12,6 +12,18 @@
   
   body {
     @apply bg-gradient-to-br from-pink-100 via-white to-pink-50 min-h-screen;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* keyboard users should always see where focus landed */
+  :focus-visible {
+    outline: 3px solid rgba(236, 72, 153, .55);
+    outline-offset: 2px;
+  }
+
+  button, a, input, select, textarea {
+    touch-action: manipulation;
   }
 }
 
@@ -72,52 +84,76 @@
 
 /* 动画效果 */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.fade-in { animation: fadeIn 0.6s ease-out; }
-
-/* 首页 Hero 动画 */
-@keyframes slowZoom {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.1); }
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
 }
-
-.animate-slow-zoom {
-  animation: slowZoom 20s linear infinite alternate;
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0; /* 初始隐藏 */
-}
-
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-
-/* 页面过渡 */
-.fade-slow-enter-active, .fade-slow-leave-active { transition: opacity 1.5s ease; }
-.fade-slow-enter-from, .fade-slow-leave-to { opacity: 0; }
-
-.slide-up-enter-active, .slide-up-leave-active { transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-.slide-up-enter-from { opacity: 0; transform: translateY(40px); }
-.slide-up-leave-to { opacity: 0; transform: translateY(-40px); }
 
 /* 响应式图片容器 */
 .img-container {
   @apply w-full h-48 object-cover;
 }
 
-/* 通用图片完整显示规则 */
-img.object-cover {
-  object-fit: contain !important;
+/* 图片裁切由组件自行决定：object-cover 用于沉浸式主视觉/头像，
+   商品卡片如需完整展示请显式使用 object-contain。 */
+
+/* Keep content clear of the fixed header and device notches. */
+.page-shell,
+main > *:first-child {
+  scroll-margin-top: 5rem;
+}
+
+@media (max-width: 767px) {
+  html {
+    font-size: 15px;
+    scroll-padding-top: 4.5rem;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .card {
+    border-radius: .9rem;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    min-height: 44px;
+    padding-inline: 1.1rem;
+  }
+
+  .input-field {
+    min-height: 44px;
+    font-size: 16px; /* prevents iOS Safari zoom on focus */
+  }
+
+  .img-container {
+    height: clamp(10rem, 48vw, 14rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 /* 购物车徽章 */
@@ -125,28 +161,196 @@ img.object-cover {
   @apply absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center;
 }
 
-/* 商品卡片悬停效果修复 */
-.group:hover .group-hover\:opacity-100 {
-  opacity: 1 !important;
+/* ---------- 欢雨flower editorial botanical theme ---------- */
+:root {
+  --ink: #2a1822;
+  --plum: #4a2335;
+  --coral: #d9644f;
+  --coral-deep: #b7493d;
+  --cream: #fbf7f2;
+  --sage: #758774;
+  --line: rgba(74, 35, 53, .14);
 }
 
-.card .absolute {
-  pointer-events: auto;
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-/* 确保悬停按钮在图片之上 */
-.card .relative {
+/* The slim burgundy line makes the header feel like a considered brand object. */
+.site-nav {
+  height: 64px;
+  min-height: 64px;
+  background: rgba(251, 247, 242, .88) !important;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 35px rgba(42, 24, 34, .06) !important;
+}
+.site-nav::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -2px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--coral), #d6aa63, transparent);
+  opacity: .85;
+}
+.site-nav .nav-link {
+  color: var(--ink) !important;
+  letter-spacing: .08em;
+  font-size: .88rem;
   position: relative;
+}
+.site-nav .nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: -8px;
+  height: 2px;
+  background: var(--coral);
+  transition: right .25s ease;
+}
+.site-nav .nav-link:hover::after,
+.site-nav .nav-link-active::after { right: 0; }
+.site-nav .nav-link-active { color: var(--coral-deep) !important; }
+.site-nav a[class*="text-2xl"] { color: var(--plum) !important; font-family: Georgia, "Songti SC", serif; letter-spacing: -.03em; }
+.site-nav a[class*="text-2xl"]:hover { color: var(--coral-deep) !important; }
+.site-nav img[alt*="Logo"] { border-radius: 12px !important; box-shadow: 0 5px 14px rgba(74,35,53,.18); }
+.site-nav .btn-primary,
+.site-nav .btn-secondary { border-radius: 999px; letter-spacing: .06em; }
+
+/* Hero: full-bleed image, quiet copy and a warm editorial tint. */
+.hero-section {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  min-height: clamp(560px, 74vh, 760px);
+  height: auto !important;
+  isolation: isolate;
+  background: var(--plum);
+}
+.hero-section > div:first-child,
+.hero-section > div:first-child img,
+.hero-section > div:first-child video { border-radius: 0 !important; }
+.hero-section > div:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   z-index: 1;
+  background: linear-gradient(90deg, rgba(42,24,34,.72) 0%, rgba(42,24,34,.33) 45%, rgba(42,24,34,.04) 85%), linear-gradient(0deg, rgba(42,24,34,.33), transparent 44%);
 }
-
-.card .absolute.inset-0 {
-  z-index: 30 !important;
-  pointer-events: auto !important;
+.hero-section .hero-image,
+.hero-section .hero-video { object-fit: cover !important; filter: saturate(.84) contrast(1.03); transform: scale(1.015); }
+.hero-section > .absolute.inset-0.flex {
+  justify-content: flex-start !important;
+  text-align: left !important;
+  padding: clamp(2rem, 9vw, 8rem) clamp(1.5rem, 8vw, 9rem) !important;
+  z-index: 2;
 }
+/* Shared section rhythm and display typography. */
+.home-video-section,
+.home-services-section,
+.home-products-section,
+.home-recommended-section,
+.home-brand-section,
+.home-reviews-section { padding-top: clamp(4.5rem, 9vw, 8rem) !important; padding-bottom: clamp(4.5rem, 9vw, 8rem) !important; }
+.home-video-section,
+.home-products-section,
+.home-reviews-section { background: #f5eee8 !important; }
+.home-services-section,
+.home-recommended-section { background: var(--cream) !important; }
+.home-video-section h2,
+.home-services-section h2,
+.home-products-section h2,
+.home-recommended-section h2,
+.home-brand-section h2,
+.home-reviews-section h2 {
+  color: var(--ink) !important;
+  font-family: Georgia, "Songti SC", serif;
+  letter-spacing: -.03em;
+}
+.home-video-section h2::after,
+.home-products-section h2::after,
+.home-reviews-section h2::after {
+  content: "";
+  display: block;
+  width: 46px;
+  height: 2px;
+  margin: 1.15rem auto 0;
+  background: var(--coral);
+}
+.home-video-section p,
+.home-products-section p,
+.home-recommended-section p,
+.home-reviews-section p { color: #76666b !important; }
 
-/* 强制显示悬停按钮用于调试 */
-.card:hover .absolute.inset-0 {
-  opacity: 1 !important;
-  visibility: visible !important;
+.home-video-section .video-container { border-radius: 28px !important; box-shadow: 0 25px 70px rgba(74,35,53,.16) !important; }
+.home-video-section .bg-white { background: #fffaf5 !important; border: 0 !important; }
+.home-video-section .play-button { color: var(--coral) !important; box-shadow: 0 12px 35px rgba(42,24,34,.2); }
+
+/* Service tiles become little botanical medallions instead of generic icon rows. */
+.home-services-section .grid > .group {
+  padding: 2.2rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255,255,255,.54);
+  transition: transform .3s ease, box-shadow .3s ease, background .3s ease;
+}
+.home-services-section .grid > .group:hover { transform: translateY(-8px); background: #fffaf5; box-shadow: 0 18px 45px rgba(74,35,53,.12); }
+.home-services-section .grid > .group > div:first-child { background: #f2d7ce !important; color: var(--coral-deep) !important; }
+.home-services-section .grid > .group h3 { color: var(--ink); font-family: Georgia, "Songti SC", serif; }
+.home-services-section .grid > .group p { color: #76666b !important; }
+
+/* Product cards: tactile paper backgrounds and stronger price hierarchy. */
+.home-products-section .card,
+.home-recommended-section .card {
+  border: 1px solid rgba(74,35,53,.1) !important;
+  border-radius: 22px !important;
+  background: #fffaf5 !important;
+  box-shadow: 0 8px 24px rgba(74,35,53,.07) !important;
+}
+.home-products-section .card:hover,
+.home-recommended-section .card:hover { transform: translateY(-10px) !important; box-shadow: 0 24px 45px rgba(74,35,53,.15) !important; }
+.home-products-section .card .w-full.h-48,
+.home-recommended-section .card .w-full.h-48 { height: 260px !important; background: #f3e9e1 !important; }
+.home-products-section .card img,
+.home-recommended-section .card img { transition: transform .5s cubic-bezier(.2,.8,.2,1) !important; }
+.home-products-section .card:hover img,
+.home-recommended-section .card:hover img { transform: scale(1.07) rotate(-1.5deg) !important; }
+.home-products-section .card h3,
+.home-recommended-section .card h3 { color: var(--ink) !important; font-family: Georgia, "Songti SC", serif; }
+.home-products-section .card .text-xl,
+.home-recommended-section .card .text-xl { color: var(--coral-deep) !important; letter-spacing: .02em; }
+.home-products-section .card .bg-huanyu-pink-400,
+.home-recommended-section .card .bg-huanyu-pink-400 { background: var(--coral) !important; }
+.home-products-section .btn-primary { background: var(--plum) !important; border-radius: 999px; }
+
+/* Give the story a dark, memorable interlude. */
+.home-brand-section { background: var(--plum) !important; color: #fffaf5; position: relative; overflow: hidden; }
+.home-brand-section::before { content: ""; position: absolute; width: 34rem; height: 34rem; right: -12rem; top: -10rem; border-radius: 50%; background: rgba(217,100,79,.18); }
+.home-brand-section h2 { color: #fffaf5 !important; }
+.home-brand-section .text-gray-600 { color: rgba(255,250,245,.72) !important; }
+.home-brand-section .text-huanyu-pink-500 { color: #f4c9af !important; }
+.home-brand-section .text-sm { color: rgba(255,250,245,.65) !important; }
+.home-brand-section img { border-radius: 28px !important; box-shadow: 0 25px 65px rgba(0,0,0,.28) !important; }
+.home-brand-section .bg-huanyu-pink-100,
+.home-brand-section .bg-huanyu-pink-200 { background: var(--coral) !important; opacity: .35 !important; }
+
+.home-reviews-section .bg-white { background: #fffaf5 !important; border-color: var(--line) !important; border-radius: 22px !important; box-shadow: 0 12px 32px rgba(74,35,53,.07) !important; }
+.home-reviews-section .ring-huanyu-pink-200 { --tw-ring-color: #f0c7b9 !important; }
+
+.site-footer { background: #2a1822 !important; color: #f6dfd4 !important; border-top: 0 !important; }
+.site-footer .text-pink-600,
+.site-footer .text-pink-500 { color: rgba(255,239,231,.66) !important; }
+.site-footer .text-pink-800,
+.site-footer h3,
+.site-footer h4 { color: #fffaf5 !important; }
+.site-footer .bg-pink-200 { background: rgba(217,100,79,.24) !important; }
+.site-footer .border-pink-300 { border-color: rgba(255,255,255,.12) !important; }
+
+@media (max-width: 640px) {
+  .site-nav { height: 64px; min-height: 64px; }
+  .hero-section { min-height: 620px; }
+  .hero-section > .absolute.inset-0.flex { padding: 6rem 1.4rem 3rem !important; align-items: flex-end; }
+  .home-products-section .card .w-full.h-48,
+  .home-recommended-section .card .w-full.h-48 { height: 220px !important; }
 }

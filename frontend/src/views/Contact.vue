@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="contact-page min-h-screen">
     <!-- 页面标题 -->
-    <div class="bg-white shadow-sm border-b">
+    <div class="page-heading">
       <div class="container mx-auto px-4 py-6">
         <h1 class="text-2xl font-bold text-gray-800">联系我们</h1>
         <p class="text-gray-600 mt-2">我们期待您的消息</p>
@@ -12,7 +12,7 @@
       <div class="grid lg:grid-cols-2 gap-8">
         
         <!-- 联系表单 -->
-        <div class="bg-white rounded-lg shadow-lg p-8">
+        <div class="contact-card rounded-lg p-8">
           <h2 class="text-2xl font-bold text-huanyu-pink-600 mb-6">发送消息</h2>
           
           <form @submit.prevent="handleSubmit" class="space-y-6">
@@ -91,7 +91,7 @@
             <button 
               type="submit"
               :disabled="!form.agree || submitting"
-              class="w-full bg-huanyu-pink-500 hover:bg-huanyu-pink-600 disabled:bg-gray-300 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+              class="btn-primary w-full disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {{ submitting ? '发送中...' : '发送消息' }}
             </button>
@@ -102,12 +102,12 @@
         <div class="space-y-6">
           
           <!-- 快速联系 -->
-          <div class="bg-white rounded-lg shadow-lg p-8">
+          <div class="contact-card rounded-lg p-8">
             <h2 class="text-2xl font-bold text-huanyu-pink-600 mb-6">快速联系</h2>
             <div class="space-y-4">
               <a 
-                href="tel:400-888-8888"
-                class="flex items-center p-4 bg-huanyu-pink-50 rounded-lg hover:bg-huanyu-pink-100 transition-colors"
+                href="tel:15025033613"
+                class="contact-card flex items-center p-4 rounded-lg hover:-translate-y-1 transition-transform"
               >
                 <div class="w-12 h-12 bg-huanyu-pink-500 rounded-full flex items-center justify-center mr-4">
                   <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +140,7 @@
           </div>
           
           <!-- 店铺地址 -->
-          <div class="bg-white rounded-lg shadow-lg p-8">
+          <div class="contact-card rounded-lg p-8">
             <h2 class="text-2xl font-bold text-huanyu-pink-600 mb-6">店铺地址</h2>
             <div class="space-y-4">
               <div class="flex items-start">
@@ -199,10 +199,17 @@ const handleSubmit = async () => {
   submitting.value = true
   
   try {
-    // 模拟提交
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    alert('消息发送成功！我们会尽快回复您。')
+    const subject = `[欢雨鲜花] ${form.value.type || '客户咨询'} - ${form.value.name}`
+    const body = [
+      `姓名：${form.value.name}`,
+      `电话：${form.value.phone}`,
+      `邮箱：${form.value.email || '未填写'}`,
+      `咨询类型：${form.value.type || '未选择'}`,
+      '',
+      form.value.message
+    ].join('\n')
+    window.location.href = `mailto:2784107771@qq.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    alert('已打开邮件客户端，请点击发送完成提交。')
     
     // 重置表单
     form.value = {

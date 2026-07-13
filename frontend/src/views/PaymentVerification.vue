@@ -16,7 +16,7 @@
       <div v-else-if="!order" class="text-center py-8">
         <i class="fas fa-exclamation-circle text-red-500 text-4xl mb-4"></i>
         <p class="text-gray-600 mb-4">未找到订单信息</p>
-        <button @click="goHome" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded transition-colors">
+        <button @click="goBack" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded transition-colors">
           返回首页
         </button>
       </div>
@@ -59,7 +59,7 @@
               />
               <button
                 @click="verifyPayment"
-                :disabled="verifying"
+                :disabled="!paymentReference || verifying"
                 class="bg-pink-600 hover:bg-pink-700 text-white px-6 py-2 rounded-r-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span v-if="!verifying">验证支付</span>
@@ -114,6 +114,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import orderService from '@/services/orderService'
+import { notifyError, notifySuccess } from '@/utils/notify'
 
 const route = useRoute()
 const router = useRouter()
@@ -127,49 +128,17 @@ const paymentError = ref('')
 
 onMounted(async () => {
   await loadOrderInfo()
-  
-  // 检查URL参数，如果有out_trade_no或trade_no，说明是从支付回调回来的，自动验证
-  const { out_trade_no, trade_no, verify } = route.query
-  if (out_trade_no) {
-    paymentReference.value = out_trade_no
-    // 稍微延迟一下，确保后端状态同步
-    setTimeout(() => verifyPayment(), 500)
-  } else if (trade_no) {
-    paymentReference.value = trade_no
-    setTimeout(() => verifyPayment(), 500)
-  } else if (verify === 'true') {
-    // 如果只有verify=true参数，尝试使用订单的paymentReference进行验证
-    if (order.value && order.value.paymentReference) {
-      paymentReference.value = order.value.paymentReference
-      setTimeout(() => verifyPayment(), 500)
-    }
-  }
 })
 
 const loadOrderInfo = async () => {
   try {
     loading.value = true
-    // 先从params获取orderId，如果没有则从query获取
-    const orderId = route.params.orderId || route.query.orderId
+    const orderId = route.params.orderId
     
-    if (!orderId) {
-      throw new Error('订单ID缺失')
-    }
-    
-    // 从后端获取订单信息
-    const res = await orderService.getOrderById(orderId)
-    if (res.success) {
-      const data = res.data
-      order.value = {
-        id: data.id || data.Id,
-        orderNumber: data.orderNumber || data.OrderNumber,
-        totalAmount: data.totalAmount || data.TotalAmount,
-        createdAt: data.createdAt || data.CreatedAt,
-        paymentStatus: data.paymentStatus || data.PaymentStatus
-      }
-    } else {
-       throw new Error('获取订单失败')
-    }
+    if (!orderId) throw new Error('缺少订单编号')
+    const result = await orderService.getOrderById(orderId)
+    order.value = result?.data || result
+    if (!order.value) throw new Error('未找到订单信息')
   } catch (error) {
     console.error('加载订单信息失败:', error)
   } finally {
@@ -178,42 +147,29 @@ const loadOrderInfo = async () => {
 }
 
 const verifyPayment = async () => {
+  if (!paymentReference.value.trim()) {
+    alert('请输入支付凭证号')
+    return
+  }
+  
   try {
     verifying.value = true
     paymentStatus.value = ''
     paymentError.value = ''
     
-    let ref = paymentReference.value.trim()
-    if (!ref) {
-      try {
-        const statusRes = await orderService.getOrderPaymentStatus(order.value.id)
-        ref = statusRes?.data?.paymentReference || order.value?.paymentReference || ''
-      } catch {}
+    const result = await orderService.verifyPayment(order.value.id, paymentReference.value.trim())
+    const data = result?.data || result
+    if (!data || data.success === false || data.verified === false) {
+      throw new Error(data?.message || '支付凭证验证失败')
     }
-    if (!ref) {
-      throw new Error('缺少支付凭证号')
-    }
-    const res = await orderService.verifyPayment(order.value.id, ref)
-    
-    if (res.success) {
-        paymentStatus.value = 'verified'
-        order.value.paymentStatus = 'paid'
-        router.push(`/orders/${order.value.id}`)
-    } else {
-        throw new Error(res.message || '验证失败')
-    }
+    paymentStatus.value = 'verified'
+    order.value.paymentStatus = 'paid'
+    notifySuccess('支付验证成功')
   } catch (error) {
     console.error('验证支付失败:', error)
     paymentStatus.value = 'failed'
-    // 优先显示后端返回的具体错误信息（如果 axios 拦截器或 service 处理了）
-    // 通常 axios 错误在 error.response.data 中
-    if (error.response && error.response.data && error.response.data.message) {
-        paymentError.value = error.response.data.message
-    } else if (error.message) {
-        paymentError.value = error.message
-    } else {
-        paymentError.value = '验证过程中出现错误，请联系客服'
-    }
+    paymentError.value = error?.response?.data?.message || error?.message || '验证过程中出现错误'
+    notifyError(paymentError.value)
   } finally {
     verifying.value = false
   }
@@ -246,31 +202,22 @@ const getPaymentStatusText = (status) => {
 }
 
 const formatDate = (dateString) => {
-  if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-      timeZone: 'Asia/Shanghai'
-    })
-  } catch { return '' }
+  const date = new Date(dateString)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const goToOrderDetail = () => {
-  const orderId = order.value?.id || route.params.orderId
-  if (orderId) {
-    router.push(`/orders/${orderId}`)
-  } else {
-    router.push('/orders')
-  }
-}
-
-const goHome = () => {
-  router.push('/')
+  router.push(`/orders/${route.params.orderId}`)
 }
 
 const goBack = () => {
-  if (window.history.length > 1) {
+  if (router.history.state.back) {
     router.back()
   } else {
     router.push('/')
