@@ -228,6 +228,14 @@ body {
   isolation: isolate;
   background: #f7dbe6;
 }
+.hero-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 72% 18%, rgba(255,255,255,.55), transparent 28%), radial-gradient(circle at 18% 82%, rgba(238,136,167,.16), transparent 25%);
+}
 .hero-section > div:first-child,
 .hero-section > div:first-child img,
 .hero-section > div:first-child video { border-radius: 0 !important; }
@@ -310,6 +318,12 @@ body {
 }
 .home-products-section .card:hover,
 .home-recommended-section .card:hover { transform: translateY(-10px) !important; box-shadow: 0 24px 45px rgba(74,35,53,.15) !important; }
+.home-products-section .card,
+.home-recommended-section .card,
+.quick-category-link { backdrop-filter: blur(10px); }
+.quick-category-link { box-shadow: 0 8px 22px rgba(169,79,120,.06); }
+.quick-category-link:hover,
+.quick-category-link:focus-visible { box-shadow: 0 14px 28px rgba(169,79,120,.18); }
 .home-products-section .card .w-full.h-48,
 .home-recommended-section .card .w-full.h-48 { height: 260px !important; background: #f3e9e1 !important; }
 .home-products-section .card img,
