@@ -62,12 +62,8 @@ namespace HuanyuFlowerShop.Services
                     };
                 }
 
-                _logger.LogInformation("找到用户，用户ID: {UserId}, 密码哈希: {PasswordHash}", user.Id, user.Password);
-                _logger.LogInformation("登录密码: {Password}", loginDto.Password);
-
                 // 使用BCrypt验证密码
                 bool isPasswordValid = BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password);
-                _logger.LogInformation("密码验证结果: {IsValid}", isPasswordValid);
 
                 if (!isPasswordValid)
                 {
@@ -258,7 +254,7 @@ namespace HuanyuFlowerShop.Services
                 issuer: jwtIssuer,
                 audience: jwtAudience,
                 claims: claims,
-                expires: DateTime.Now.AddDays(7),
+                expires: DateTime.UtcNow.AddMinutes(_configuration.GetValue("JwtSettings:ExpirationInMinutes", 60)),
                 signingCredentials: credentials
             );
 
@@ -415,18 +411,10 @@ namespace HuanyuFlowerShop.Services
                     user.Address = updateUserDto.Address;
                 }
 
-                // 更新性别信息（统一存中文：男/女/其他）
+                // 更新性别信息
                 if (!string.IsNullOrEmpty(updateUserDto.Gender))
                 {
-                    var g = updateUserDto.Gender.Trim();
-                    var gl = g.ToLowerInvariant();
-                    user.Gender = gl switch
-                    {
-                        "male" => "男",
-                        "female" => "女",
-                        "other" => "其他",
-                        _ => (g == "男" || g == "女" || g == "其他") ? g : g
-                    };
+                    user.Gender = updateUserDto.Gender;
                 }
 
                 // 更新头像信息
@@ -882,9 +870,9 @@ namespace HuanyuFlowerShop.Services
             }
 
             // 验证新密码是否符合要求
-            if (string.IsNullOrEmpty(changePasswordDto.NewPassword) || changePasswordDto.NewPassword.Length < 6)
+            if (string.IsNullOrEmpty(changePasswordDto.NewPassword) || changePasswordDto.NewPassword.Length < 12)
             {
-                throw new ArgumentException("新密码长度不能少于6位");
+                throw new ArgumentException("新密码长度不能少于12位");
             }
 
             // 哈希新密码并更新

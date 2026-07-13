@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
 using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Services;
@@ -7,6 +8,7 @@ namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "admin")]
     public class OrderStatusHistoryController : ControllerBase
     {
         private readonly IOrderStatusHistoryService _orderStatusHistoryService;

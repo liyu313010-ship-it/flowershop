@@ -1,0 +1,63 @@
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Server=db;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};SslMode=Required
+      JwtSettings__SecretKey: ${JWT_SECRET}
+      JwtSettings__Issuer: ${JWT_ISSUER}
+      JwtSettings__Audience: ${JWT_AUDIENCE}
+      SecuritySettings__AllowOrigins__0: ${PUBLIC_ORIGIN}
+      Payment__Mode: ${PAYMENT_MODE:-disabled}
+      Payment__WebhookSecret: ${PAYMENT_WEBHOOK_SECRET}
+      Payment__Alipay__AppId: ${ALIPAY_APP_ID:-}
+      Payment__Alipay__PrivateKey: ${ALIPAY_PRIVATE_KEY:-}
+      Payment__Alipay__PublicKey: ${ALIPAY_PUBLIC_KEY:-}
+      Payment__Alipay__NotifyUrl: ${ALIPAY_NOTIFY_URL:-}
+      Payment__WeChat__MerchantId: ${WECHAT_MERCHANT_ID:-}
+      Payment__WeChat__ApiV3Key: ${WECHAT_API_V3_KEY:-}
+      Payment__WeChat__PrivateKey: ${WECHAT_PRIVATE_KEY:-}
+      Payment__WeChat__PlatformCertificate: ${WECHAT_PLATFORM_CERTIFICATE:-}
+      Email__Enabled: ${EMAIL_ENABLED:-false}
+      Email__Host: ${EMAIL_HOST:-}
+      Email__Port: ${EMAIL_PORT:-587}
+      Email__Username: ${EMAIL_USERNAME:-}
+      Email__Password: ${EMAIL_PASSWORD:-}
+      Email__From: ${EMAIL_FROM:-}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  uploads_data:

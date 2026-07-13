@@ -91,13 +91,6 @@
             搜索
           </button>
         </div>
-        <div v-if="(searchQuery && searchQuery.trim()) || selectedRole || selectedStatus" class="mt-4 flex items-center flex-wrap gap-2">
-          <span class="text-sm text-gray-500">当前筛选:</span>
-          <span v-if="searchQuery && searchQuery.trim()" class="px-2 py-1 text-sm bg-gray-100 text-gray-700 rounded">{{ searchQuery }}</span>
-          <span v-if="selectedRole" class="px-2 py-1 text-sm bg-gray-100 text-gray-700 rounded">{{ getRoleText(selectedRole) }}</span>
-          <span v-if="selectedStatus" class="px-2 py-1 text-sm bg-gray-100 text-gray-700 rounded">{{ getStatusText(selectedStatus) }}</span>
-          <button @click="clearFilters" class="ml-2 px-2 py-1 text-sm text-gray-600 hover:text-gray-800">清空</button>
-        </div>
       </div>
 
       <!-- 用户列表 -->
@@ -277,7 +270,6 @@
               <div class="space-y-2 text-sm">
                 <div><span class="text-gray-600">真实姓名：</span>{{ selectedUser.fullName || '未设置' }}</div>
                 <div><span class="text-gray-600">邮箱：</span>{{ selectedUser.email }}</div>
-                <div><span class="text-gray-600">性别：</span>{{ getGenderText(selectedUser.gender || selectedUser.Gender) }}</div>
                 <div><span class="text-gray-600">手机：</span>{{ selectedUser.phone || '未设置' }}</div>
                 <div>
                   <span class="text-gray-600">地址：</span>
@@ -310,7 +302,7 @@
                 <div><span class="text-gray-600">注册时间：</span>{{ formatDate(selectedUser.createdAt) }}</div>
                 <div><span class="text-gray-600">更新时间：</span>{{ formatDate(selectedUser.updatedAt) }}</div>
                 <div><span class="text-gray-600">最后登录：</span>{{ formatDate(selectedUser.lastLoginAt) }}</div>
-                <div><span class="text-gray-600">邮箱验证：</span>{{ getEmailVerifiedText(selectedUser) }}</div>
+                <div><span class="text-gray-600">邮箱验证：</span>{{ selectedUser.emailVerified ? '已验证' : '未验证' }}</div>
               </div>
             </div>
             <div>
@@ -433,8 +425,12 @@ const stats = ref({
 
 // 方法
 const getGenderText = (gender) => {
-  const m = { male: '男', female: '女', other: '其他', 男: '男', 女: '女', 其他: '其他' }
-  return m[gender] || '未设置'
+  const genderMap = {
+    male: '男',
+    female: '女',
+    other: '其他'
+  }
+  return genderMap[gender] || '未设置'
 }
 
 const getRoleClass = (role) => {
@@ -473,26 +469,10 @@ const getStatusText = (status) => {
   return statusMap[status] || status
 }
 
-const getEmailVerifiedText = (u) => {
-  const email = u?.email || u?.Email || ''
-  if (email && /@/.test(email)) return email
-  const flag = u?.emailVerified
-  if (typeof flag === 'boolean') return flag ? '已验证' : '未验证'
-  return '未验证'
-}
-
     // 格式化日期
     const formatDate = (dateString) => {
       if (!dateString) return '未设置'
-      try {
-        return new Date(dateString).toLocaleString('zh-CN', {
-          year: 'numeric', month: '2-digit', day: '2-digit',
-          hour: '2-digit', minute: '2-digit',
-          timeZone: 'Asia/Shanghai'
-        })
-      } catch {
-        return new Date(dateString).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })
-      }
+      return new Date(dateString).toLocaleDateString('zh-CN')
     }
 
 // 获取统计数据
@@ -510,8 +490,8 @@ const fetchStats = async () => {
       stats.value = {
         totalUsers: response.totalUsers || 0,
         newUsers: response.newUsers || 0,
-        activeUsers: (response.activeUsers ?? users.value.filter(u => u.status === 'active').length) || 0,
-        vipUsers: (response.vipUsers ?? users.value.filter(u => u.role === 'vip').length) || 0
+        activeUsers: response.activeUsers || 0,
+        vipUsers: response.vipUsers || 0
       }
       if (import.meta.env.DEV) {
         console.log('统计数据更新成功:', stats.value)
@@ -542,21 +522,15 @@ const fetchStats = async () => {
 }
 
 // 获取用户列表
-const fetchUsers = async (opts = {}) => {
+const fetchUsers = async () => {
   loading.value = true
   try {
     // 仅在开发环境输出日志
     if (import.meta.env.DEV) {
       console.log('开始获取用户数据...')
     }
-    const params = {
-      page: currentPage.value,
-      pageSize,
-      search: (((opts.search ?? searchQuery.value)) ?? '').trim() || undefined,
-      role: (((opts.role ?? selectedRole.value)) ?? '').trim() || undefined,
-      status: (((opts.status ?? selectedStatus.value)) ?? '').trim() || undefined
-    }
-    const response = await adminService.getAdminUsers(params)
+    
+    const response = await adminService.getAdminUsers()
     
     if (import.meta.env.DEV) {
       console.log('获取用户数据响应:', response)
@@ -606,24 +580,17 @@ const fetchUsers = async (opts = {}) => {
 
 // 搜索用户
 const searchUsers = async () => {
+  // 这里可以实现搜索逻辑，暂时重新加载所有用户
   currentPage.value = 1
-  await fetchUsers({ search: searchQuery.value, role: selectedRole.value, status: selectedStatus.value })
+  await fetchUsers()
 }
 
 // 切换页面
 const changePage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
-    fetchUsers({ search: searchQuery.value, role: selectedRole.value, status: selectedStatus.value })
+    fetchUsers()
   }
-}
-
-const clearFilters = async () => {
-  searchQuery.value = ''
-  selectedRole.value = ''
-  selectedStatus.value = ''
-  currentPage.value = 1
-  await fetchUsers({ search: '', role: '', status: '' })
 }
 
 // 查看用户详情

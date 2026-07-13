@@ -5,78 +5,36 @@ using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
 
 namespace HuanyuFlowerShop.Services
 {
-    /// <summary>
-    /// 商品服务实现类
-    /// 提供商品相关的业务逻辑
-    /// 对应前端商品列表、商品详情、商品搜索等功能
-    /// </summary>
-    public class ProductService(IUnitOfWork unitOfWork, IProductRepository productRepository, ICacheService cacheService, ApplicationDbContext context, ILogger<ProductService> logger) : IProductService
+    public class ProductService : IProductService
     {
-        /// <summary>
-        /// 工作单元接口
-        /// 用于管理事务
-        /// </summary>
-        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IProductRepository _productRepository;
+        private readonly ICacheService _cacheService;
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<ProductService> _logger;
         
-        /// <summary>
-        /// 商品仓储接口
-        /// 用于商品数据的访问
-        /// </summary>
-        private readonly IProductRepository _productRepository = productRepository;
-        
-        /// <summary>
-        /// 缓存服务接口
-        /// 用于缓存商品数据
-        /// </summary>
-        private readonly ICacheService _cacheService = cacheService;
-        
-        /// <summary>
-        /// 数据库上下文
-        /// 用于直接访问数据库
-        /// </summary>
-        private readonly ApplicationDbContext _context = context;
-        
-        /// <summary>
-        /// 日志记录器
-        /// 用于记录商品服务的日志
-        /// </summary>
-        private readonly ILogger<ProductService> _logger = logger;
-        
-        /// <summary>
-        /// 缓存前缀
-        /// 用于区分不同类型的缓存
-        /// </summary>
         private const string CACHE_PREFIX = "product_";
-        
-        /// <summary>
-        /// 所有商品缓存键
-        /// 用于缓存所有商品列表
-        /// </summary>
         private const string ALL_PRODUCTS_CACHE_KEY = "all_products";
-        
-        /// <summary>
-        /// 推荐商品缓存键
-        /// 用于缓存推荐商品列表
-        /// </summary>
         private const string FEATURED_PRODUCTS_CACHE_KEY = "featured_products";
-        
-        /// <summary>
-        /// 首页商品缓存键
-        /// 用于缓存首页商品列表
-        /// </summary>
         private const string HOME_PRODUCTS_CACHE_KEY = "home_products";
 
-        
+        public ProductService(
+            IUnitOfWork unitOfWork,
+            IProductRepository productRepository,
+            ICacheService cacheService,
+            ApplicationDbContext context,
+            ILogger<ProductService> logger)
+        {
+            _unitOfWork = unitOfWork;
+            _productRepository = productRepository;
+            _cacheService = cacheService;
+            _context = context;
+            _logger = logger;
+        }
 
-        /// <summary>
-        /// 获取所有商品列表
-        /// 对应API: GET api/Products
-        /// </summary>
-        /// <returns>商品列表</returns>
         public async Task<IEnumerable<ProductDto>> GetAllProductsAsync()
         {
             try
@@ -102,24 +60,6 @@ namespace HuanyuFlowerShop.Services
                     .Select(g => new { ProductId = g.Key, Qty = g.Sum(x => x.Quantity) })
                     .ToDictionaryAsync(x => x.ProductId, x => x.Qty);
 
-                var popularityCounts = await _context.Favorites
-                    .GroupBy(f => f.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
-                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
-
-                // 搜索结果的受欢迎度按收藏数量统计
-                var searchPopularity = await _context.Favorites
-                    .Where(f => products.Select(p => p.Id).Contains(f.ProductId))
-                    .GroupBy(f => f.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
-                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
-
-                var ratingStats = await _context.ProductReviews
-                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
-                    .GroupBy(r => r.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
-                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
-
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -131,9 +71,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = soldCounts.TryGetValue(p.Id, out var sc1) && sc1 > 0 ? sc1 : p.SalesCount,
-                    Popularity = popularityCounts.TryGetValue(p.Id, out var pop1) ? pop1 : 0,
-                    AverageRating = ratingStats.TryGetValue(p.Id, out var rs1) ? Math.Round(rs1.Avg, 1) : 0,
-                    ReviewCount = ratingStats.TryGetValue(p.Id, out var rs1b) ? rs1b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -160,12 +97,6 @@ namespace HuanyuFlowerShop.Services
             }
         }
 
-        /// <summary>
-        /// 根据ID获取商品详情
-        /// 对应API: GET api/Products/{id}
-        /// </summary>
-        /// <param name="productId">商品ID</param>
-        /// <returns>商品详情</returns>
         public async Task<ProductDto?> GetProductByIdAsync(int productId)
         {
             try
@@ -199,14 +130,6 @@ namespace HuanyuFlowerShop.Services
                     .Where(oi => oi.ProductId == productId && _context.Orders.Where(o => o.Status == "delivered" || o.Status == "shipped").Select(o => o.Id).Contains(oi.OrderId))
                     .SumAsync(oi => (int?)oi.Quantity) ?? 0;
 
-                var favoriteCnt = await _context.Favorites.CountAsync(f => f.ProductId == productId);
-
-                var ratingStats1 = await _context.ProductReviews
-                    .Where(r => !r.IsDeleted && r.ProductId == productId)
-                    .GroupBy(r => r.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
-                    .FirstOrDefaultAsync();
-
                 var productDto = new ProductDto
                 {
                     Id = product.Id,
@@ -218,9 +141,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = product.IsFeatured,
                     IsActive = product.IsActive,
                     SalesCount = deliveredQty > 0 ? deliveredQty : product.SalesCount,
-                    Popularity = favoriteCnt,
-                    AverageRating = ratingStats1 != null ? Math.Round(ratingStats1.Avg, 1) : 0,
-                    ReviewCount = ratingStats1?.Cnt ?? 0,
                     Size = product.Size ?? string.Empty,
                     Material = product.Material ?? string.Empty,
                     Occasion = product.Occasion ?? string.Empty,
@@ -255,12 +175,6 @@ namespace HuanyuFlowerShop.Services
             }
         }
 
-        /// <summary>
-        /// 根据分类获取商品列表
-        /// 对应API: GET api/Products/category/{categoryId}
-        /// </summary>
-        /// <param name="categoryId">分类ID</param>
-        /// <returns>商品列表</returns>
         public async Task<IEnumerable<ProductDto>> GetProductsByCategoryAsync(int categoryId)
         {
             try
@@ -298,17 +212,6 @@ namespace HuanyuFlowerShop.Services
                     .Select(g => new { ProductId = g.Key, Qty = g.Sum(x => x.Quantity) })
                     .ToDictionaryAsync(x => x.ProductId, x => x.Qty);
 
-                var popularityCounts2 = await _context.Favorites
-                    .GroupBy(f => f.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
-                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
-
-                var ratingStats2 = await _context.ProductReviews
-                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
-                    .GroupBy(r => r.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
-                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
-
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -320,9 +223,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = soldCounts2.TryGetValue(p.Id, out var sc2) && sc2 > 0 ? sc2 : p.SalesCount,
-                    Popularity = popularityCounts2.TryGetValue(p.Id, out var pop2) ? pop2 : 0,
-                    AverageRating = ratingStats2.TryGetValue(p.Id, out var rs2) ? Math.Round(rs2.Avg, 1) : 0,
-                    ReviewCount = ratingStats2.TryGetValue(p.Id, out var rs2b) ? rs2b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -357,11 +257,6 @@ namespace HuanyuFlowerShop.Services
             }
         }
 
-        /// <summary>
-        /// 获取推荐商品列表
-        /// 对应API: GET api/Products/featured
-        /// </summary>
-        /// <returns>推荐商品列表</returns>
         public async Task<IEnumerable<ProductDto>> GetFeaturedProductsAsync()
         {
             try
@@ -382,17 +277,6 @@ namespace HuanyuFlowerShop.Services
                     .Take(8)
                     .ToListAsync();
 
-                var popularityCounts3 = await _context.Favorites
-                    .GroupBy(f => f.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
-                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
-
-                var ratingStats3 = await _context.ProductReviews
-                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
-                    .GroupBy(r => r.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
-                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
-
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -404,9 +288,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = p.SalesCount,
-                    Popularity = popularityCounts3.TryGetValue(p.Id, out var pop3) ? pop3 : 0,
-                    AverageRating = ratingStats3.TryGetValue(p.Id, out var rs3) ? Math.Round(rs3.Avg, 1) : 0,
-                    ReviewCount = ratingStats3.TryGetValue(p.Id, out var rs3b) ? rs3b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -433,13 +314,7 @@ namespace HuanyuFlowerShop.Services
             }
         }
         
-        /// <summary>
-        /// 搜索商品
-        /// 对应API: GET api/Products/search
-        /// </summary>
-        /// <param name="searchDto">搜索条件</param>
-        /// <returns>分页搜索结果</returns>
-        public async Task<HuanyuFlowerShop.DTOs.PagedResult<ProductDto>> SearchProductsAsync(ProductSearchDto searchDto)
+        public async Task<PagedResult<ProductDto>> SearchProductsAsync(ProductSearchDto searchDto)
         {
             try
             {
@@ -537,20 +412,7 @@ namespace HuanyuFlowerShop.Services
                     .Take(searchDto.PageSize)
                     .ToListAsync();
                 
-                // 受欢迎度（收藏数）
-                var searchPopularity = await _context.Favorites
-                    .Where(f => products.Select(p => p.Id).Contains(f.ProductId))
-                    .GroupBy(f => f.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
-                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
-
                 // 转换为DTO
-                var ratingStats4 = await _context.ProductReviews
-                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
-                    .GroupBy(r => r.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
-                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
-
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -562,9 +424,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = p.SalesCount,
-                    Popularity = searchPopularity.TryGetValue(p.Id, out var pop) ? pop : 0,
-                    AverageRating = ratingStats4.TryGetValue(p.Id, out var rs4) ? Math.Round(rs4.Avg, 1) : 0,
-                    ReviewCount = ratingStats4.TryGetValue(p.Id, out var rs4b) ? rs4b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -580,7 +439,7 @@ namespace HuanyuFlowerShop.Services
                 }).ToList();
                 
                 // 返回分页结果
-                var result = new HuanyuFlowerShop.DTOs.PagedResult<ProductDto>
+                var result = new PagedResult<ProductDto>
                 {
                     Items = productDtos,
                     TotalCount = totalCount,
@@ -600,11 +459,6 @@ namespace HuanyuFlowerShop.Services
             }
         }
 
-        /// <summary>
-        /// 获取首页商品列表
-        /// 对应API: GET api/Products/home
-        /// </summary>
-        /// <returns>首页商品列表</returns>
         public async Task<IEnumerable<ProductDto>> GetHomeProductsAsync()
         {
             try
@@ -630,17 +484,6 @@ namespace HuanyuFlowerShop.Services
                     .Select(g => new { ProductId = g.Key, Qty = g.Sum(x => x.Quantity) })
                     .ToDictionaryAsync(x => x.ProductId, x => x.Qty);
 
-                var popularityCounts4 = await _context.Favorites
-                    .GroupBy(f => f.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count() })
-                    .ToDictionaryAsync(x => x.ProductId, x => x.Cnt);
-
-                var ratingStats5 = await _context.ProductReviews
-                    .Where(r => !r.IsDeleted && products.Select(p => p.Id).Contains(r.ProductId))
-                    .GroupBy(r => r.ProductId)
-                    .Select(g => new { ProductId = g.Key, Cnt = g.Count(), Avg = g.Average(x => x.Rating) })
-                    .ToDictionaryAsync(x => x.ProductId, x => new { x.Cnt, x.Avg });
-
                 var productDtos = products.Select(p => new ProductDto
                 {
                     Id = p.Id,
@@ -652,9 +495,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = p.IsFeatured,
                     IsActive = p.IsActive,
                     SalesCount = soldCounts3.TryGetValue(p.Id, out var sc3) && sc3 > 0 ? sc3 : p.SalesCount,
-                    Popularity = popularityCounts4.TryGetValue(p.Id, out var pop4) ? pop4 : 0,
-                    AverageRating = ratingStats5.TryGetValue(p.Id, out var rs5) ? Math.Round(rs5.Avg, 1) : 0,
-                    ReviewCount = ratingStats5.TryGetValue(p.Id, out var rs5b) ? rs5b.Cnt : 0,
                     Size = p.Size ?? string.Empty,
                     Material = p.Material ?? string.Empty,
                     Occasion = p.Occasion ?? string.Empty,
@@ -681,12 +521,6 @@ namespace HuanyuFlowerShop.Services
             }
         }
 
-        /// <summary>
-        /// 创建商品
-        /// 对应API: POST api/Products
-        /// </summary>
-        /// <param name="createProductDto">创建商品请求</param>
-        /// <returns>创建的商品</returns>
         public async Task<ProductDto> CreateProductAsync(CreateProductDto createProductDto)
         {
             try
@@ -734,8 +568,7 @@ namespace HuanyuFlowerShop.Services
                     Occasion = createProductDto.Occasion,
                     CategoryId = createProductDto.CategoryId.Value,
                     CreatedAt = DateTime.UtcNow,
-                    SalesCount = 0,
-                    Popularity = 0
+                    SalesCount = 0
                 };
                 
                 _context.Products.Add(product);
@@ -754,7 +587,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = product.IsFeatured,
                     IsActive = product.IsActive,
                     SalesCount = product.SalesCount,
-                    Popularity = await _context.Favorites.CountAsync(f => f.ProductId == product.Id),
                     Size = product.Size ?? string.Empty,
                     Material = product.Material ?? string.Empty,
                     Occasion = product.Occasion ?? string.Empty,
@@ -795,13 +627,6 @@ namespace HuanyuFlowerShop.Services
             }
         }
         
-        /// <summary>
-        /// 更新商品
-        /// 对应API: PUT api/Products/{id}
-        /// </summary>
-        /// <param name="productId">商品ID</param>
-        /// <param name="updateProductDto">更新商品请求</param>
-        /// <returns>更新后的商品</returns>
         public async Task<ProductDto?> UpdateProductAsync(int productId, UpdateProductDto updateProductDto)
         {
             try
@@ -836,7 +661,6 @@ namespace HuanyuFlowerShop.Services
                 if (updateProductDto.Stock.HasValue) product.Stock = updateProductDto.Stock.Value;
                 if (updateProductDto.IsFeatured.HasValue) product.IsFeatured = updateProductDto.IsFeatured.Value;
                 if (updateProductDto.IsActive.HasValue) product.IsActive = updateProductDto.IsActive.Value;
-                if (updateProductDto.Popularity.HasValue) product.Popularity = updateProductDto.Popularity.Value;
                 if (updateProductDto.Size != null) product.Size = updateProductDto.Size;
                 if (updateProductDto.Material != null) product.Material = updateProductDto.Material;
                 if (updateProductDto.Occasion != null) product.Occasion = updateProductDto.Occasion;
@@ -872,7 +696,6 @@ namespace HuanyuFlowerShop.Services
                     IsFeatured = product.IsFeatured,
                     IsActive = product.IsActive,
                     SalesCount = product.SalesCount,
-                    Popularity = await _context.Favorites.CountAsync(f => f.ProductId == product.Id),
                     Size = product.Size ?? string.Empty,
                     Material = product.Material ?? string.Empty,
                     Occasion = product.Occasion ?? string.Empty,
@@ -917,12 +740,6 @@ namespace HuanyuFlowerShop.Services
             }
         }
         
-        /// <summary>
-        /// 删除商品
-        /// 对应API: DELETE api/Products/{id}
-        /// </summary>
-        /// <param name="productId">商品ID</param>
-        /// <returns>删除结果</returns>
         public async Task<bool> DeleteProductAsync(int productId)
         {
             try
@@ -944,33 +761,36 @@ namespace HuanyuFlowerShop.Services
                 var hasOrderItems = await _context.OrderItems.AnyAsync(oi => oi.ProductId == productId);
                 if (hasOrderItems)
                 {
-                    product.IsActive = false;
-                    product.UpdatedAt = DateTime.UtcNow;
-                    _context.Products.Update(product);
-                    await _unitOfWork.SaveChangesAsync();
-                }
-                else
-                {
-                    _context.Products.Remove(product);
-                    await _unitOfWork.SaveChangesAsync();
+                    _logger.LogWarning("商品有关联订单，无法删除，ID: {ProductId}", productId);
+                    throw new BusinessException("商品有关联订单，无法删除");
                 }
 
+                var hasCartItems = await _context.CartItems.AnyAsync(ci => ci.ProductId == productId);
+                if (hasCartItems)
+                {
+                    _logger.LogWarning("商品在购物车中，无法删除，ID: {ProductId}", productId);
+                    throw new BusinessException("商品在购物车中，无法删除");
+                }
+
+                await _productRepository.DeleteAsync(productId);
                 await _unitOfWork.CommitTransactionAsync();
 
                 await ClearProductCaches();
                 await _cacheService.RemoveAsync($"{CACHE_PREFIX}{productId}");
 
-                _logger.LogInformation("商品删除处理完成，ID: {ProductId}", productId);
+                _logger.LogInformation("成功删除商品，ID: {ProductId}", productId);
                 return true;
             }
             catch (ProductNotFoundException)
             {
-                await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
             catch (ArgumentException)
             {
-                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+            catch (BusinessException)
+            {
                 throw;
             }
             catch (Exception ex)
@@ -983,10 +803,19 @@ namespace HuanyuFlowerShop.Services
 
         private async Task ClearProductCaches()
         {
-            try { await _cacheService.RemoveAsync(ALL_PRODUCTS_CACHE_KEY); } catch {}
-            try { await _cacheService.RemoveAsync(FEATURED_PRODUCTS_CACHE_KEY); } catch {}
-            try { await _cacheService.RemoveAsync(HOME_PRODUCTS_CACHE_KEY); } catch {}
+            try
+            {
+                await _cacheService.RemoveAsync(ALL_PRODUCTS_CACHE_KEY);
+                await _cacheService.RemoveAsync(FEATURED_PRODUCTS_CACHE_KEY);
+                await _cacheService.RemoveAsync(HOME_PRODUCTS_CACHE_KEY);
+                await _cacheService.RemoveByPatternAsync($"{CACHE_PREFIX}*");
+                
+                _logger.LogInformation("已清理商品相关缓存");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "清理商品缓存时发生错误");
+            }
         }
-
     }
 }

@@ -203,40 +203,6 @@ namespace HuanyuFlowerShop.Migrations
                     b.ToTable("Categories");
                 });
 
-            modelBuilder.Entity("HuanyuFlowerShop.Entities.Conversation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<int>("AdminId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("LastMessage")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("LastMessageTime")
-                        .HasColumnType("datetime");
-
-                    b.Property<int>("UnreadCount")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Conversations");
-                });
-
             modelBuilder.Entity("HuanyuFlowerShop.Entities.Coupon", b =>
                 {
                     b.Property<int>("Id")
@@ -321,47 +287,15 @@ namespace HuanyuFlowerShop.Migrations
                     b.ToTable("userfavorites");
                 });
 
-            modelBuilder.Entity("HuanyuFlowerShop.Entities.Message", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("MessageType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)");
-
-                    b.Property<int>("ReceiverId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SenderId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Messages");
-                });
-
             modelBuilder.Entity("HuanyuFlowerShop.Entities.Order", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    b.Property<string>("CardMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("CouponCode")
                         .HasMaxLength(50)
@@ -379,12 +313,18 @@ namespace HuanyuFlowerShop.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<DateTime?>("DeliveryDate")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("DeliveryTime")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
                     b.Property<decimal>("DiscountAmount")
                         .HasColumnType("decimal(10,2)");
+
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Message")
                         .HasMaxLength(500)
@@ -430,16 +370,30 @@ namespace HuanyuFlowerShop.Migrations
                     b.Property<decimal>("RefundedAmount")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("SenderName")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<DateTime?>("ShippedAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("ShippingFee")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<string>("ShippingMethod")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
+
+                    b.Property<string>("SubstitutionPreference")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
 
                     b.Property<decimal>("Subtotal")
                         .HasColumnType("decimal(10,2)");
@@ -548,6 +502,39 @@ namespace HuanyuFlowerShop.Migrations
                     b.ToTable("OrderStatusHistories");
                 });
 
+            modelBuilder.Entity("HuanyuFlowerShop.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ExpiresAt");
+
+                    b.ToTable("PasswordResetTokens");
+                });
+
             modelBuilder.Entity("HuanyuFlowerShop.Entities.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -586,9 +573,6 @@ namespace HuanyuFlowerShop.Migrations
                     b.Property<string>("Occasion")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
-
-                    b.Property<int>("Popularity")
-                        .HasColumnType("int");
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(10,2)");
@@ -821,38 +805,6 @@ namespace HuanyuFlowerShop.Migrations
                     b.ToTable("UserCoupons");
                 });
 
-            modelBuilder.Entity("HuanyuFlowerShop.Entities.Video", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("Slot")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Videos");
-                });
-
             modelBuilder.Entity("HuanyuFlowerShop.Entities.Address", b =>
                 {
                     b.HasOne("HuanyuFlowerShop.Entities.User", "User")
@@ -941,6 +893,17 @@ namespace HuanyuFlowerShop.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("HuanyuFlowerShop.Entities.PasswordResetToken", b =>
+                {
+                    b.HasOne("HuanyuFlowerShop.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("HuanyuFlowerShop.Entities.Product", b =>

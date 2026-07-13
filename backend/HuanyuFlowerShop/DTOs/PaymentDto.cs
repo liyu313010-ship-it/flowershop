@@ -8,6 +8,7 @@ namespace HuanyuFlowerShop.DTOs
         public required string PaymentStatus { get; set; }
         public string? PaymentReference { get; set; }
         public string? PaymentMethod { get; set; }
+        public decimal? Amount { get; set; }
     }
 
     /// <summary>

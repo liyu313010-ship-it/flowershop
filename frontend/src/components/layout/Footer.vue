@@ -1,6 +1,6 @@
 <template>
   <!-- 页脚组件 -->
-  <footer class="bg-gradient-to-r from-pink-50 to-pink-100 text-pink-800 mt-16 border-t border-pink-200">
+  <footer class="bg-gradient-to-r from-pink-50 to-pink-100 text-pink-800 mt-16 border-t border-pink-200 site-footer">
     <div class="container mx-auto px-4 py-12">
       
       <!-- 页脚主要内容 -->
@@ -11,7 +11,7 @@
           <div class="flex items-center space-x-2 mb-4">
             <!-- 品牌Logo -->
             <img 
-              src="/images/logo.png" 
+              src="/images/brand-mark.svg" 
               alt="欢雨鲜花Logo" 
               class="w-10 h-10 rounded-full object-cover"
             >
@@ -23,26 +23,53 @@
           
           <!-- 社交媒体链接 -->
           <div class="flex justify-start space-x-4">
-            <div v-for="item in socialLinks" :key="item.name" class="relative group">
-              <a 
-                :href="item.link" 
-                class="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-pink-400 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1" 
-                :title="item.name"
-              >
-                <img :src="item.icon" :alt="item.name" class="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-hover:brightness-200" />
+            <!-- 微信 -->
+            <div class="relative group">
+              <a href="#" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="微信">
+                <img src="/images/微信.svg" alt="微信" class="w-5 h-5" />
               </a>
-              
-              <!-- 悬浮预览 -->
-              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 translate-y-2 group-hover:translate-y-0">
-                <div v-if="item.type === 'image'" class="w-40 h-40 bg-white rounded-lg shadow-xl border-2 border-pink-100 overflow-hidden p-2">
-                  <img :src="item.qrCode" :alt="item.name + '二维码'" class="w-full h-full object-contain" />
+              <!-- 微信预览图片 -->
+                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
+                 <div class="w-40 h-40 bg-white rounded-lg shadow-lg border-2 border-pink-200 overflow-hidden">
+                   <img src="/images/微信.png" alt="微信二维码" class="w-full h-full object-contain" />
+                 </div>
                 </div>
-                <div v-else class="bg-white text-pink-800 px-4 py-2 rounded-lg shadow-xl border border-pink-100 whitespace-nowrap font-medium">
-                  {{ item.content }}
+            </div>
+            <!-- 抖音 -->
+            <div class="relative group">
+              <a href="#" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="抖音">
+                <img src="/images/抖音.svg" alt="抖音" class="w-5 h-5" />
+              </a>
+              <!-- 抖音预览图片 -->
+                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
+                 <div class="w-40 h-40 bg-white rounded-lg shadow-lg border-2 border-pink-200 overflow-hidden">
+                   <img src="/images/抖音.png" alt="抖音二维码" class="w-full h-full object-contain" />
+                 </div>
                 </div>
-                <!-- 小箭头 -->
-                <div class="w-3 h-3 bg-white border-b border-r border-pink-100 transform rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1.5 shadow-sm"></div>
+            </div>
+            <!-- 邮箱 -->
+            <div class="relative group">
+              <a href="mailto:2784107771@qq.com" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="邮箱">
+                <img src="/images/邮箱.svg" alt="邮箱" class="w-5 h-5" />
+              </a>
+              <!-- 邮箱预览文字 -->
+              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
+                <div class="bg-white text-pink-800 px-4 py-2 rounded-lg shadow-lg border border-pink-200 whitespace-nowrap">
+                2784107771@qq.com
+                </div>
               </div>
+            </div>
+            <!-- 小红书 -->
+            <div class="relative group">
+              <a href="#" class="w-10 h-10 bg-pink-200 rounded-full flex items-center justify-center hover:bg-pink-300 transition-colors" title="小红书">
+                <img src="/images/小红书.svg" alt="小红书" class="w-5 h-5" />
+              </a>
+              <!-- 小红书预览图片 -->
+                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
+                 <div class="w-40 h-40 bg-white rounded-lg shadow-lg border-2 border-pink-200 overflow-hidden">
+                   <img src="/images/小红书.png" alt="小红书二维码" class="w-full h-full object-contain" />
+                 </div>
+                </div>
             </div>
           </div>
         </div>
@@ -120,47 +147,16 @@
 
 <script setup>
 // 页脚组件 - 主要展示品牌信息和联系方式
-
-const socialLinks = [
-  {
-    name: '微信',
-    icon: '/images/微信.svg',
-    qrCode: '/images/微信.png',
-    link: '#',
-    type: 'image'
-  },
-  {
-    name: '抖音',
-    icon: '/images/抖音.svg',
-    qrCode: '/images/抖音.png',
-    link: '#',
-    type: 'image'
-  },
-  {
-    name: '邮箱',
-    icon: '/images/邮箱.svg',
-    content: '2784107771@qq.com',
-    link: 'mailto:service@huanyu.com',
-    type: 'text'
-  },
-  {
-    name: '小红书',
-    icon: '/images/小红书.svg',
-    qrCode: '/images/小红书.png',
-    link: '#',
-    type: 'image'
-  }
-]
 </script>
 
 <style scoped>
 /* 页脚样式增强 */
-ul a {
+a {
   display: inline-block;
   transition: all 0.3s ease;
 }
 
-ul a:hover {
+a:hover {
   transform: translateX(2px);
 }
 

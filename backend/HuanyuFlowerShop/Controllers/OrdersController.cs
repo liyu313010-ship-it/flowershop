@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
+using HuanyuFlowerShop.Entities;
 // 使用System.UnauthorizedAccessException类型不需要using命名空间
 
 namespace HuanyuFlowerShop.Controllers
@@ -10,14 +12,23 @@ namespace HuanyuFlowerShop.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class OrdersController(IOrderService orderService, IPaymentService paymentService, ILogger<OrdersController> logger) : ControllerBase
+    public class OrdersController : ControllerBase
     {
-        private readonly IOrderService _orderService = orderService;
-        private readonly IPaymentService _paymentService = paymentService;
-        private readonly ILogger<OrdersController> _logger = logger;
+        private readonly IOrderService _orderService;
+        private readonly IPaymentService _paymentService;
+        private readonly ILogger<OrdersController> _logger;
+
+        public OrdersController(IOrderService orderService, IPaymentService paymentService, ILogger<OrdersController> logger)
+        {
+            _orderService = orderService;
+            _paymentService = paymentService;
+            _logger = logger;
+        }
 
         // 更新支付状态
         [HttpPut("{orderId}/payment-status")]
+        // 支付状态只能由受信任的支付回调或管理员更新，客户端不能自行将订单标记为已支付。
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdatePaymentStatus(int orderId, [FromBody] PaymentStatusRequest request)
         {
             try
@@ -40,6 +51,10 @@ namespace HuanyuFlowerShop.Controllers
                 return Unauthorized();
             }
             catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }
@@ -74,6 +89,10 @@ namespace HuanyuFlowerShop.Controllers
             {
                 return BadRequest(ex.Message);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "处理支付失败，订单ID: {OrderId}", orderId);
@@ -103,11 +122,6 @@ namespace HuanyuFlowerShop.Controllers
             {
                 return Unauthorized();
             }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex, "验证支付业务异常，订单ID: {OrderId}", orderId);
-                return BadRequest(new { success = false, message = ex.Message });
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "验证支付失败，订单ID: {OrderId}", orderId);
@@ -128,17 +142,16 @@ namespace HuanyuFlowerShop.Controllers
                 var (paymentUrl, paymentReference) = await _paymentService.GeneratePaymentLinkAsync(userId, orderId);
                 
                 // 由于元组直接返回数据，默认为成功状态
-                return Ok(new { success = true, paymentLink = paymentUrl, paymentReference });
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "生成支付链接业务异常，订单ID: {OrderId}", orderId);
-                return BadRequest(new { success = false, message = ex.Message });
+                return Ok(new { success = true, paymentLink = paymentUrl, paymentReference = paymentReference });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "生成支付链接失败，订单ID: {OrderId}", orderId);
-                return StatusCode(500, new { message = "生成支付链接时发生错误" });
+                if (ex is InvalidOperationException || ex is ArgumentException)
+                {
+                    return BadRequest(new { success = false, message = ex.Message });
+                }
+                return StatusCode(500, "生成支付链接时发生错误");
             }
         }
 
@@ -340,7 +353,7 @@ namespace HuanyuFlowerShop.Controllers
                 var userId = GetCurrentUserId();
                 _logger.LogInformation("用户请求订单状态历史，用户ID: {UserId}，订单ID: {OrderId}", userId, orderId);
                 
-                var history = await _orderService.GetOrderStatusHistoryAsync(orderId);
+                var history = await _orderService.GetOrderStatusHistoryAsync(GetCurrentUserId(), orderId);
                 return Ok(history);
             }
             catch (ArgumentException ex)
@@ -359,6 +372,7 @@ namespace HuanyuFlowerShop.Controllers
         /// 更新订单状态
         /// </summary>
         [HttpPut("{orderId}/status")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateOrderStatus(int orderId, [FromBody] UpdateOrderStatusRequest request)
         {
             try
@@ -388,6 +402,32 @@ namespace HuanyuFlowerShop.Controllers
             {
                 _logger.LogError(ex, "更新订单状态失败，订单ID: {OrderId}, 请求: {@Request}", orderId, request);
                 return StatusCode(500, "更新订单状态时发生错误");
+            }
+        }
+
+        [HttpPut("{orderId}/confirm-receipt")]
+        public async Task<IActionResult> ConfirmReceipt(int orderId)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var order = await _orderService.GetOrderByIdAsync(userId, orderId);
+                if (order == null) return NotFound("订单不存在或无权访问");
+                if (!string.Equals(order.Status, "shipped", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest("只有已发货订单才能确认收货");
+                }
+
+                var result = await _orderService.UpdateOrderStatusAsync(userId, orderId, "delivered");
+                return result == null ? NotFound("订单不存在或无权访问") : Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
         }
 

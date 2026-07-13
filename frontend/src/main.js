@@ -5,6 +5,7 @@ import App from './App.vue'
 
 // 引入全局样式
 import './style.css'
+import './styles/theme.css'
 
 // 引入Element Plus
 import ElementPlus from 'element-plus'

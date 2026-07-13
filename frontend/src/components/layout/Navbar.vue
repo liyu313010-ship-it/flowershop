@@ -1,20 +1,20 @@
 <template>
   <!-- 顶部导航栏 - 固定在页面顶部 -->
-  <nav class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
-    <div class="container mx-auto px-4">
-      <div class="flex items-center justify-between h-16">
+  <nav class="site-nav fixed top-0 left-0 right-0 z-50 bg-white/95 shadow-md backdrop-blur" aria-label="主导航">
+    <div class="container mx-auto px-4 sm:px-6">
+      <div class="flex items-center justify-between min-h-16 h-16">
         
         <!-- 品牌Logo区域 -->
         <div class="flex items-center space-x-2">
           <!-- Logo图片 - 可替换为自己的logo -->
           <img 
-            src="/images/logo.png" 
+            src="/images/brand-mark.svg" 
             alt="欢雨鲜花Logo" 
-            class="w-10 h-10 rounded-full object-cover"
+            class="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover"
           >
           <router-link 
             to="/" 
-            class="text-2xl font-bold text-huanyu-pink-500 hover:text-huanyu-pink-600 transition-colors"
+            class="text-xl sm:text-2xl font-bold text-huanyu-pink-500 hover:text-huanyu-pink-600 transition-colors whitespace-nowrap"
           >
             欢雨flower
           </router-link>
@@ -32,7 +32,7 @@
           
           <!-- 商品分类下拉菜单 -->
           <div class="relative group">
-            <button class="nav-link flex items-center space-x-1">
+            <button type="button" class="nav-link flex items-center space-x-1">
               <span>商品分类</span>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -40,12 +40,13 @@
             </button>
             
             <!-- 下拉菜单内容（动态） -->
-            <div class="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+            <div class="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200" role="menu">
               <router-link 
                 v-for="cat in navbarCategories" 
                 :key="cat.id"
                 :to="`/products?category=${cat.id}`" 
-                class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600"
+                class="block min-h-11 px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 focus-visible:outline-none"
+                role="menuitem"
               >
                 {{ cat.name }}
               </router-link>
@@ -66,58 +67,20 @@
             联系我们
           </router-link>
 
-          <!-- 搜索框 -->
-          <div class="relative group ml-4 search-container">
-            <input 
-              v-model="searchQuery"
-              @keyup.enter="handleSearch"
-              @input="handleInput"
-              @focus="showSuggestions = suggestions.length > 0"
-              type="text" 
-              placeholder="搜索鲜花..." 
-              class="w-32 px-3 py-1.5 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-huanyu-pink-200 focus:w-48 transition-all duration-300"
-            >
-            <button 
-              @click="handleSearch"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-huanyu-pink-500 transition-colors"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </button>
-            
-            <!-- 搜索建议下拉框 -->
-            <div v-if="showSuggestions" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl overflow-hidden z-50 w-64 border border-gray-100">
-              <ul>
-                <li 
-                  v-for="item in suggestions" 
-                  :key="item.id"
-                  @click="selectSuggestion(item)"
-                  class="px-4 py-2 hover:bg-huanyu-pink-50 cursor-pointer flex items-center space-x-3 transition-colors border-b border-gray-50 last:border-0"
-                >
-                  <img 
-                    :src="getProductImageUrl(item.image)" 
-                    @error="handleProductImageError"
-                    class="w-10 h-10 rounded object-cover border border-gray-100 bg-gray-50" 
-                    alt=""
-                  >
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-700 truncate">{{ item.name }}</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
+          <router-link to="/products" class="nav-shop-cta">
+            立即选花
+          </router-link>
         </div>
         
         <!-- 右侧操作区域 -->
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center gap-1 sm:gap-3">
           
           <!-- 购物车图标 - 仅对非管理员显示 -->
           <router-link 
-            v-if="userStore.isLoggedIn && !userStore.isAdmin" 
+            v-if="userStore.isLoggedIn && !userStore.isAdmin"
             to="/cart" 
-            class="relative p-2 text-gray-600 hover:text-huanyu-pink-600 transition-colors"
+            class="relative min-w-11 min-h-11 p-2 flex items-center justify-center text-gray-600 hover:text-huanyu-pink-600 transition-colors rounded-full hover:bg-huanyu-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huanyu-pink-400"
+            aria-label="购物车"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
@@ -133,7 +96,7 @@
           
           <!-- 用户头像和下拉菜单 -->
           <div v-if="userStore.isLoggedIn" class="relative group">
-            <button class="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition-colors">
+            <button class="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huanyu-pink-400" :aria-label="`${userStore.userName}账户菜单`" aria-haspopup="menu">
               <!-- 用户头像 - 可替换为用户上传的头像 -->
               <div 
                 :style="{ backgroundImage: `url(${userAvatar})` }" 
@@ -141,67 +104,42 @@
                 class="w-8 h-8 rounded-full bg-center bg-cover border-2 border-huanyu-pink-200"
                 @error="handleAvatarError($event)"
               ></div>
-              <span class="text-sm font-medium text-gray-700">{{ userStore.userName }}</span>
+              <span class="hidden lg:inline text-sm font-medium text-gray-700 max-w-24 truncate">{{ userStore.userName }}</span>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
               </svg>
             </button>
             
             <!-- 用户下拉菜单 -->
-            <div class="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-              <router-link 
-                v-if="!userStore.isAdmin"
-                to="/favorites" 
-                class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600"
-              >
-                我的收藏
-              </router-link>
+            <div class="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200" role="menu">
               <router-link 
                 v-if="userStore.isAdmin"
                 to="/admin" 
-                class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
-                @click="ackBadge('admin')"
+                class="block min-h-11 px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 focus-visible:outline-none"
+                role="menuitem"
               >
                 管理员后台
-                <span v-if="badgeCounts.admin > 0" class="badge-dot">{{ badgeCounts.admin > 99 ? '99+' : badgeCounts.admin }}</span>
               </router-link>
-              <router-link 
-                v-if="userStore.isAdmin"
-                to="/admin/messages" 
-                class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
-              >
-                收到的消息
-                <span v-if="chatStore.unreadCount > 0" class="badge-dot">{{ chatStore.unreadCount > 99 ? '99+' : chatStore.unreadCount }}</span>
-              </router-link>
-              <button 
-                v-if="!userStore.isAdmin"
-                @click="showContactAdminModal = true"
-                class="w-full text-left block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
-              >
-                联系管理员
-                <span v-if="chatStore.unreadCount > 0" class="badge-dot">{{ chatStore.unreadCount > 99 ? '99+' : chatStore.unreadCount }}</span>
-              </button>
               <router-link 
                 to="/profile" 
-                class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
-                @click="ackBadge('profile')"
+                class="block min-h-11 px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 focus-visible:outline-none"
+                role="menuitem"
               >
                 个人中心
-                <span v-if="badgeCounts.profile > 0" class="badge-dot">{{ badgeCounts.profile > 99 ? '99+' : badgeCounts.profile }}</span>
               </router-link>
               <router-link 
                 v-if="!userStore.isAdmin"
                 to="/orders" 
-                class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 relative"
-                @click="ackBadge('orders')"
+                class="block min-h-11 px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 focus-visible:outline-none"
+                role="menuitem"
               >
                 我的订单
-                <span v-if="badgeCounts.orders > 0" class="badge-dot">{{ badgeCounts.orders > 99 ? '99+' : badgeCounts.orders }}</span>
               </router-link>
               <hr class="my-1">
               <button 
                 @click="handleLogout"
-                class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+                class="w-full min-h-11 text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none"
+                role="menuitem"
               >
                 退出登录
               </button>
@@ -209,7 +147,7 @@
           </div>
           
           <!-- 登录/注册按钮 - 未登录时显示 -->
-          <div v-else class="flex items-center space-x-2">
+          <div v-else class="hidden sm:flex items-center space-x-2">
             <button 
               @click="goToAuth"
               class="btn-secondary text-sm font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
@@ -226,10 +164,14 @@
           
           <!-- 移动端菜单按钮 -->
           <button 
+            type="button"
             @click="toggleMobileMenu"
-            class="md:hidden p-2 text-gray-600 hover:text-huanyu-pink-600"
+            class="mobile-menu-toggle md:hidden min-w-11 min-h-11 p-2 flex items-center justify-center rounded-lg text-gray-600 hover:text-huanyu-pink-600 hover:bg-huanyu-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huanyu-pink-400"
+            aria-label="打开菜单"
+            :aria-expanded="showMobileMenu"
+            aria-controls="mobile-navigation"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
           </button>
@@ -237,193 +179,113 @@
       </div>
       
       <!-- 移动端菜单 -->
-      <div v-if="showMobileMenu" class="md:hidden border-t border-gray-200 py-4">
-        <div class="flex flex-col space-y-2">
+      <div v-if="showMobileMenu" id="mobile-navigation" class="md:hidden border-t border-gray-100 py-3 pb-safe bg-white/98" role="menu">
+        <div class="flex flex-col gap-1">
           <router-link 
             to="/" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
+            class="mobile-nav-link"
+            role="menuitem"
             @click="showMobileMenu = false"
           >
             首页
           </router-link>
           <router-link 
             to="/products" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
+            class="mobile-nav-link"
+            role="menuitem"
             @click="showMobileMenu = false"
           >
             全部商品
-          </router-link>
-          <router-link 
-            v-if="userStore.isLoggedIn && !userStore.isAdmin"
-            to="/favorites" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
-            @click="showMobileMenu = false"
-          >
-            我的收藏
           </router-link>
           <!-- 购物车 - 仅对非管理员显示 -->
           <router-link 
             v-if="userStore.isLoggedIn && !userStore.isAdmin"
             to="/cart" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
+            class="mobile-nav-link"
+            role="menuitem"
             @click="showMobileMenu = false"
           >
             购物车
           </router-link>
-          <button 
+          <router-link
             v-if="userStore.isLoggedIn && !userStore.isAdmin"
-            @click="showContactAdminModal = true; showMobileMenu = false"
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 text-left"
-          >
-            联系管理员
-          </button>
-          <router-link 
-            v-if="userStore.isLoggedIn && userStore.isAdmin"
-            to="/admin/messages" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
+            to="/orders"
+            class="mobile-nav-link"
+            role="menuitem"
             @click="showMobileMenu = false"
           >
-            收到的消息
-            <span v-if="chatStore.unreadCount > 0" class="badge-dot">{{ chatStore.unreadCount > 99 ? '99+' : chatStore.unreadCount }}</span>
+            我的订单
+          </router-link>
+          <router-link
+            v-if="userStore.isLoggedIn"
+            to="/profile"
+            class="mobile-nav-link"
+            role="menuitem"
+            @click="showMobileMenu = false"
+          >
+            个人中心
           </router-link>
           <router-link 
             to="/about" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
+            class="mobile-nav-link"
+            role="menuitem"
             @click="showMobileMenu = false"
           >
             关于我们
           </router-link>
           <router-link 
             to="/contact" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50"
+            class="mobile-nav-link"
+            role="menuitem"
             @click="showMobileMenu = false"
           >
             联系我们
           </router-link>
+          <template v-if="!userStore.isLoggedIn">
           <button 
             @click="goToAuth" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 text-left"
+            class="mobile-nav-link text-left"
+            role="menuitem"
           >
             登录
           </button>
           <button 
             @click="goToAuth" 
-            class="block px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 text-left"
+            class="mobile-nav-link text-left"
+            role="menuitem"
           >
             注册
           </button>
+          </template>
+          <button v-else @click="handleLogout" class="mobile-nav-link text-left text-red-600" role="menuitem">退出登录</button>
         </div>
       </div>
     </div>
   </nav>
-
-  <!-- 联系管理员弹窗 -->
-  <ContactAdminModal 
-    :is-visible="showContactAdminModal"
-    @close="showContactAdminModal = false"
-  />
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
-import { useChatStore } from '@/stores/chat'
-import { getAvatarUrl, handleAvatarError, getProductImageUrl } from '@/utils/avatar.js'
+import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
 import { categoryService } from '@/services/category'
-import orderService from '@/services/orderService'
-import api from '@/services/api'
-import { productService } from '@/services/product'
-import ContactAdminModal from '@/components/common/ContactAdminModal.vue'
 
 // 响应式数据
 const showMobileMenu = ref(false)
 const navbarCategories = ref([])
-const showContactAdminModal = ref(false)
-const searchQuery = ref('')
-const suggestions = ref([])
-const showSuggestions = ref(false)
-let searchTimeout = null
 
 // 路由和状态管理
 const router = useRouter()
 const userStore = useUserStore()
 const cartStore = useCartStore()
-const chatStore = useChatStore()
-
-const handleSearch = () => {
-  showSuggestions.value = false
-  if (searchQuery.value.trim()) {
-    router.push({ path: '/products', query: { q: searchQuery.value } })
-  }
-}
-
-const handleInput = () => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  if (!searchQuery.value.trim()) {
-    suggestions.value = []
-    showSuggestions.value = false
-    return
-  }
-  
-  searchTimeout = setTimeout(async () => {
-    try {
-      const res = await productService.searchProducts({ 
-        Keyword: searchQuery.value, 
-        PageSize: 5 
-      })
-      const list = res.data?.items || res.items || []
-      suggestions.value = list.map(item => ({
-        id: item.id || item.Id,
-        name: item.name || item.Name,
-        image: item.images?.[0] || item.Images?.[0] || item.imageUrl || item.ImageUrl
-      }))
-      showSuggestions.value = suggestions.value.length > 0
-    } catch (e) {
-      console.error(e)
-    }
-  }, 300)
-}
-
-const selectSuggestion = (item) => {
-  searchQuery.value = item.name
-  showSuggestions.value = false
-  handleSearch()
-}
-
-// 点击外部关闭建议列表
-onMounted(() => {
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.search-container')) {
-      showSuggestions.value = false
-    }
-  })
-})
-
-// 监听用户登录状态变化，连接或断开聊天连接
-watch(() => userStore.isLoggedIn, (isLoggedIn) => {
-  if (isLoggedIn) {
-    // 用户登录后连接聊天
-    chatStore.connectHub()
-    chatStore.initChat()
-  } else {
-    // 用户登出后断开聊天连接
-    chatStore.disconnectHub()
-    chatStore.reset()
-  }
-})
 
 // 计算属性 - 用户头像
 const userAvatar = computed(() => {
   // 使用头像处理工具函数处理头像URL
   return getAvatarUrl(userStore.user?.avatar)
 })
-
-// 图片加载错误处理
-const handleProductImageError = (e) => {
-  e.target.src = '/images/product-placeholder.svg'
-}
 
 // 方法
 const toggleMobileMenu = () => {
@@ -459,60 +321,36 @@ onMounted(async () => {
   } catch {
     navbarCategories.value = []
   }
-  try {
-    await refreshBadges()
-  } catch {}
 })
 
 
 
 
-// badges
-const badgeCounts = ref({ admin: 0, profile: 0, orders: 0 })
-const badgeKeys = { admin: 'badge_admin', profile: 'badge_profile', orders: 'badge_orders' }
-const getLastSeen = (key) => {
-  try { const m = JSON.parse(localStorage.getItem('nav_last_seen') || '{}'); const v = m[key]; return v ? new Date(v) : null } catch { return null }
-}
-const setLastSeen = (key, date = new Date()) => {
-  try { const m = JSON.parse(localStorage.getItem('nav_last_seen') || '{}'); m[key] = date.toISOString(); localStorage.setItem('nav_last_seen', JSON.stringify(m)) } catch {}
-}
-const clamp99 = (n) => (n > 99 ? 99 : n)
-const refreshBadges = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) { badgeCounts.value = { admin: 0, profile: 0, orders: 0 }; return }
-  const now = new Date()
-  const adminSeen = getLastSeen(badgeKeys.admin) || new Date(now.getTime() - 24*60*60*1000)
-  const profileSeen = getLastSeen(badgeKeys.profile) || new Date(now.getTime() - 24*60*60*1000)
-  const ordersSeen = getLastSeen(badgeKeys.orders) || new Date(now.getTime() - 24*60*60*1000)
-  let adminCount = 0
-  let profileCount = 0
-  let ordersCount = 0
-  try {
-    if (userStore.isAdmin) {
-      const users = await api.get('/User', { silent: true })
-      const list = users?.data || users || []
-      const arr = Array.isArray(list) ? list : (list.items || list.Items || [])
-      adminCount = clamp99((arr || []).filter(u => String(u.Role || u.role || '').toLowerCase() === 'th' && new Date(u.CreatedAt || u.createdAt || 0) > adminSeen).length)
-    }
-  } catch {}
-  try {
-    const me = await api.get('/Profile', { silent: true })
-    const d = me?.data || me || {}
-    const updated = d.UpdatedAt || d.updatedAt || d.LastLoginAt || d.lastLoginAt || d.CreatedAt || d.createdAt
-    profileCount = updated && new Date(updated) > profileSeen ? 1 : 0
-  } catch {}
-  try {
-    const my = await orderService.getUserOrders()
-    const list = my?.data || []
-    const arr = Array.isArray(list) ? list : (list.items || list.Items || [])
-    ordersCount = clamp99((arr || []).filter(o => new Date(o.CreatedAt || o.createdAt || o.created_at || 0) > ordersSeen).length)
-  } catch {}
-  badgeCounts.value = { admin: adminCount, profile: profileCount, orders: ordersCount }
-}
-const ackBadge = (key) => { setLastSeen(badgeKeys[key]); badgeCounts.value[key] = 0 }
 </script>
 
 <style scoped>
+/* 44px minimum touch target improves one-handed mobile use. */
+.mobile-nav-link {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: .65rem 1rem;
+  border-radius: .65rem;
+  color: #374151;
+  transition: background-color .2s, color .2s;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link:focus-visible {
+  background-color: rgba(252, 231, 243, .8);
+  color: #db2777;
+  outline: none;
+}
+
+.pb-safe {
+  padding-bottom: max(.75rem, env(safe-area-inset-bottom));
+}
+
 /* 导航栏样式增强 */
 .nav-link {
   position: relative;
@@ -552,20 +390,11 @@ const ackBadge = (key) => { setLastSeen(badgeKeys[key]); badgeCounts.value[key] 
   padding: 0 4px;
   transform: translate(25%, -25%);
 }
-.badge-dot {
-  position: absolute;
-  top: 6px;
-  right: 10px;
-  min-width: 16px;
-  height: 16px;
-  background-color: #ef4444;
-  color: #fff;
-  font-size: 10px;
-  border-radius: 9999px;
-  padding: 0 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 2px #fff;
+
+@media (max-width: 640px) {
+  .site-nav :deep(.container) {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
 }
 </style>

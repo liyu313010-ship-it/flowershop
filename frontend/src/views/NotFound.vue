@@ -3,8 +3,8 @@
     <div class="text-center">
       <div class="mb-8">
         <img 
-          src="/images/flower-bouquet-1.svg" 
-          alt="欢雨鲜花" 
+          src="/images/flower-empty.svg" 
+          alt="暂无花礼" 
           class="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
         >
         <h1 class="text-6xl font-bold text-gray-800 mb-4">404</h1>

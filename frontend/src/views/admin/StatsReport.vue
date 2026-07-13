@@ -609,16 +609,10 @@ const destroyCharts = () => {
   }
 }
 
-// 格式化日期（北京时间）
+// 格式化日期
 const formatDate = (dateString) => {
-  if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-      timeZone: 'Asia/Shanghai'
-    })
-  } catch { return '' }
+  const date = new Date(dateString)
+  return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
 // 格式化货币

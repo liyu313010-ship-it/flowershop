@@ -1,114 +1,110 @@
 <template>
   <PageTransition>
-    <div class="cart-page min-h-screen bg-gradient-to-br from-huanyu-pink-50 to-white relative overflow-hidden">
-      <!-- 装饰背景球 -->
-      <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-huanyu-pink-200 rounded-full blur-[100px] opacity-30 animate-pulse-slow pointer-events-none"></div>
-      <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-200 rounded-full blur-[120px] opacity-30 animate-pulse-slow pointer-events-none" style="animation-delay: 2s"></div>
-
+    <div class="cart-page">
       <!-- 页面加载动画 -->
       <LoadingSpinner v-if="isLoading" />
       
-      <div class="container mx-auto px-4 py-12 relative z-10">
-        <div class="page-header mb-8 text-center animate-fade-in-down">
-          <h1 class="text-3xl font-bold text-gray-900">我的购物车</h1>
-          <p class="text-gray-500 mt-2">共 {{ cartStore.cartCount }} 件商品</p>
+      <div class="container">
+        <div class="page-header">
+          <h1>购物车</h1>
         </div>
 
-        <div v-if="bannerMessage" :class="['banner', bannerType]" class="mb-6 p-4 rounded-xl shadow-sm flex items-center justify-between animate-fade-in-up">
-          <span class="flex items-center">
-            <i class="fas fa-info-circle mr-2 text-lg"></i>
-            {{ bannerMessage }}
-          </span>
+        <div v-if="bannerMessage" :class="['banner', bannerType]" class="mb-3 p-3 rounded">
+          {{ bannerMessage }}
         </div>
 
         <!-- 错误提示 -->
-        <div v-if="cartStore.error" class="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex justify-between items-center border border-red-100 animate-fade-in-up">
-          <span class="flex items-center">
-            <i class="fas fa-exclamation-circle mr-2"></i>
-            {{ cartStore.error }}
-          </span>
-          <button @click="cartStore.clearError()" class="hover:bg-red-100 p-1 rounded-full transition-colors">
-            <i class="fas fa-times"></i>
-          </button>
+        <div v-if="cartStore.error" class="error-message">
+          {{ cartStore.error }}
+          <button @click="cartStore.clearError()" class="close-btn">×</button>
         </div>
 
         <!-- 购物车为空 -->
-        <div v-if="cartStore.isEmpty && !cartStore.loading" class="text-center py-20 bg-white/60 backdrop-blur-md rounded-3xl shadow-xl border border-white/50 animate-fade-in-up">
-          <div class="text-6xl mb-6 animate-bounce-slow">🛒</div>
-          <h3 class="text-2xl font-bold text-gray-800 mb-2">购物车是空的</h3>
-          <p class="text-gray-500 mb-8">快去挑选心仪的花卉吧！</p>
-          <router-link to="/products" class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-huanyu-pink-500 to-huanyu-red-500 text-white rounded-full font-bold shadow-lg hover:shadow-huanyu-pink-500/30 transition-all transform hover:-translate-y-1">
-            <i class="fas fa-shopping-bag mr-2"></i> 去购物
+        <div v-if="cartStore.isEmpty && !cartStore.loading" class="empty-cart">
+          <div class="empty-icon">🛒</div>
+          <h3>购物车是空的</h3>
+          <p>快去挑选心仪的花卉吧！</p>
+          <router-link to="/products" class="btn btn-primary">
+            去购物
           </router-link>
         </div>
 
         <!-- 购物车商品列表 -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div class="lg:col-span-2 space-y-6 animate-fade-in-left">
-            <div v-if="cartStore.loading" class="text-center py-12">
-              <div class="spinner border-4 border-huanyu-pink-200 border-t-huanyu-pink-600 rounded-full w-10 h-10 animate-spin mx-auto mb-4"></div>
-              <p class="text-gray-500">加载中...</p>
+        <div v-else class="cart-content">
+          <div class="cart-items">
+            <div v-if="cartStore.loading" class="loading">
+              <div class="spinner"></div>
+              <p>加载中...</p>
             </div>
 
-            <div v-else class="space-y-4">
-              <div v-for="item in cartStore.cartItems" :key="item.id" 
-                class="group bg-white/60 backdrop-blur-sm rounded-2xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-all duration-300"
-              >
-                <div class="flex gap-6">
-                  <!-- 商品图片 -->
-                  <div class="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden relative bg-gray-100">
-                    <img :src="getProductImageUrl(item.productImage || '')" :alt="item.productName" @error="handleImageError" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    <div class="absolute top-1 left-1 flex flex-col gap-1">
-                      <span v-if="item.isHot" class="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full shadow-sm">热卖</span>
-                      <span v-if="item.isNew" class="px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full shadow-sm">新品</span>
-                    </div>
+            <div v-else>
+              <div v-for="item in cartStore.cartItems" :key="item.id" class="cart-item">
+                <div class="item-image">
+                  <img :src="item.productImage || '/placeholder-flower.jpg'" :alt="item.productName" @error="handleImageError" />
+                  <div class="item-badges">
+                    <span v-if="item.isHot" class="badge hot">热卖</span>
+                    <span v-if="item.isNew" class="badge new">新品</span>
+                  </div>
+                </div>
+
+                <div class="item-details">
+                  <div class="item-header">
+                    <h3>{{ item.productName }}</h3>
+                    <button @click="removeItem(item.id)" class="remove-btn" title="移除商品">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                  
+                  <div class="item-meta">
+                    <span v-if="item.stock !== undefined" class="stock-info" :class="{ 
+                      'low-stock': item.stock < 10 && item.stock > 0,
+                      'out-of-stock': item.stock === 0 
+                    }">
+                      <i class="fas fa-box"></i>
+                      <template v-if="item.stock > 0">库存: {{ item.stock }}</template>
+                      <template v-else>已售罄</template>
+                      <span v-if="item.stock < 5 && item.stock > 0" class="urgent-tip">（仅剩几件）</span>
+                    </span>
+                    <span v-if="item.salesCount" class="sales-info">
+                      <i class="fas fa-shopping-bag"></i>
+                      已售: {{ item.salesCount }}
+                    </span>
                   </div>
 
-                  <!-- 商品详情 -->
-                  <div class="flex-1 flex flex-col justify-between">
-                    <div class="flex justify-between items-start">
-                      <div>
-                        <h3 class="font-bold text-gray-800 text-lg group-hover:text-huanyu-pink-600 transition-colors">{{ item.productName }}</h3>
-                        <div class="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                          <span v-if="item.stock !== undefined" :class="{'text-red-500 font-bold': item.stock < 10, 'text-gray-400': item.stock === 0}">
-                            <i class="fas fa-box mr-1"></i>
-                            {{ item.stock > 0 ? `库存: ${item.stock}` : '已售罄' }}
-                          </span>
-                          <span v-if="item.salesCount" class="text-gray-400">
-                            已售 {{ item.salesCount }}
-                          </span>
-                        </div>
-                      </div>
-                      <button @click="removeItem(item.id)" class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full" title="移除商品">
-                        <i class="fas fa-trash-alt"></i>
+                  <div class="item-footer">
+                    <div class="quantity-control">
+                      <button 
+                        @click="updateQuantity(item.id, item.quantity - 1)"
+                        :disabled="item.quantity <= 1 || item.stock === 0"
+                        class="quantity-btn"
+                        title="减少数量"
+                      >
+                        <i class="fas fa-minus"></i>
+                      </button>
+                      <span class="quantity-display" :class="{ 'invalid-quantity': item.quantity > item.stock && item.stock > 0 }">
+                        {{ item.quantity }}
+                      </span>
+                      <button 
+                        @click="updateQuantity(item.id, item.quantity + 1)"
+                        :disabled="item.quantity >= item.stock || item.stock === 0"
+                        class="quantity-btn"
+                        title="增加数量"
+                      >
+                        <i class="fas fa-plus"></i>
                       </button>
                     </div>
+                    <div v-if="item.quantity > item.stock && item.stock > 0" class="stock-warning">
+                      库存不足，请减少购买数量
+                    </div>
 
-                    <div class="flex justify-between items-end mt-4">
-                      <div class="flex flex-col">
-                        <div class="flex items-center bg-white rounded-lg border border-gray-200 p-1 shadow-sm">
-                          <button 
-                            @click="updateQuantity(item.id, item.quantity - 1)"
-                            :disabled="item.quantity <= 1 || item.stock === 0"
-                            class="w-8 h-8 rounded bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center justify-center transition-colors disabled:opacity-50"
-                          >
-                            <i class="fas fa-minus text-xs"></i>
-                          </button>
-                          <span class="w-10 text-center font-bold text-gray-800">{{ item.quantity }}</span>
-                          <button 
-                            @click="updateQuantity(item.id, item.quantity + 1)"
-                            :disabled="item.quantity >= item.stock || item.stock === 0"
-                            class="w-8 h-8 rounded bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center justify-center transition-colors disabled:opacity-50"
-                          >
-                            <i class="fas fa-plus text-xs"></i>
-                          </button>
-                        </div>
-                        <span v-if="item.quantity > item.stock && item.stock > 0" class="text-xs text-red-500 mt-1 font-medium">库存不足</span>
+                    <div class="item-price-info">
+                      <div class="price-row">
+                        <span class="price-label">单价:</span>
+                        <span class="unit-price">¥{{ item.price.toFixed(2) }}</span>
                       </div>
-                      
-                      <div class="text-right">
-                        <div class="text-xs text-gray-500">单价: ¥{{ item.price.toFixed(2) }}</div>
-                        <div class="text-xl font-bold text-huanyu-pink-600">¥{{ (item.price * item.quantity).toFixed(2) }}</div>
+                      <div class="price-row total">
+                        <span class="price-label">小计:</span>
+                        <span class="item-total">¥{{ (item.price * item.quantity).toFixed(2) }}</span>
                       </div>
                     </div>
                   </div>
@@ -118,94 +114,106 @@
           </div>
 
           <!-- 购物车总结 -->
-          <div class="lg:col-span-1 animate-fade-in-right">
-            <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50 sticky top-24">
-              <h3 class="text-xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">订单总结</h3>
+          <div class="cart-summary">
+            <div class="summary-content">
+              <h3 class="summary-title">订单总结</h3>
               
-              <div class="space-y-4 mb-6">
-                <div class="flex justify-between text-gray-600">
-                  <span>商品数量</span>
-                  <span class="font-medium">{{ cartStore.cartCount }} 件</span>
-                </div>
-                <div class="flex justify-between text-gray-600">
-                  <span>商品总价</span>
-                  <span class="font-medium">¥{{ cartStore.cartTotal.toFixed(2) }}</span>
-                </div>
-                <div class="flex justify-between text-gray-600">
-                  <span>配送费用</span>
-                  <span :class="cartStore.cartTotal >= 88 ? 'text-green-600 font-bold' : 'font-medium'">
-                    {{ cartStore.cartTotal >= 88 ? '免运费' : '¥10.00' }}
-                  </span>
-                </div>
-                <div v-if="cartStore.cartTotal >= 200" class="flex justify-between text-red-500">
-                  <span class="flex items-center"><i class="fas fa-tag mr-1"></i> 满减优惠</span>
-                  <span class="font-bold">-¥20.00</span>
-                </div>
-                
-                <!-- 优惠券部分 -->
-                <div class="pt-4 border-t border-gray-100">
-                  <div class="flex gap-2 mb-2">
-                    <input v-model="couponCode" placeholder="输入优惠券代码" class="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-huanyu-pink-200 focus:outline-none transition-all" />
-                    <button @click="applyCoupon" :disabled="applyingCoupon || !couponCode" class="px-3 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700 transition-colors disabled:opacity-50">
-                      {{ applyingCoupon ? '...' : '使用' }}
+              <div class="summary-row">
+                <span class="summary-label">商品数量</span>
+                <span class="summary-value">{{ cartStore.cartCount }} 件</span>
+              </div>
+              
+              <div class="summary-row subtotal">
+                <span class="summary-label">商品总价</span>
+                <span class="summary-value">¥{{ cartStore.cartTotal.toFixed(2) }}</span>
+              </div>
+              
+              <div class="summary-row shipping">
+                <span class="summary-label">配送费用</span>
+                <span class="summary-value shipping-fee">
+                  {{ cartStore.cartTotal >= 88 ? '免运费' : '¥10.00' }}
+                </span>
+              </div>
+              
+              <div class="summary-row discount" v-if="cartStore.cartTotal >= 200">
+                <span class="summary-label">
+                  <i class="fas fa-tag"></i>
+                  满减优惠
+                </span>
+                <span class="summary-value discount-amount">-¥20.00</span>
+              </div>
+
+              <div class="summary-row">
+                <span class="summary-label">优惠券</span>
+                <div class="summary-value" style="width: 60%">
+                  <div class="flex gap-2">
+                    <input v-model="couponCode" placeholder="输入优惠券代码" class="w-full border rounded px-2 py-1" />
+                    <button class="btn btn-outline" @click="applyCoupon" :disabled="applyingCoupon || !couponCode">{{ applyingCoupon ? '验证中' : '使用' }}</button>
+                    <button class="btn btn-outline" @click="clearCoupon" :disabled="!appliedCoupon">取消</button>
+                  </div>
+                  <div v-if="couponMessage" class="text-sm mt-1" :class="{'text-green-600': couponDiscount>0, 'text-red-600': couponDiscount===0}">{{ couponMessage }}</div>
+                  <div v-if="myCoupons.length" class="text-xs mt-2">
+                    <span>可用：</span>
+                    <button v-for="c in myCoupons" :key="c.Id||c.id" class="px-2 py-1 border rounded mr-1 mb-1" @click="useMyCoupon(c)">
+                      {{ (c.Code||c.code) }}
                     </button>
                   </div>
-                  <div v-if="myCoupons.length" class="flex flex-wrap gap-2 mt-2">
-                     <button v-for="c in myCoupons" :key="c.Id||c.id" @click="useMyCoupon(c)" class="px-2 py-1 bg-huanyu-pink-50 text-huanyu-pink-600 text-xs rounded border border-huanyu-pink-100 hover:bg-huanyu-pink-100 transition-colors">
-                        {{ c.Code || c.code }}
-                     </button>
-                  </div>
-                  <p v-if="couponMessage" :class="couponDiscount > 0 ? 'text-green-600' : 'text-red-500'" class="text-xs mt-1 font-medium flex items-center">
-                    <i :class="couponDiscount > 0 ? 'fas fa-check-circle' : 'fas fa-times-circle'" class="mr-1"></i>
-                    {{ couponMessage }}
-                  </p>
                 </div>
-
-                <div v-if="couponDiscount > 0" class="flex justify-between text-red-500 pt-2">
-                  <span class="flex items-center"><i class="fas fa-ticket-alt mr-1"></i> 优惠券折扣</span>
-                  <span class="font-bold">-¥{{ couponDiscount.toFixed(2) }}</span>
-                </div>
-              </div>
-              
-              <div class="border-t border-gray-100 pt-6 mb-6">
-                <div class="flex justify-between items-end mb-2">
-                  <span class="text-gray-800 font-bold text-lg">应付总额</span>
-                  <span class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-huanyu-pink-600 to-huanyu-red-500">
-                    ¥{{ ( (cartStore.cartTotal >= 88 ? cartStore.cartTotal : cartStore.cartTotal + 10) - (cartStore.cartTotal >= 200 ? 20 : 0) - couponDiscount ).toFixed(2) }}
-                  </span>
-                </div>
-                <div v-if="savingsAmount > 0" class="bg-green-50 text-green-700 text-sm py-2 px-3 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-piggy-bank mr-2"></i>
-                  已为您节省 ¥{{ savingsAmount.toFixed(2) }}
-                </div>
-              </div>
-              
-              <div class="space-y-3">
-                <button 
-                  @click="proceedToCheckout" 
-                  class="w-full py-4 bg-gradient-to-r from-huanyu-pink-500 to-huanyu-red-500 text-white rounded-xl font-bold shadow-lg hover:shadow-huanyu-pink-500/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center group"
-                  :disabled="cartStore.isEmpty || cartStore.loading || hasOutOfStockItems || hasInvalidQuantity"
-                >
-                  <span>立即下单</span>
-                  <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
-                </button>
-                
-                <button 
-                  @click="clearCart" 
-                  class="w-full py-3 bg-white border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-50 hover:text-red-500 transition-colors text-sm font-medium"
-                  :disabled="cartStore.isEmpty || cartStore.loading"
-                >
-                  清空购物车
-                </button>
               </div>
 
-              <div class="mt-6 grid grid-cols-2 gap-3 text-xs text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <div class="flex items-center justify-center gap-1">
-                  <i class="fas fa-truck text-green-500"></i> 满88包邮
-                </div>
-                <div class="flex items-center justify-center gap-1">
-                  <i class="fas fa-shield-alt text-blue-500"></i> 售后无忧
-                </div>
+              <div class="summary-row discount" v-if="couponDiscount>0">
+                <span class="summary-label">
+                  <i class="fas fa-ticket"></i>
+                  优惠券折扣
+                </span>
+                <span class="summary-value discount-amount">-¥{{ couponDiscount.toFixed(2) }}</span>
+              </div>
+              
+              <div class="divider"></div>
+              
+              <div class="summary-row total">
+                <span class="summary-label">应付总额</span>
+                <span class="summary-value total-price">
+                  ¥{{ ( (cartStore.cartTotal >= 88 ? cartStore.cartTotal : cartStore.cartTotal + 10) - (cartStore.cartTotal >= 200 ? 20 : 0) - couponDiscount ).toFixed(2) }}
+                </span>
+              </div>
+              
+              <div class="savings-info" v-if="cartStore.cartTotal >= 88 || cartStore.cartTotal >= 200">
+                <i class="fas fa-piggy-bank"></i>
+                <span>您已节省 ¥{{ ((cartStore.cartTotal >= 88 ? 10 : 0) + (cartStore.cartTotal >= 200 ? 20 : 0)).toFixed(2) }}</span>
+              </div>
+            </div>
+            
+            <div class="summary-actions">
+              <button 
+                @click="clearCart" 
+                class="btn btn-outline"
+                :disabled="cartStore.isEmpty || cartStore.loading"
+              >
+                <i class="fas fa-broom"></i>
+                清空购物车
+              </button>
+              
+              <button 
+                @click="proceedToCheckout" 
+                class="btn btn-primary"
+                :disabled="cartStore.isEmpty || cartStore.loading || hasOutOfStockItems || hasInvalidQuantity"
+              >
+                <i class="fas fa-credit-card"></i>
+                <template v-if="hasOutOfStockItems">缺货，无法下单</template>
+                <template v-else-if="hasInvalidQuantity">库存不足，请调整数量</template>
+                <template v-else>立即下单</template>
+              </button>
+            </div>
+            
+            <div class="checkout-tips">
+              <div class="tip-item">
+                <i class="fas fa-truck"></i>
+                <span>满88元免运费</span>
+              </div>
+              <div class="tip-item">
+                <i class="fas fa-gift"></i>
+                <span>满200元减20元</span>
               </div>
             </div>
           </div>
@@ -221,9 +229,8 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
-import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
+import { notifyError, notifyInfo } from '@/utils/notify'
 import { couponService } from '@/services/coupon'
-import { getProductImageUrl } from '@/utils/avatar.js'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -308,7 +315,7 @@ const updateQuantity = async (itemId, newQuantity) => {
   if (!result.success) {
     notifyError('更新数量失败')
   } else {
-    // setBanner('数量已更新', 'success') // 减少干扰
+    setBanner('数量已更新', 'success')
   }
 }
 
@@ -351,7 +358,14 @@ const proceedToCheckout = async () => {
     return
   }
   
-  // 简单跳转，地址选择等逻辑在 Checkout 页面处理
+  const token = localStorage.getItem('token')
+  if (!token) {
+    notifyInfo('请先登录再下单')
+    router.push('/auth')
+    return
+  }
+
+  // 统一进入结算页填写地址、配送和支付方式；订单只在结算确认后创建
   router.push('/checkout')
 }
 
@@ -367,7 +381,7 @@ const applyCoupon = async () => {
       couponDiscount.value = d
       appliedCoupon.value = couponCode.value
       couponMessage.value = `已应用，减少 ¥${d.toFixed(2)}`
-      // setBanner('优惠券已应用', 'success')
+      setBanner('优惠券已应用', 'success')
     } else {
       couponDiscount.value = 0
       appliedCoupon.value = null
@@ -395,12 +409,597 @@ const useMyCoupon = (c) => {
 
 // 图片错误处理
 const handleImageError = (event) => {
-  event.target.src = '/images/product-placeholder.svg'
+  event.target.src = '/placeholder-flower.jpg'
 }
 </script>
 
 <style scoped>
-.banner.info { @apply bg-blue-50 text-blue-600 border border-blue-100; }
-.banner.success { @apply bg-green-50 text-green-600 border border-green-100; }
-.banner.error { @apply bg-red-50 text-red-600 border border-red-100; }
+.cart-page {
+  padding: 2rem 0;
+  min-height: 60vh;
+}
+
+.banner {
+  background: #f1f5f9;
+  color: #334155;
+}
+.banner.success { background: #ecfdf5; color: #065f46; }
+.banner.error { background: #fef2f2; color: #991b1b; }
+.banner.info { background: #eff6ff; color: #1e40af; }
+
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.error-message {
+  background-color: #fee;
+  color: #c33;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #c33;
+}
+
+.empty-cart {
+  text-align: center;
+  padding: 3rem;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-cart h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.empty-cart p {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.cart-content {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 2rem;
+}
+
+/* 响应式设计优化 */
+@media (max-width: 768px) {
+  .cart-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .cart-item {
+    grid-template-columns: 80px 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .item-image img {
+    height: 80px;
+  }
+  
+  .item-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .item-header h3 {
+    font-size: 1rem;
+  }
+  
+  .item-footer {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .quantity-control {
+    justify-content: center;
+  }
+  
+  .item-price-info {
+    text-align: center;
+  }
+  
+  .summary-actions {
+    flex-direction: column;
+  }
+  
+  .checkout-tips {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .tip-item {
+    justify-content: center;
+  }
+}
+
+.cart-items {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+}
+
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #e91e63;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 购物车商品项样式优化 */
+.cart-item {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: white;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.cart-item.out-of-stock {
+  opacity: 0.7;
+  background: #fdf2f2;
+  border-color: #fecaca;
+}
+
+.cart-item.out-of-stock::before {
+  content: '已售罄';
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%) rotate(30deg);
+  background: #ef4444;
+  color: white;
+  padding: 0.5rem 4rem;
+  border-radius: 4px;
+  font-weight: 600;
+  z-index: 1;
+  opacity: 0.9;
+}
+
+.cart-item:hover {
+  border-color: #27ae60;
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.1);
+  transform: translateY(-2px);
+}
+
+.item-image {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f9f9f9;
+}
+
+.item-image img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.item-image:hover img {
+  transform: scale(1.05);
+}
+
+.item-badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.badge.hot {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.badge.new {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.item-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: #333;
+  font-weight: 600;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.remove-btn:hover {
+  background: #fee;
+  transform: scale(1.1);
+}
+
+.item-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.stock-info, .sales-info {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.stock-info.low-stock {
+  color: #e74c3c;
+  font-weight: 500;
+}
+
+.stock-info.out-of-stock {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.urgent-tip {
+  font-size: 0.75rem;
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.invalid-quantity {
+  color: #e74c3c;
+  font-weight: 700;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.stock-warning {
+  font-size: 0.75rem;
+  color: #e74c3c;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stock-info i, .sales-info i {
+  font-size: 0.75rem;
+}
+
+.item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.quantity-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 0.25rem;
+}
+
+.quantity-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: white;
+  color: #333;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.75rem;
+}
+
+.quantity-btn:hover:not(:disabled) {
+  background: #27ae60;
+  color: white;
+  transform: scale(1.05);
+}
+
+.quantity-btn:disabled {
+  background: #e9ecef;
+  color: #adb5bd;
+  cursor: not-allowed;
+}
+
+.quantity-display {
+  min-width: 40px;
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+}
+
+.item-price-info {
+  text-align: right;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.price-row:last-child {
+  margin-bottom: 0;
+}
+
+.price-label {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.unit-price {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.item-total {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #e74c3c;
+}
+
+.price-row.total .item-total {
+  font-size: 1.25rem;
+}
+
+/* 订单总结样式优化 */
+.cart-summary {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0f0f0;
+}
+
+.summary-title {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.25rem;
+  color: #333;
+  font-weight: 600;
+  text-align: center;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.summary-content {
+  margin-bottom: 1.5rem;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  transition: all 0.2s ease;
+}
+
+.summary-row:hover {
+  background: #f8f9fa;
+  margin: 0 -0.5rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 8px;
+}
+
+.summary-label {
+  font-size: 0.95rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.summary-row.shipping .shipping-fee {
+  color: #27ae60;
+  font-weight: 700;
+}
+
+.summary-row.discount {
+  color: #e74c3c;
+}
+
+.discount-amount {
+  color: #e74c3c !important;
+  font-weight: 700;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+  margin: 1rem 0;
+}
+
+.summary-row.total {
+  padding: 1rem 0;
+  border-top: 2px solid #f0f0f0;
+  border-bottom: 2px solid #f0f0f0;
+  margin: 1rem 0;
+}
+
+.summary-row.total .summary-label {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.total-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e74c3c;
+}
+
+.savings-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  border-radius: 8px;
+  color: #155724;
+  font-weight: 500;
+  margin-top: 1rem;
+}
+
+.savings-info i {
+  color: #27ae60;
+}
+
+.summary-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.checkout-tips {
+  display: flex;
+  justify-content: space-around;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.tip-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.tip-item i {
+  color: #27ae60;
+  font-size: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 6px;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-outline {
+  background: white;
+  color: #e91e63;
+  border: 2px solid #e91e63;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #e91e63;
+  color: white;
+}
+
+.btn-primary {
+  background: #e91e63;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #d81b60;
+}
+
+.btn.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 </style>

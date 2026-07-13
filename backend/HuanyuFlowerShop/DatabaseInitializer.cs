@@ -8,12 +8,16 @@ namespace HuanyuFlowerShop
     {
         public static void Initialize(IServiceProvider serviceProvider)
         {
-            using var context = new ApplicationDbContext(
-                serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>());
+            using (var context = new ApplicationDbContext(
+                serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>()))
+            {
+                var configuration = serviceProvider.GetRequiredService<IConfiguration>();
                 // 数据库已通过Migrate()创建，不再需要EnsureCreated()
 
-                // 创建管理员账号（如果不存在）
-                if (!context.Users.Any(u => u.Username == "admin"))
+                // 仅在明确提供一次性管理员引导配置时创建管理员，禁止仓库内置默认密码。
+                var bootstrapEnabled = configuration.GetValue("AdminBootstrap:Enabled", false);
+                var bootstrapPassword = configuration["AdminBootstrap:Password"];
+                if (bootstrapEnabled && !string.IsNullOrWhiteSpace(bootstrapPassword) && bootstrapPassword.Length >= 12 && !context.Users.Any(u => u.Username == "admin"))
                 {
                     var adminUser = new User
                     {
@@ -24,10 +28,10 @@ namespace HuanyuFlowerShop
                         Role = "admin",
                         Status = "active",
                         CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        // 使用BCrypt进行密码哈希
-                        Password = BCrypt.Net.BCrypt.HashPassword("admin@123")
+                        UpdatedAt = DateTime.UtcNow
                     };
+                    
+                    adminUser.Password = BCrypt.Net.BCrypt.HashPassword(bootstrapPassword);
                     
                     context.Users.Add(adminUser);
                     context.SaveChanges();
@@ -39,14 +43,56 @@ namespace HuanyuFlowerShop
                 if (!context.Categories.Any())
                 {
                     // 添加分类数据
-                    var categories = new[]
+                    var categories = new Category[]
                     {
-                        new Category { Name = "玫瑰", Description = "浪漫爱情的象征", SortOrder = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Category { Name = "康乃馨", Description = "温馨感恩的选择", SortOrder = 2, IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Category { Name = "百合", Description = "纯洁优雅的代表", SortOrder = 3, IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Category { Name = "郁金香", Description = "高贵优雅的花中皇后", SortOrder = 4, IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Category { Name = "向日葵", Description = "阳光明媚，充满活力", SortOrder = 5, IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Category { Name = "满天星", Description = "细腻浪漫，烘托氛围", SortOrder = 6, IsActive = true, CreatedAt = DateTime.UtcNow }
+                        new Category
+                        {
+                            Name = "玫瑰",
+                            Description = "浪漫爱情的象征",
+                            SortOrder = 1,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "康乃馨",
+                            Description = "温馨感恩的选择",
+                            SortOrder = 2,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "百合",
+                            Description = "纯洁优雅的代表",
+                            SortOrder = 3,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "郁金香",
+                            Description = "高贵优雅的花中皇后",
+                            SortOrder = 4,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "向日葵",
+                            Description = "阳光明媚，充满活力",
+                            SortOrder = 5,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        },
+                        new Category
+                        {
+                            Name = "满天星",
+                            Description = "细腻浪漫，烘托氛围",
+                            SortOrder = 6,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        }
                     };
 
                     context.Categories.AddRange(categories);
@@ -95,13 +141,58 @@ namespace HuanyuFlowerShop
                 if (!context.Products.Any())
                 {
                     // 添加示例产品
-                    var products = new[]
+                    var products = new Product[]
                     {
-                        new Product { Name = "玫瑰花束", Description = "新鲜红玫瑰，表达爱意的完美选择", Price = 99.99m, Stock = 50, ImageUrl = "/images/rose-bouquet.svg", IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Product { Name = "向日葵花束", Description = "阳光明媚的向日葵，带来温暖和快乐", Price = 79.99m, Stock = 30, ImageUrl = "/images/sunflower.svg", IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Product { Name = "百合花束", Description = "优雅的百合花，象征纯洁和高贵", Price = 89.99m, Stock = 40, ImageUrl = "/images/lily.svg", IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Product { Name = "康乃馨花束", Description = "温馨的康乃馨，适合送给母亲和长辈", Price = 69.99m, Stock = 35, ImageUrl = "/images/pink-carnation.svg", IsActive = true, CreatedAt = DateTime.UtcNow },
-                        new Product { Name = "满天星花束", Description = "浪漫的满天星，象征纯洁的爱情", Price = 59.99m, Stock = 25, ImageUrl = "/images/baby-breath.svg", IsActive = true, CreatedAt = DateTime.UtcNow }
+                        new Product
+                        {
+                            Name = "玫瑰花束",
+                            Description = "新鲜红玫瑰，表达爱意的完美选择",
+                            Price = 99.99m,
+                            Stock = 50,
+                            ImageUrl = "/images/rose-bouquet.svg",
+                            IsActive = true,
+                            CreatedAt = DateTime.Now
+                        },
+                        new Product
+                        {
+                            Name = "向日葵花束",
+                            Description = "阳光明媚的向日葵，带来温暖和快乐",
+                            Price = 79.99m,
+                            Stock = 30,
+                            ImageUrl = "/images/sunflower.svg",
+                            IsActive = true,
+                            CreatedAt = DateTime.Now
+                        },
+                        new Product
+                        {
+                            Name = "百合花束",
+                            Description = "优雅的百合花，象征纯洁和高贵",
+                            Price = 89.99m,
+                            Stock = 40,
+                            ImageUrl = "/images/lily.svg",
+                            IsActive = true,
+                            CreatedAt = DateTime.Now
+                        },
+                        new Product
+                        {
+                            Name = "康乃馨花束",
+                            Description = "温馨的康乃馨，适合送给母亲和长辈",
+                            Price = 69.99m,
+                            Stock = 35,
+                            ImageUrl = "/images/pink-carnation.svg",
+                            IsActive = true,
+                            CreatedAt = DateTime.Now
+                        },
+                        new Product
+                        {
+                            Name = "满天星花束",
+                            Description = "浪漫的满天星，象征纯洁的爱情",
+                            Price = 59.99m,
+                            Stock = 25,
+                            ImageUrl = "/images/baby-breath.svg",
+                            IsActive = true,
+                            CreatedAt = DateTime.Now
+                        }
                     };
 
                     context.Products.AddRange(products);
@@ -204,133 +295,7 @@ namespace HuanyuFlowerShop
                         context.SaveChanges();
                 }
                 catch {}
-
-                // 确保Videos表存在并种子一个首页视频
-                try
-                {
-                    context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Videos` (
-                        `Id` INT NOT NULL AUTO_INCREMENT,
-                        `Title` VARCHAR(200) NOT NULL,
-                        `FilePath` VARCHAR(500) NOT NULL,
-                        `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
-                        `CreatedAt` DATETIME NOT NULL,
-                        `UpdatedAt` DATETIME NULL,
-                        `Slot` VARCHAR(50) NULL,
-                        PRIMARY KEY (`Id`)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                }
-                catch {}
-
-                try
-                {
-                    // 确保audit_logs表存在
-                    context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `audit_logs` (
-                        `Id` INT NOT NULL AUTO_INCREMENT,
-                        `user_id` INT NULL,
-                        `action` VARCHAR(50) NOT NULL,
-                        `resource` VARCHAR(50) NOT NULL,
-                        `resource_id` VARCHAR(100) NULL,
-                        `details` VARCHAR(1000) NULL,
-                        `ip_address` VARCHAR(45) NULL,
-                        `created_at` DATETIME NOT NULL,
-                        PRIMARY KEY (`Id`)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                }
-                catch {}
-
-                try
-                {
-                    // 确保ProductRecommendations表存在
-                    context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `ProductRecommendations` (
-                        `Id` INT NOT NULL AUTO_INCREMENT,
-                        `ProductId` INT NOT NULL,
-                        `ForUserId` INT NULL,
-                        `Score` DECIMAL(10,2) NOT NULL DEFAULT 0,
-                        `GeneratedAt` DATETIME NOT NULL,
-                        PRIMARY KEY (`Id`)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                    
-                    // 尝试添加ForUserId列，如果不存在 (用于修复旧表结构)
-                    try 
-                    {
-                        var conn = context.Database.GetDbConnection();
-                        if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                        using var cmd = conn.CreateCommand();
-                        cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ProductRecommendations' AND COLUMN_NAME = 'ForUserId'";
-                        if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
-                        {
-                            context.Database.ExecuteSqlRaw("ALTER TABLE `ProductRecommendations` ADD COLUMN `ForUserId` INT NULL;");
-                        }
-                    }
-                    catch {} // 如果列已存在会报错，忽略
-                }
-                catch {}
-
-                // 确保Coupons表存在并添加示例优惠券
-                try
-                {
-                    // 确保Coupons表存在（如果未通过迁移创建）
-                    context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Coupons` (
-                        `Id` INT NOT NULL AUTO_INCREMENT,
-                        `Code` VARCHAR(50) NOT NULL,
-                        `DiscountType` VARCHAR(20) NOT NULL,
-                        `Value` DECIMAL(10,2) NOT NULL,
-                        `MinOrderAmount` DECIMAL(10,2) NOT NULL DEFAULT 0,
-                        `MaxDiscount` DECIMAL(10,2) NULL,
-                        `UsageLimit` INT NULL,
-                        `UsageLimitPerUser` INT NULL,
-                        `UsedCount` INT NOT NULL DEFAULT 0,
-                        `Status` VARCHAR(20) NULL DEFAULT 'active',
-                        `StartAt` DATETIME NULL,
-                        `EndAt` DATETIME NULL,
-                        `CreatedAt` DATETIME NOT NULL,
-                        `UpdatedAt` DATETIME NULL,
-                        PRIMARY KEY (`Id`)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-                    if (!context.Coupons.Any())
-                    {
-                        context.Coupons.Add(new Coupon 
-                        { 
-                            Code = "WELCOME2024", 
-                            DiscountType = "percent", 
-                            Value = 10, // 10% off
-                            MinOrderAmount = 0,
-                            Status = "active", 
-                            CreatedAt = DateTime.UtcNow 
-                        });
-                         context.Coupons.Add(new Coupon 
-                        { 
-                            Code = "SAVE50", 
-                            DiscountType = "amount", 
-                            Value = 50, // 减50
-                            MinOrderAmount = 100,
-                            Status = "active", 
-                            CreatedAt = DateTime.UtcNow 
-                        });
-                        context.SaveChanges();
-                    }
-                }
-                catch {}
-
-                try
-                {
-                    if (!context.Videos.Any())
-                    {
-                        context.Videos.Add(new Video { Title = "首页品牌故事视频", FilePath = "/uploads/videos/2.mp4", Slot = "story", IsActive = true, CreatedAt = DateTime.UtcNow });
-                        context.SaveChanges();
-                    }
-                }
-                catch {}
-                try
-                {
-                    if (!context.Videos.Any(v => v.Slot == "hero"))
-                    {
-                        context.Videos.Add(new Video { Title = "首页英雄背景视频", FilePath = "/uploads/videos/2.mp4", Slot = "hero", IsActive = true, CreatedAt = DateTime.UtcNow });
-                        context.SaveChanges();
-                    }
-                }
-                catch {}
+            }
         }
     }
 }

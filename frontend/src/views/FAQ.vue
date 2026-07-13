@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-8">
+  <div class="policy-page min-h-screen py-8">
     <div class="container mx-auto px-4">
       <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">常见问题</h1>
       <p class="text-gray-600 text-center mb-10 max-w-3xl mx-auto">

@@ -6,6 +6,8 @@ using System.Text;
 using System.IO;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.IO.Compression;
 using HuanyuFlowerShop.Data;
 using HuanyuFlowerShop.Services;
@@ -16,32 +18,30 @@ using FluentValidation.AspNetCore;
 using FluentValidation;
 using HuanyuFlowerShop.Validators;
 using HuanyuFlowerShop;
-using Microsoft.AspNetCore.SignalR;
-using HuanyuFlowerShop.Hubs;
-using Microsoft.OpenApi.Models;
+using HuanyuFlowerShop.Infrastructure;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 注册 GBK 编码支持（AlipaySDKNet 必需）
-System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database");
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Huanyu Flower Shop API", Version = "v1" });
-    options.CustomSchemaIds(type => $"{type.Namespace}_{type.Name}");
-    options.UseAllOfToExtendReferenceSchemas();
-    options.UseAllOfForInheritance();
-    options.UseOneOfForPolymorphism();
-    options.SelectDiscriminatorNameUsing(_ => "type");
-    options.SelectDiscriminatorValueUsing(type => type.Name);
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
 });
 
 // 数据库配置
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("数据库连接字符串未配置");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("数据库连接字符串未配置，请通过环境变量 ConnectionStrings__DefaultConnection 或密钥管理服务注入");
+}
 builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
 {
     options.UseMySQL(connectionString, mySqlOptions =>
@@ -52,9 +52,13 @@ builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
 
 // JWT配置
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var jwtKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT Key is not configured");
-var jwtIssuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured");
-var jwtAudience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured");
+var jwtKey = jwtSettings["SecretKey"];
+var jwtIssuer = jwtSettings["Issuer"];
+var jwtAudience = jwtSettings["Audience"];
+if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32 || string.IsNullOrWhiteSpace(jwtIssuer) || string.IsNullOrWhiteSpace(jwtAudience))
+{
+    throw new InvalidOperationException("JWT 配置无效：SecretKey 至少需要 32 个字符，并配置 Issuer/Audience");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -75,7 +79,11 @@ builder.Services.AddAuthorization();
 
 // CORS配置 - 从配置文件读取允许的源
 var securitySettings = builder.Configuration.GetSection("SecuritySettings");
-var allowOrigins = securitySettings.GetSection("AllowOrigins").Get<string[]>() ?? [ "http://localhost:3000" ];
+var allowOrigins = securitySettings.GetSection("AllowOrigins").Get<string[]>() ?? Array.Empty<string>();
+if (allowOrigins.Length == 0)
+{
+    throw new InvalidOperationException("SecuritySettings:AllowOrigins 未配置，禁止使用开放式 CORS");
+}
 
 builder.Services.AddCors(options =>
 {
@@ -146,14 +154,10 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IAddressService, AddressService>();
             builder.Services.AddScoped<IFavoriteService, FavoriteService>();
             builder.Services.AddScoped<IPaymentService, PaymentService>();
+    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
     builder.Services.AddScoped<IOrderStatusHistoryService, OrderStatusHistoryService>();
         builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-            builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
-            builder.Services.AddScoped<IChatService, ChatService>();
-            builder.Services.AddScoped<IVideoService, VideoService>();
-
-// 注册SignalR服务
-builder.Services.AddSignalR();
+        builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
 
 
 // 注册Category仓储
@@ -167,233 +171,36 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 var app = builder.Build();
 
-// 使用默认或环境变量配置的地址（ASPNETCORE_URLS）以避免重复绑定
-
-// 初始化数据库 - 暂时禁用迁移，因为表已存在
-using var scope = app.Services.CreateScope();
-var services = scope.ServiceProvider;
-var context = services.GetRequiredService<ApplicationDbContext>();
-    // 初始化数据库
-    // 开发环境下启用自动迁移
+// 数据库迁移由发布流程执行，应用启动不再静默修改生产数据库。
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<ApplicationDbContext>();
     if (app.Environment.IsDevelopment())
     {
-        // 自动应用迁移
         context.Database.Migrate();
-        // 开发环境下若迁移缺失，安全创建聊天相关表
-        try
-        {
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Videos` (
-                `Id` INT NOT NULL AUTO_INCREMENT,
-                `Title` VARCHAR(200) NOT NULL,
-                `FilePath` VARCHAR(500) NOT NULL,
-                `Slot` VARCHAR(50) NOT NULL DEFAULT 'story',
-                `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
-                `CreatedAt` DATETIME NOT NULL,
-                `UpdatedAt` DATETIME NULL,
-                PRIMARY KEY (`Id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-            
-            // 安全添加Slot列
-            try 
-            {
-                var conn = context.Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Videos' AND COLUMN_NAME = 'Slot'";
-                if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
-                {
-                    context.Database.ExecuteSqlRaw(@"ALTER TABLE `Videos` ADD COLUMN `Slot` VARCHAR(50) NOT NULL DEFAULT 'story'");
-                }
-            } 
-            catch { }
-
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `OrderStatusHistories` (
-                `Id` INT NOT NULL AUTO_INCREMENT,
-                `OrderId` INT NOT NULL,
-                `OldStatus` VARCHAR(20) NULL,
-                `NewStatus` VARCHAR(20) NOT NULL,
-                `OperatorId` INT NULL,
-                `OperatorName` VARCHAR(50) NOT NULL,
-                `Note` VARCHAR(500) NULL,
-                `CreatedAt` DATETIME NOT NULL,
-                PRIMARY KEY (`Id`),
-                INDEX `IX_OrderStatusHistories_OrderId` (`OrderId`),
-                CONSTRAINT `FK_OrderStatusHistories_Orders_OrderId` FOREIGN KEY (`OrderId`) REFERENCES `Orders` (`Id`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-        }
-        catch { }
     }
     else
     {
-        // 生产环境下使用安全的SQL语句确保数据库结构正确
-        try
-        {
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Videos` (
-                `Id` INT NOT NULL AUTO_INCREMENT,
-                `Title` VARCHAR(200) NOT NULL,
-                `FilePath` VARCHAR(500) NOT NULL,
-                `Slot` VARCHAR(50) NOT NULL DEFAULT 'story',
-                `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
-                `CreatedAt` DATETIME NOT NULL,
-                `UpdatedAt` DATETIME NULL,
-                PRIMARY KEY (`Id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-            try { context.Database.ExecuteSqlRaw(@"ALTER TABLE `Videos` ADD COLUMN `Slot` VARCHAR(50) NOT NULL DEFAULT 'story'"); } catch { }
-            // 标记旧迁移为已应用，避免 EF 在后续 update 时重复创建已存在表
-            try
-            {
-                context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `__EFMigrationsHistory` (
-                    `MigrationId` VARCHAR(150) NOT NULL,
-                    `ProductVersion` VARCHAR(32) NOT NULL,
-                    PRIMARY KEY (`MigrationId`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-                context.Database.ExecuteSqlRaw(@"INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES
-                    ('20251130045107_InitialMySQLMigration','9.0.0'),
-                    ('20251130045257_MySQLCleanMigration','9.0.0'),
-                    ('20251201084240_AddPaymentFieldsToOrder','9.0.0'),
-                    ('20251209000000_AddChatTables','9.0.0'),
-                    ('20251211133513_AddVideosTable','9.0.0')
-                ;");
-            }
-            catch {}
-
-            // 安全创建OrderStatusHistories表（如果不存在）
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `OrderStatusHistories` (
-                `Id` INT NOT NULL AUTO_INCREMENT,
-                `OrderId` INT NOT NULL,
-                `OldStatus` VARCHAR(20) NULL,
-                `NewStatus` VARCHAR(20) NOT NULL,
-                `OperatorId` INT NULL,
-                `OperatorName` VARCHAR(50) NOT NULL,
-                `Note` VARCHAR(500) NULL,
-                `CreatedAt` DATETIME NOT NULL,
-                PRIMARY KEY (`Id`),
-                INDEX `IX_OrderStatusHistories_OrderId` (`OrderId`),
-                CONSTRAINT `FK_OrderStatusHistories_Orders_OrderId` FOREIGN KEY (`OrderId`) REFERENCES `Orders` (`Id`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-            // 安全创建Coupons表（如果不存在）
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Coupons` (
-                `Id` INT NOT NULL AUTO_INCREMENT,
-                `Code` VARCHAR(50) NOT NULL,
-                `DiscountType` VARCHAR(20) NOT NULL,
-                `Value` DECIMAL(10,2) NOT NULL,
-                `MinOrderAmount` DECIMAL(10,2) NOT NULL,
-                `MaxDiscount` DECIMAL(10,2) NULL,
-                `UsageLimit` INT NULL,
-                `UsageLimitPerUser` INT NULL,
-                `UsedCount` INT NOT NULL DEFAULT 0,
-                `Status` VARCHAR(20) NOT NULL,
-                `StartAt` DATETIME NULL,
-                `EndAt` DATETIME NULL,
-                `CreatedAt` DATETIME NOT NULL,
-                `UpdatedAt` DATETIME NULL,
-                PRIMARY KEY (`Id`),
-                UNIQUE INDEX `IX_Coupons_Code` (`Code`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-            // 安全创建UserCoupons表（如果不存在）
-            context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `UserCoupons` (
-                `Id` INT NOT NULL AUTO_INCREMENT,
-                `UserId` INT NOT NULL,
-                `CouponId` INT NOT NULL,
-                `ClaimedAt` DATETIME NOT NULL,
-                `UsedAt` DATETIME NULL,
-                `Status` VARCHAR(20) NOT NULL,
-                PRIMARY KEY (`Id`),
-                INDEX `IX_UserCoupons_UserId` (`UserId`),
-                INDEX `IX_UserCoupons_CouponId` (`CouponId`),
-                UNIQUE INDEX `IX_UserCoupons_UserId_CouponId` (`UserId`, `CouponId`),
-                CONSTRAINT `FK_UserCoupons_Users_UserId` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
-                CONSTRAINT `FK_UserCoupons_Coupons_CouponId` FOREIGN KEY (`CouponId`) REFERENCES `Coupons` (`Id`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-            // 聊天相关表（如果不存在）
-            try
-            {
-                context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Conversations` (
-                    `Id` INT NOT NULL AUTO_INCREMENT,
-                    `UserId` INT NOT NULL,
-                    `AdminId` INT NOT NULL,
-                    `LastMessage` TEXT NULL,
-                    `LastMessageTime` DATETIME NULL,
-                    `UnreadCount` INT NOT NULL DEFAULT 0,
-                    `CreatedAt` DATETIME NOT NULL,
-                    `UpdatedAt` DATETIME NOT NULL,
-                    PRIMARY KEY (`Id`),
-                    INDEX `IX_Conversations_UserId` (`UserId`),
-                    INDEX `IX_Conversations_AdminId` (`AdminId`),
-                    CONSTRAINT `FK_Conversations_Users_UserId` FOREIGN KEY (`UserId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
-                    CONSTRAINT `FK_Conversations_Users_AdminId` FOREIGN KEY (`AdminId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-                context.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS `Messages` (
-                    `Id` INT NOT NULL AUTO_INCREMENT,
-                    `SenderId` INT NOT NULL,
-                    `ReceiverId` INT NOT NULL,
-                    `Content` TEXT NOT NULL,
-                    `MessageType` VARCHAR(20) NOT NULL,
-                    `IsRead` TINYINT(1) NOT NULL DEFAULT 0,
-                    `CreatedAt` DATETIME NOT NULL,
-                    `UpdatedAt` DATETIME NOT NULL,
-                    PRIMARY KEY (`Id`),
-                    INDEX `IX_Messages_SenderId` (`SenderId`),
-                    INDEX `IX_Messages_ReceiverId` (`ReceiverId`),
-                    CONSTRAINT `FK_Messages_Users_SenderId` FOREIGN KEY (`SenderId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE,
-                    CONSTRAINT `FK_Messages_Users_ReceiverId` FOREIGN KEY (`ReceiverId`) REFERENCES `Users` (`Id`) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-            }
-            catch { }
-
-            // 安全添加Addresses表的缺失列
-            try
-            {
-                var conn = context.Database.GetDbConnection();
-                if (conn.State != System.Data.ConnectionState.Open) conn.Open();
-                
-                using (var cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Addresses' AND COLUMN_NAME = 'PhoneNumber'";
-                    if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
-                    {
-                        context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PhoneNumber` varchar(20) NOT NULL DEFAULT ''");
-                    }
-                }
-                
-                using (var cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Addresses' AND COLUMN_NAME = 'PostalCode'";
-                    if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
-                    {
-                        context.Database.ExecuteSqlRaw(@"ALTER TABLE `Addresses` ADD COLUMN `PostalCode` varchar(20) NULL");
-                    }
-                }
-            }
-            catch { }
-        }
-        catch (Exception ex)
-        {
-            app.Logger.LogError(ex, "数据库初始化失败");
-        }
+        app.Logger.LogInformation("生产环境跳过自动迁移，请在发布前执行 dotnet ef database update 或审批后的迁移脚本");
     }
 
-    // 初始化数据库数据（分类/产品种子与缺失分类修复）
-DatabaseInitializer.Initialize(services);
+    if (app.Environment.IsDevelopment() || builder.Configuration.GetValue("DatabaseInitializer:Enabled", false))
+    {
+        DatabaseInitializer.Initialize(services);
+    }
+}
 
 // Configure the HTTP request pipeline.
-// 允许在所有环境下访问Swagger
-Console.WriteLine("Registering Swagger Middleware...");
-app.UseSwagger();
-app.UseSwaggerUI(options =>
+if (app.Environment.IsDevelopment())
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Huanyu Flower Shop API V1");
-    options.RoutePrefix = string.Empty; // 根路径直接显示 Swagger UI
-    options.ConfigObject.ValidatorUrl = null; // 禁用在线验证器
-});
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-// 保持根路径为Swagger UI，无需重定向
 // 添加全局异常处理中间件
 app.UseMiddleware<GlobalExceptionHandler>();
+app.UseForwardedHeaders();
 
 // 添加安全头
 app.Use(async (context, next) =>
@@ -403,7 +210,7 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
     var csp = app.Environment.IsDevelopment()
-        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:5173 http://127.0.0.1:5173 http://localhost:5174 http://127.0.0.1:5174 http://localhost:5176 http://127.0.0.1:5176 http://localhost:* ws://localhost:5173 ws://localhost:5174 ws://localhost:5176"
+        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:5173 http://localhost:5002 ws://localhost:5173"
         : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'";
     context.Response.Headers.Append("Content-Security-Policy", csp);
     await next();
@@ -420,9 +227,6 @@ if (!app.Environment.IsDevelopment())
 
 // 启用响应压缩
 app.UseResponseCompression();
-
-// 启用速率限制中间件
-app.UseMiddleware<RateLimitingMiddleware>();
 
 // 启用审计日志中间件
 app.UseMiddleware<AuditLogMiddleware>();
@@ -442,25 +246,21 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
-// 额外映射本地用户头像目录为 /uploads/avatars
-var userAvatarPath = @"D:\flowershop\用户头像";
-if (Directory.Exists(userAvatarPath))
-{
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(userAvatarPath),
-        RequestPath = "/uploads/avatars"
-    });
-}
-
 app.UseCors("AllowSpecificOrigins");
 
 app.UseAuthentication();
+// 身份认证后限流，才能按用户身份区分请求；代理环境使用转发后的真实 IP。
+app.UseMiddleware<RateLimitingMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
-
-// 添加SignalR Hub路由
-app.MapHub<ChatHub>("/hubs/chat");
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = _ => true
+});
 
 app.Run();

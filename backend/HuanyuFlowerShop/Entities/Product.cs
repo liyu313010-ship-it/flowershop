@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Collections.Generic;
 using HuanyuFlowerShop.Exceptions;
 
 namespace HuanyuFlowerShop.Entities
@@ -57,11 +56,6 @@ namespace HuanyuFlowerShop.Entities
         /// 销售数量
         /// </summary>
         public int SalesCount { get; set; } = 0;
-
-        /// <summary>
-        /// 收藏热度（Popularity）
-        /// </summary>
-        public int Popularity { get; set; } = 0;
 
         [StringLength(50)]
         [Column(TypeName = "varchar(50)")]

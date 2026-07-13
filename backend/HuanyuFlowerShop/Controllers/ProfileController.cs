@@ -1,18 +1,27 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HuanyuFlowerShop.DTOs;
+using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.Services;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 
 namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class ProfileController(IUserService userService, ILogger<ProfileController> logger) : ControllerBase
+    public class ProfileController : ControllerBase
     {
-        private readonly IUserService _userService = userService;
-        private readonly ILogger<ProfileController> _logger = logger;
+        private readonly IUserService _userService;
+        private readonly ILogger<ProfileController> _logger;
+
+        public ProfileController(IUserService userService, ILogger<ProfileController> logger)
+        {
+            _userService = userService;
+            _logger = logger;
+        }
 
         private string GetCurrentUserId()
         {
@@ -53,7 +62,7 @@ namespace HuanyuFlowerShop.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "未授权的访问尝试");
-                return Unauthorized(new { Success = false, ex.Message });
+                return Unauthorized(new { Success = false, Message = ex.Message });
             }
             catch (Exception ex)
             {

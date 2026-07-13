@@ -1,18 +1,18 @@
 <template>
   <PageTransition>
-    <div class="min-h-screen bg-gray-50">
+    <div class="min-h-screen products-page">
       <!-- 页面加载动画 -->
       <LoadingSpinner v-if="isLoading" />
       
       <!-- 页面标题 -->
-      <div class="bg-white shadow-sm border-b">
+      <div class="page-heading">
         <div class="container mx-auto px-4 py-6">
           <div class="flex justify-between items-center">
             <div>
               <h1 class="text-2xl font-bold text-gray-800">全部商品</h1>
               <p class="text-gray-600 mt-2">精选优质鲜花，传递美好情感</p>
             </div>
-            <button @click="handleAddProductClick" class="bg-huanyu-pink-500 hover:bg-huanyu-pink-600 text-white px-4 py-2 rounded-lg transition-colors">
+            <button v-if="userStore.isAdmin" @click="handleAddProductClick" class="btn-primary">
               <i class="fas fa-plus mr-2"></i>添加商品
             </button>
           </div>
@@ -23,8 +23,14 @@
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <!-- 筛选侧边栏 -->
           <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow p-6">
-              <h2 class="text-lg font-semibold mb-4">商品分类</h2>
+            <button type="button" class="mobile-filter-trigger btn-secondary mb-3" @click="isFilterOpen = !isFilterOpen">
+              {{ isFilterOpen ? '收起筛选' : '筛选花礼' }}
+            </button>
+            <div class="filter-panel p-6" :class="{ 'is-open': isFilterOpen }">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="filter-heading text-lg font-semibold">选一束心意</h2>
+                <button type="button" class="text-sm text-[color:var(--brand-coral)]" @click="clearFilters">清除</button>
+              </div>
               <div class="space-y-2">
                 <label 
                   v-for="category in categories" 
@@ -67,16 +73,16 @@
 
           <!-- 商品列表 -->
           <div class="lg:col-span-3">
-            <div class="bg-white rounded-lg shadow p-6 mb-6">
-              <div class="flex justify-between items-center mb-6">
+            <div class="products-panel p-6 mb-6">
+              <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
                 <div class="text-gray-600">找到 {{ filteredProducts.length }} 个商品</div>
                 <div class="flex items-center space-x-2">
                   <span class="text-gray-600 text-sm">排序方式：</span>
-                  <select v-model="sortOption" class="border rounded px-2 py-1 text-sm">
+                  <select v-model="sortOrder" class="input-field !w-auto !py-2 !px-3 text-sm">
                     <option value="default">默认排序</option>
-                    <option value="price_asc">价格从低到高</option>
-                    <option value="price_desc">价格从高到低</option>
-                    <option value="sales_desc">销量从高到低</option>
+                    <option value="price-asc">价格从低到高</option>
+                    <option value="price-desc">价格从高到低</option>
+                    <option value="sales-desc">销量从高到低</option>
                   </select>
                 </div>
               </div>
@@ -84,12 +90,14 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="product in filteredProducts" :key="product.id" class="card group cursor-pointer relative">
                   <div class="relative overflow-hidden rounded-xl">
-                    <img
-                      :src="product.image"
-                      :alt="product.name"
-                      class="w-full h-64 object-cover"
-                      @error="onProductImageError"
-                    />
+                    <div class="w-full h-64 bg-gray-50 overflow-hidden relative">
+                      <img 
+                        :src="product.image" 
+                        :alt="product.name"
+                        class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
+                        @error="onProductImageError"
+                      />
+                    </div>
                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2 z-30 pointer-events-auto">
                       <button 
                         @click.stop="quickView(product)"
@@ -112,7 +120,6 @@
                         </svg>
                       </button>
                       <button 
-                        v-if="!userStore.isAdmin"
                         @click.stop="toggleFavorite(product)"
                         class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-huanyu-pink-50 transition-colors shadow-lg"
                         :class="isFavorite(product) ? 'text-red-500' : 'text-gray-700'"
@@ -126,29 +133,15 @@
                   </div>
                   <div class="p-4">
                     <h3 class="font-semibold text-lg mb-2 text-gray-800 group-hover:text-huanyu-pink-600 transition-colors">{{ product.name }}</h3>
-                    <AutoLinkText class="text-gray-600 text-sm mb-3 line-clamp-2" :text="product.description" />
-                    <div class="flex flex-wrap gap-3 text-xs text-gray-600 mb-3">
-                      <span v-if="product.size">规格：{{ product.size }}</span>
-                      <span v-if="product.material">材质：{{ product.material }}</span>
-                      <span v-if="product.occasion">适用场合：{{ product.occasion }}</span>
-                    </div>
-                    <div v-if="userStore.isAdmin" class="mb-3">
-                      <button @click.stop="toggleEdit(product)" class="px-3 py-1 border rounded text-sm">编辑规格</button>
-                    </div>
-                    <div v-if="showEditPanel[product.id]" class="space-y-2 mb-3">
-                      <input v-model="editFields[product.id].size" class="border rounded px-2 py-1 w-full" placeholder="尺寸/规格" />
-                      <input v-model="editFields[product.id].material" class="border rounded px-2 py-1 w-full" placeholder="材质" />
-                      <input v-model="editFields[product.id].occasion" class="border rounded px-2 py-1 w-full" placeholder="适用场合" />
-                      <button @click.stop="saveProductAttributes(product)" class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white px-3 py-1 rounded">保存</button>
-                    </div>
+                    <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ product.description }}</p>
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center space-x-1">
                         <div class="flex text-yellow-400">
-                          <svg v-for="i in 5" :key="i" class="w-4 h-4" :class="((product.reviewCount && product.reviewCount > 0) ? (product.averageRating || 0) : 5) >= i ? 'fill-current' : 'text-gray-200 fill-current'" viewBox="0 0 24 24">
+                          <svg v-for="i in 5" :key="i" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                           </svg>
                         </div>
-                        <span class="text-sm text-gray-500">({{ ((product.reviewCount && product.reviewCount > 0) ? (product.averageRating || 0) : 5).toFixed(1) }})</span>
+                        <span class="text-sm text-gray-500">({{ (product.reviewCount || 0).toFixed ? (product.reviewCount || 0).toFixed(1) : (product.reviewCount || 0) }})</span>
                       </div>
                       <span class="text-sm text-gray-500">已售 {{ product.salesCount || 0 }}</span>
                     </div>
@@ -174,10 +167,12 @@
                         <button 
                           v-if="!userStore.isAdmin"
                           @click.stop="handleAddToCart(product)"
-                          class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white px-3 py-1 rounded-full transition-all transform hover:scale-105 text-sm"
+                          class="bg-huanyu-pink-400 hover:bg-huanyu-pink-500 text-white p-2 rounded-full transition-all transform hover:scale-110"
                           title="加入购物车"
                         >
-                          加入购物车
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -185,11 +180,14 @@
                 </div>
               </div>
 
-              <div v-if="products.length === 0" class="text-center py-16">
-                <div class="text-gray-400 mb-4">🌷</div>
-                <h3 class="text-lg font-medium text-gray-700 mb-2">暂无商品</h3>
-                <p class="text-gray-500">{{ loadError ? errorMessage : '当前筛选条件下没有找到商品，请尝试其他筛选条件' }}</p>
-                <button @click="loadAllData" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">刷新</button>
+              <div v-if="filteredProducts.length === 0" class="brand-empty-state">
+                <img src="/images/flower-empty.svg" alt="暂无花礼" class="brand-empty-state-icon" />
+                <h3 class="text-lg font-medium text-gray-700 mb-2">还没有找到合适的花礼</h3>
+                <p class="text-gray-500">{{ loadError ? errorMessage : '试试清除筛选，或者看看全部花礼。' }}</p>
+                <div class="mt-5 flex flex-wrap justify-center gap-3">
+                  <button @click="clearFilters" class="btn-secondary">清除筛选</button>
+                  <button @click="loadAllData" class="btn-primary">重新加载</button>
+                </div>
               </div>
             </div>
           </div>
@@ -213,13 +211,12 @@ import { useUserStore } from '@/stores/user'
 import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import { favoriteService } from '@/services/favorite'
 import { watchEffect } from 'vue'
-import AutoLinkText from '@/components/AutoLinkText.vue'
 
 const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
 const userStore = useUserStore()
-  const favoriteProducts = ref([])
+const favoriteProducts = ref([])
 
 // 响应式数据
 const isLoading = ref(false)
@@ -230,14 +227,12 @@ const categories = ref([])
 const selectedCategory = ref(null) // 保留旧逻辑
 const selectedCategories = ref([]) // 新增多选分类
 const selectedPriceRange = ref(null)
-const sortOption = ref('default')
-const searchQuery = ref('')
+const sortOrder = ref('default')
+const isFilterOpen = ref(false)
 
 // 数量选择与快速查看
-  const showQuantitySelector = ref({})
-  const productQuantities = ref({})
-  const showEditPanel = ref({})
-  const editFields = ref({})
+const showQuantitySelector = ref({})
+const productQuantities = ref({})
 
 // 初始空数组，将通过API填充
 categories.value = []
@@ -286,10 +281,6 @@ const selectCategory = async (categoryId) => {
           description: product.description || product.Description,
           price: product.price || product.Price || 0,
           image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
-          size: product.size || product.Size || '',
-          material: product.material || product.Material || '',
-          occasion: product.occasion || product.Occasion || '',
-          popularity: product.popularity || product.Popularity || 0,
           categoryId: (() => {
             const val = product.categoryId ?? product.CategoryId
             const num = Number(val)
@@ -298,8 +289,7 @@ const selectCategory = async (categoryId) => {
           categoryName: product.categoryName || product.CategoryName || '',
           originalPrice: product.originalPrice || null,
           discount: product.discount || null,
-          reviewCount: product.reviewCount || product.ReviewCount || 0,
-          averageRating: product.averageRating || product.AverageRating || 0,
+          reviewCount: product.reviewCount || 0,
           salesCount: product.salesCount || product.SalesCount || 0
         }))
         console.log(`筛选分类 ${categoryId} 的商品，数量:`, products.value.length)
@@ -345,47 +335,7 @@ const quickView = (product) => {
   router.push(`/product/${product.id}`)
 }
 
-const toggleEdit = (product) => {
-  const id = product.id
-  showEditPanel.value[id] = !showEditPanel.value[id]
-  if (!editFields.value[id]) {
-    editFields.value[id] = {
-      size: product.size || '',
-      material: product.material || '',
-      occasion: product.occasion || ''
-    }
-  }
-}
-
-const saveProductAttributes = async (product) => {
-  const id = product.id
-  const payload = {
-    Size: editFields.value[id]?.size || '',
-    Material: editFields.value[id]?.material || '',
-    Occasion: editFields.value[id]?.occasion || ''
-  }
-  try {
-    const res = await productService.updateProduct(id, payload)
-    const ok = !!res
-    if (ok) {
-      const idx = products.value.findIndex(p => p.id === id)
-      if (idx !== -1) {
-        products.value[idx] = {
-          ...products.value[idx],
-          size: payload.Size,
-          material: payload.Material,
-          occasion: payload.Occasion
-        }
-      }
-      showEditPanel.value[id] = false
-      notifySuccess('已保存')
-    } else {
-      notifyError('保存失败')
-    }
-  } catch (e) {
-    notifyError('保存失败')
-  }
-}
+//
 
 const handleAddToCart = async (product) => {
   const token = localStorage.getItem('token')
@@ -394,12 +344,15 @@ const handleAddToCart = async (product) => {
     router.push('/auth')
     return
   }
-  
+  if (!showQuantitySelector.value[product.id]) {
+    showQuantitySelector.value[product.id] = true
+    return
+  }
   const quantity = getProductQuantity(product)
   try {
     const res = await cartStore.addToCart(product, quantity)
     if (res.success) {
-      showQuantitySelector.value[product.id] = true
+      showQuantitySelector.value[product.id] = false
       productQuantities.value[product.id] = 1
       notifySuccess('已加入购物车')
     } else {
@@ -435,10 +388,6 @@ const loadAllData = async () => {
         description: product.description || product.Description,
         price: product.price || product.Price || 0,
         image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
-        size: product.size || product.Size || '',
-        material: product.material || product.Material || '',
-        occasion: product.occasion || product.Occasion || '',
-        popularity: product.popularity || product.Popularity || 0,
         categoryId: (() => {
           const val = product.categoryId ?? product.CategoryId
           const num = Number(val)
@@ -472,53 +421,49 @@ const loadAllData = async () => {
 
 onMounted(loadAllData)
 
-// 监听路由变化，同步参数
-watchEffect(() => {
-  // 同步搜索关键词
-  searchQuery.value = route.query.q || ''
-  
-  // 同步分类
+// 根据路由查询参数预设分类
+onMounted(() => {
   const q = route.query?.category
   const cid = q ? Number(q) : null
   if (cid && !Number.isNaN(cid)) {
-    // 如果 URL 有分类，且当前未选中或仅选中了其他，则覆盖（单选效果），或者合并？
-    // 这里采用：如果 URL 变了，优先响应 URL
-    if (!selectedCategories.value.includes(cid)) {
-       selectedCategories.value = [cid]
-    }
+    selectedCategories.value = [cid]
   }
 })
 
-// 移除原本监听 selectedCategories 触发后端请求的 watchEffect，改为纯前端过滤
-// 这样点击分类时响应最快，且不闪烁
+// 监听路由变化，同步分类筛选
+watchEffect(() => {
+  const q = route.query?.category
+  const cid = q ? Number(q) : null
+  if (cid && !Number.isNaN(cid)) {
+    selectedCategories.value = [cid]
+  }
+})
+
+// 监听价格/分类选择变化：
+// - 0 个分类：拉取所有（服务端价格过滤）
+// - 1 个分类：服务端按分类+价格过滤
+// - 2+ 个分类：服务端拉取所有（价格过滤），前端按多选分类交集过滤
+watchEffect(async () => {
+  const len = selectedCategories.value.length
+  if (len === 0) {
+    await selectCategory(null)
+  } else if (len === 1) {
+    await selectCategory(selectedCategories.value[0])
+  } else {
+    // 多选：拉取全量（受价格过滤），再用 filteredProducts 进行前端分类过滤
+    await selectCategory(null)
+  }
+})
 
 const isFavorite = (product) => favoriteProducts.value.includes(product.id)
 
 const filteredProducts = computed(() => {
   let list = products.value || []
-
-  // 1. 搜索关键词过滤：优先精准匹配，其次模糊查询
-  if (searchQuery.value && String(searchQuery.value).trim()) {
-    const q = String(searchQuery.value).trim().toLowerCase()
-    const exact = list.filter(p => (p.name || '').toLowerCase() === q)
-    if (exact.length > 0) {
-      list = exact
-    } else {
-      list = list.filter(
-        p =>
-          (p.name && p.name.toLowerCase().includes(q)) ||
-          (p.description && p.description.toLowerCase().includes(q))
-      )
-    }
-  }
-
-  // 2. 分类多选过滤
+  // 分类多选过滤
   if (selectedCategories.value && selectedCategories.value.length > 0) {
     const set = new Set(selectedCategories.value)
     list = list.filter(p => set.has(p.categoryId))
   }
-
-  // 3. 价格过滤
   switch (selectedPriceRange.value) {
     case '0-100':
       list = list.filter(p => (p.price || 0) <= 100)
@@ -533,24 +478,21 @@ const filteredProducts = computed(() => {
       list = list.filter(p => (p.price || 0) > 500)
       break
   }
-
-  // 4. 排序
-  const sorted = [...list]
-  switch (sortOption.value) {
-    case 'price_asc':
-      sorted.sort((a, b) => (a.price || 0) - (b.price || 0))
-      break
-    case 'price_desc':
-      sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
-      break
-    case 'sales_desc':
-      sorted.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
-      break
-    default:
-      break
-  }
-  return sorted
+  return [...list].sort((a, b) => {
+    if (sortOrder.value === 'price-asc') return (a.price || 0) - (b.price || 0)
+    if (sortOrder.value === 'price-desc') return (b.price || 0) - (a.price || 0)
+    if (sortOrder.value === 'sales-desc') return (b.salesCount || 0) - (a.salesCount || 0)
+    return 0
+  })
 })
+
+const clearFilters = () => {
+  selectedCategories.value = []
+  selectedCategory.value = null
+  selectedPriceRange.value = null
+  sortOrder.value = 'default'
+  isFilterOpen.value = false
+}
 
 const toggleFavorite = async (product) => {
   const token = localStorage.getItem('token')
@@ -563,14 +505,10 @@ const toggleFavorite = async (product) => {
     if (isFavorite(product)) {
       await favoriteService.remove(product.id)
       favoriteProducts.value = favoriteProducts.value.filter(id => id !== product.id)
-      const idx = products.value.findIndex(p => p.id === product.id)
-      if (idx !== -1) { products.value[idx].popularity = Math.max(0, (products.value[idx].popularity || 0) - 1) }
       notifySuccess('已取消收藏')
     } else {
       await favoriteService.add(product.id)
       favoriteProducts.value.push(product.id)
-      const idx = products.value.findIndex(p => p.id === product.id)
-      if (idx !== -1) { products.value[idx].popularity = (products.value[idx].popularity || 0) + 1 }
       notifySuccess('已添加收藏')
     }
   } catch (e) {
@@ -579,7 +517,7 @@ const toggleFavorite = async (product) => {
 }
 
 const onProductImageError = (e) => {
-  e.target.src = '/images/product-placeholder.svg'
+  e.target.src = '/images/default-product.svg'
 }
 
 //
