@@ -94,7 +94,7 @@
                     >
                     <div class="ml-4">
                       <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
-                      <div class="text-sm text-gray-500">{{ product.description }}</div>
+                      <div class="text-sm text-gray-500">{{ getProductDescription(product) }}</div>
                       <p class="text-sm text-gray-600">销量: {{ salesMap[product.id] || 0 }}</p>
                     </div>
                   </div>
@@ -330,6 +330,7 @@ import { ref, reactive, onMounted } from 'vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import adminService from '@/services/adminService.js'
 import { ElMessage } from 'element-plus'
+import { getProductDescription } from '@/utils/productCopy'
 
 // 响应式数据
 const searchQuery = ref('')
@@ -520,7 +521,7 @@ const editProduct = async (product) => {
     Object.assign(productForm, {
       id: productData.id,
       name: productData.name,
-      description: productData.description,
+      description: getProductDescription(productData),
       categoryId: productData.categoryId || productData.CategoryId,
       price: productData.price,
       stock: productData.stock,

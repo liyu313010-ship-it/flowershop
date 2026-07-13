@@ -787,6 +787,7 @@ import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
 import api from '@/services/api'
+import { getProductDescription } from '@/utils/productCopy'
 
 // 路由和状态管理
 const router = useRouter()
@@ -1023,7 +1024,7 @@ const loadFeaturedProducts = async () => {
       return {
         id: product.Id || product.id,
         name: product.Name || product.name || '未命名商品',
-        description: product.Description || product.description || '暂无描述',
+        description: getProductDescription({ name: product.Name || product.name, description: product.Description || product.description }),
         price: product.Price || product.price || 0,
         image: imageUrl,
         isHot: (product.SalesCount || product.salesCount || 0) > 10,
@@ -1064,7 +1065,7 @@ const loadRecommendedProducts = async () => {
         return {
           id: p.Id || p.id,
           name: p.Name || p.name || '未命名商品',
-          description: p.Description || p.description || '暂无描述',
+          description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
           salesCount: p.SalesCount || p.salesCount || 0
@@ -1082,7 +1083,7 @@ const loadRecommendedProducts = async () => {
       recommendedProducts.value = fp.slice(0, 8).map(p => ({
         id: p.Id || p.id,
         name: p.Name || p.name || '未命名商品',
-        description: p.Description || p.description || '暂无描述',
+        description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
         price: p.Price || p.price || 0,
         image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
         salesCount: p.SalesCount || p.salesCount || 0
@@ -1094,7 +1095,7 @@ const loadRecommendedProducts = async () => {
         recommendedProducts.value = hp.slice(0, 8).map(p => ({
           id: p.Id || p.id,
           name: p.Name || p.name || '未命名商品',
-          description: p.Description || p.description || '暂无描述',
+          description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
           salesCount: p.SalesCount || p.salesCount || 0
@@ -1105,7 +1106,7 @@ const loadRecommendedProducts = async () => {
         recommendedProducts.value = (ap || []).slice(0, 8).map(p => ({
           id: p.Id || p.id,
           name: p.Name || p.name || '未命名商品',
-          description: p.Description || p.description || '暂无描述',
+          description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
           salesCount: p.SalesCount || p.salesCount || 0
@@ -1121,7 +1122,7 @@ const loadRecommendedProducts = async () => {
         recommendedProducts.value = fp.slice(0, 8).map(p => ({
           id: p.Id || p.id,
           name: p.Name || p.name || '未命名商品',
-          description: p.Description || p.description || '暂无描述',
+          description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
           salesCount: p.SalesCount || p.salesCount || 0
@@ -1134,7 +1135,7 @@ const loadRecommendedProducts = async () => {
         recommendedProducts.value = hp.slice(0, 8).map(p => ({
           id: p.Id || p.id,
           name: p.Name || p.name || '未命名商品',
-          description: p.Description || p.description || '暂无描述',
+          description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
           image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
           salesCount: p.SalesCount || p.salesCount || 0
@@ -1146,7 +1147,7 @@ const loadRecommendedProducts = async () => {
       recommendedProducts.value = (ap || []).slice(0, 8).map(p => ({
         id: p.Id || p.id,
         name: p.Name || p.name || '未命名商品',
-        description: p.Description || p.description || '暂无描述',
+        description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
         price: p.Price || p.price || 0,
         image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
         salesCount: p.SalesCount || p.salesCount || 0
