@@ -279,5 +279,14 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = _ => true
 });
+// Nginx 生产配置默认代理 /api/，提供同路径健康检查避免 SPA fallback。
+app.MapHealthChecks("/api/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/api/health/ready", new HealthCheckOptions
+{
+    Predicate = _ => true
+});
 
 app.Run();

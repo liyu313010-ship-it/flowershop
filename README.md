@@ -84,6 +84,7 @@ API 文档可通过 Swagger 访问：
 - 开发环境：`http://localhost:5002/swagger`
 - 存活检查：`/health/live`
 - 就绪检查（包含数据库）：`/health/ready`
+- 生产公网检查（Nginx 代理）：`/api/health/live`、`/api/health/ready`
 
 ## 部署说明
 
