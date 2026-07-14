@@ -6,7 +6,6 @@ using HuanyuFlowerShop.Entities;
 using HuanyuFlowerShop.Repositories;
 using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
-using AutoMapper;
 
 namespace HuanyuFlowerShop.Controllers
 {
@@ -978,8 +977,8 @@ public class AdminController : ControllerBase
                         CreatedAt = user.CreatedAt,
                         UpdatedAt = user.UpdatedAt,
                         LastLoginAt = user.LastLoginAt,
-                        EmailVerified = false, // User实体中暂未实现该属性
-                        Points = 0, // 积分系统暂未实现，默认为0
+                        EmailVerified = user.EmailVerified,
+                        Points = user.Points,
                         TotalOrders = totalOrders,
                         CompletedOrders = completedOrders,
                         TotalSpent = totalSpent
@@ -1045,8 +1044,8 @@ public class AdminController : ControllerBase
                     CreatedAt = user.CreatedAt,
                     UpdatedAt = user.UpdatedAt,
                     LastLoginAt = user.LastLoginAt,
-                    EmailVerified = false, // User实体中暂未实现该属性
-                    Points = 0, // 积分系统暂未实现，默认为0
+                    EmailVerified = user.EmailVerified,
+                    Points = user.Points,
                     TotalOrders = totalOrders,
                     CompletedOrders = completedOrders,
                     TotalSpent = totalSpent

@@ -17,13 +17,21 @@ namespace HuanyuFlowerShop.Middleware
 
         public async Task InvokeAsync(HttpContext context)
         {
+            var requestId = context.Request.Headers.TryGetValue("X-Request-ID", out var incoming)
+                && !string.IsNullOrWhiteSpace(incoming)
+                ? incoming.ToString()
+                : Guid.NewGuid().ToString("N");
+            context.Response.Headers["X-Request-ID"] = requestId;
             try
             {
                 await _next(context);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "发生未处理的异常: {Message}", ex.Message);
+                using (_logger.BeginScope(new Dictionary<string, object> { ["RequestId"] = requestId }))
+                {
+                    _logger.LogError(ex, "发生未处理的异常: {Message}", ex.Message);
+                }
                 await HandleExceptionAsync(context, ex);
             }
         }

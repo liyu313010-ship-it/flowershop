@@ -73,6 +73,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var id = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var version = context.Principal?.FindFirst("token_version")?.Value;
+                if (!int.TryParse(id, out var userId) || !int.TryParse(version, out var tokenVersion))
+                {
+                    context.Fail("token version missing");
+                    return;
+                }
+                var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                var currentVersion = await db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => (int?)u.TokenVersion).FirstOrDefaultAsync();
+                if (!currentVersion.HasValue || currentVersion.Value != tokenVersion)
+                    context.Fail("token revoked");
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -166,8 +183,8 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 // 注册Product仓储
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
-// AutoMapper
-builder.Services.AddAutoMapper(typeof(Program));
+// DTO 映射采用显式映射，避免引入存在安全公告的 AutoMapper 运行时依赖。
+builder.Services.AddHostedService<ExpiredOrderCleanupService>();
 
 var app = builder.Build();
 

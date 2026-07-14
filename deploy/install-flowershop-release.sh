@@ -33,17 +33,18 @@ test -f "$STAGING/backend/HuanyuFlowerShop.dll"
 test -f "$STAGING/frontend/index.html"
 source "$ENV_FILE"
 
-if [ -f "$STAGING/legacy-restore" ]; then
-  BACKUP_DIR="/var/backups/flowershop/$(date +%Y%m%d-%H%M%S)"
-  install -d -m 700 "$BACKUP_DIR"
-  echo "Backing up the current production database and uploads to $BACKUP_DIR..."
-  mariadb-dump --protocol=socket \
-    --user="$FLOWERSHOP_DB_USER" --password="$FLOWERSHOP_DB_PASSWORD" \
-    --single-transaction --routines --triggers \
-    "$FLOWERSHOP_DB_NAME" > "$BACKUP_DIR/database.sql"
-  install -d "$BACKUP_DIR/uploads"
-  rsync -a "$UPLOAD_DIR/" "$BACKUP_DIR/uploads/"
-fi
+# 每次发布、尤其是执行迁移前都备份数据库和上传文件，保留最近 7 份。
+BACKUP_DIR="/var/backups/flowershop/$(date +%Y%m%d-%H%M%S)"
+install -d -m 700 "$BACKUP_DIR"
+echo "Backing up the current production database and uploads to $BACKUP_DIR..."
+mariadb-dump --protocol=socket \
+  --user="$FLOWERSHOP_DB_USER" --password="$FLOWERSHOP_DB_PASSWORD" \
+  --single-transaction --routines --triggers \
+  "$FLOWERSHOP_DB_NAME" > "$BACKUP_DIR/database.sql"
+install -d "$BACKUP_DIR/uploads"
+rsync -a "$UPLOAD_DIR/" "$BACKUP_DIR/uploads/"
+find /var/backups/flowershop -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+  | sort -nr | tail -n +8 | cut -d' ' -f2- | xargs -r rm -rf
 
 APP_NEXT="${APP_DIR}.next"
 WEB_NEXT="${WEB_DIR}.next"
@@ -92,7 +93,9 @@ systemctl reload nginx
 
 healthy=false
 for _ in $(seq 1 30); do
-  if curl --fail --silent http://127.0.0.1:5002/api/Categories >/dev/null; then
+  if curl --fail --silent http://127.0.0.1:5002/health/live >/dev/null \
+    && curl --fail --silent http://127.0.0.1:5002/health/ready >/dev/null \
+    && curl --fail --silent http://127.0.0.1:5002/api/Categories >/dev/null; then
     healthy=true
     break
   fi

@@ -32,6 +32,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci --legacy-peer-deps
+          npm test -- --runInBand
           npm run build
 
       - name: Set up .NET
@@ -48,6 +49,8 @@ jobs:
           cp -a frontend/dist/. release/frontend/
 
           dotnet restore "$project"
+          dotnet restore backend/HuanyuFlowerShop.Tests/HuanyuFlowerShop.Tests.csproj
+          dotnet test backend/HuanyuFlowerShop.Tests/HuanyuFlowerShop.Tests.csproj --no-restore --configuration Release
           dotnet build "$project" -c Release --no-restore
           dotnet publish "$project" -c Release --no-build -o release/backend
 
@@ -85,11 +88,11 @@ jobs:
           SERVER_PORT: ${{ secrets.SERVER_PORT }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          scp -i ~/.ssh/flowershop_deploy \
+          scp -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -i ~/.ssh/flowershop_deploy \
             -P "${SERVER_PORT:-22}" \
             flowershop-release.tgz \
             "$SERVER_USER@$SERVER_HOST:/home/deploy/flowershop-release.tgz"
-          ssh -i ~/.ssh/flowershop_deploy \
+          ssh -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -i ~/.ssh/flowershop_deploy \
             -p "${SERVER_PORT:-22}" \
             "$SERVER_USER@$SERVER_HOST" \
             'sudo /usr/local/sbin/install-flowershop-release'

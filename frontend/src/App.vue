@@ -45,6 +45,25 @@ onMounted(async () => {
   }
   // 过滤开发环境中的中断错误，避免覆盖页面
   try {
+    const markImages = (root = document) => {
+      root.querySelectorAll?.('img').forEach((image) => {
+        if (image.closest('.hero-section, .site-nav')) {
+          image.setAttribute('decoding', 'async')
+          return
+        }
+        if (!image.hasAttribute('loading')) image.setAttribute('loading', 'lazy')
+        image.setAttribute('decoding', 'async')
+      })
+    }
+    markImages()
+    const imageObserver = new MutationObserver((records) => {
+      records.forEach((record) => record.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) markImages(node)
+      }))
+    })
+    imageObserver.observe(document.body, { childList: true, subtree: true })
+    window.addEventListener('beforeunload', () => imageObserver.disconnect(), { once: true })
+
     window.addEventListener('unhandledrejection', (e) => {
       const name = e?.reason?.name || ''
       if (name === 'AbortError' || name === 'CanceledError') {
@@ -57,7 +76,9 @@ onMounted(async () => {
         e.preventDefault()
       }
     })
-  } catch {}
+  } catch (error) {
+    console.warn('[app-init] 无法启用图片性能优化', error)
+  }
 })
 </script>
 

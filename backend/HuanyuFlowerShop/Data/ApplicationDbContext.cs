@@ -29,6 +29,7 @@ namespace HuanyuFlowerShop.Data
         public DbSet<UserCoupon> UserCoupons { get; set; } = null!;
         public DbSet<ProductRecommendation> ProductRecommendations { get; set; } = null!;
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+        public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -47,11 +48,25 @@ namespace HuanyuFlowerShop.Data
                 entity.Property(e => e.Phone).HasMaxLength(20);
                 entity.Property(e => e.Address).HasMaxLength(200);
                 entity.Property(e => e.Gender).HasMaxLength(20);
+                entity.Property(e => e.EmailVerified).HasDefaultValue(false).IsRequired();
+                entity.Property(e => e.Points).HasDefaultValue(0).IsRequired();
+                entity.Property(e => e.TokenVersion).HasDefaultValue(0).IsRequired();
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
             });
 
             modelBuilder.Entity<PasswordResetToken>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.ExpiresAt });
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<EmailVerificationToken>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.TokenHash).IsUnique();
