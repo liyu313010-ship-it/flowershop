@@ -80,6 +80,15 @@ namespace HuanyuFlowerShop.Entities
         /// </summary>
         public DateTime? LastLoginAt { get; set; }
 
+        /// <summary>邮箱是否完成验证。</summary>
+        public bool EmailVerified { get; set; }
+
+        /// <summary>可用于抵扣订单的会员积分。</summary>
+        public int Points { get; set; }
+
+        /// <summary>令牌版本，退出登录或修改安全信息后递增使旧 JWT 立即失效。</summary>
+        public int TokenVersion { get; set; }
+
         // 导航属性
         public virtual ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
         public virtual ICollection<Order> Orders { get; set; } = new List<Order>();

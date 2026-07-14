@@ -4,6 +4,19 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    target: 'es2022',
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-core': ['vue', 'vue-router', 'pinia'],
+          'element-plus': ['element-plus'],
+          'charts': ['chart.js']
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')

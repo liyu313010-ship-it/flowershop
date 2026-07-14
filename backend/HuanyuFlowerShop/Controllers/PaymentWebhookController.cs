@@ -38,12 +38,13 @@ public sealed class PaymentWebhookController : ControllerBase
         if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(request.Signature.Trim().ToLowerInvariant())))
             return Unauthorized(new { message = "支付回调签名无效" });
 
-        if (!string.Equals(request.Status, "paid", StringComparison.OrdinalIgnoreCase))
+        var normalizedStatus = request.Status.Trim().ToLowerInvariant();
+        if (normalizedStatus is not ("paid" or "refunded" or "partial_refunded"))
             return Ok(new { success = true, ignored = true });
 
         var result = await _paymentService.UpdatePaymentStatusAsync(request.OrderId, new PaymentStatusRequest
         {
-            PaymentStatus = "paid",
+            PaymentStatus = normalizedStatus,
             PaymentReference = request.PaymentReference.Trim(),
             PaymentMethod = request.PaymentMethod,
             Amount = request.Amount

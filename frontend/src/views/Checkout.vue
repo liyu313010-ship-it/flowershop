@@ -399,7 +399,7 @@ import { useCartStore } from '@/stores/cart'
 
 import userService from '@/services/userService'
 import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
-import { getProvinces, getCities, getDistricts, getProvinceName, getCityName, getDistrictName } from '@/utils/regionData'
+import { getProvinces, getCities, getDistricts, getProvinceName, getCityName, getDistrictName, ensureRegionDataLoaded } from '@/utils/regionData'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -599,7 +599,6 @@ onMounted(async () => {
     router.replace('/cart')
     return
   }
-  const { ensureRegionDataLoaded } = await import('@/utils/regionData')
   await ensureRegionDataLoaded()
   provinces.value = getProvinces()
   loadAddresses()

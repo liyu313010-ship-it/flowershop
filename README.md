@@ -42,11 +42,9 @@
 # 进入后端目录
 cd backend/HuanyuFlowerShop
 
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
+# 恢复依赖并启动 API
+dotnet restore
+dotnet run
 ```
 
 ### 前端启动
@@ -73,8 +71,8 @@ npm run dev
 # 进入后端目录
 cd backend/HuanyuFlowerShop
 
-# 安装 EF Core 工具
-dotnet tool install --global dotnet-ef
+# 首次使用时恢复仓库工具
+dotnet tool restore
 
 # 运行数据库迁移
 dotnet ef database update
@@ -84,6 +82,8 @@ dotnet ef database update
 
 API 文档可通过 Swagger 访问：
 - 开发环境：`http://localhost:5002/swagger`
+- 存活检查：`/health/live`
+- 就绪检查（包含数据库）：`/health/ready`
 
 ## 部署说明
 
@@ -115,6 +115,10 @@ npm run build
 ## 授权说明
 
 本项目采用 JWT 认证机制，用户登录后会获取到一个 JWT token，后续请求需要在 Authorization 头中携带该 token。
+
+## 生产环境说明
+
+生产环境必须通过密钥管理服务注入数据库连接、JWT 密钥、CORS 来源和支付回调密钥，禁止把真实密钥写入仓库。在线支付在配置 `Payment:Mode` 和对应商户参数前保持关闭；没有商户号、密钥和 HTTPS 回调地址时请使用货到付款。部署脚本会在迁移前创建数据库备份，并在应用健康检查失败时回滚应用文件。
 
 ## 许可证
 

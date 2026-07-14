@@ -244,7 +244,8 @@ namespace HuanyuFlowerShop.Services
                 new Claim(ClaimTypes.Name, user.Username ?? ""),
                 new Claim(ClaimTypes.Email, user.Email ?? ""),
                 new Claim(ClaimTypes.Role, user.Role ?? "user"),
-                new Claim("status", user.Status ?? "unknown")
+                new Claim("status", user.Status ?? "unknown"),
+                new Claim("token_version", user.TokenVersion.ToString())
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));

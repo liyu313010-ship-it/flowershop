@@ -14,10 +14,11 @@ let width = 0
 let height = 0
 let dpr = 1
 let reducedMotion = false
+let lowPower = false
 const pointer = { x: -1000, y: -1000, active: false }
 
 const createParticles = () => {
-  const count = reducedMotion ? 0 : Math.min(72, Math.max(28, Math.round(width / 22)))
+  const count = reducedMotion ? 0 : Math.min(lowPower ? 36 : 72, Math.max(lowPower ? 14 : 28, Math.round(width / 22)))
   particles = Array.from({ length: count }, (_, index) => ({
     x: Math.random() * width,
     y: Math.random() * height,
@@ -117,6 +118,9 @@ const draw = () => {
 onMounted(() => {
   const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
   reducedMotion = motionQuery.matches
+  // 低性能设备降低粒子密度，避免影响商品列表滚动和结算交互。
+  lowPower = Boolean(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+  if (lowPower && canvas.value) canvas.value.style.opacity = '.55'
   resize()
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(resize)

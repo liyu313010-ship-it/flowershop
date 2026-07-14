@@ -12,6 +12,7 @@ namespace HuanyuFlowerShop
                 serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>()))
             {
                 var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+                var logger = serviceProvider.GetRequiredService<ILogger<DatabaseInitializer>>();
                 // 数据库已通过Migrate()创建，不再需要EnsureCreated()
 
                 // 仅在明确提供一次性管理员引导配置时创建管理员，禁止仓库内置默认密码。
@@ -294,7 +295,10 @@ namespace HuanyuFlowerShop
                     if (needFix.Count > 0)
                         context.SaveChanges();
                 }
-                catch {}
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "修复历史产品分类失败");
+                }
             }
         }
     }

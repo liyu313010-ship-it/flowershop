@@ -444,10 +444,17 @@ namespace HuanyuFlowerShop.Services
                         return new PaymentResult { Success = false, Message = "订单不存在" };
                     }
 
-                    if (request.Amount.HasValue && Math.Abs(request.Amount.Value - order.TotalAmount) > 0.01m)
+                    if (request.PaymentStatus == "paid" && request.Amount.HasValue && Math.Abs(request.Amount.Value - order.TotalAmount) > 0.01m)
                     {
                         await _unitOfWork.RollbackTransactionAsync();
                         return new PaymentResult { Success = false, Message = "支付金额与订单金额不一致" };
+                    }
+                    var paidAmount = order.PaidAmount > 0 ? order.PaidAmount : order.TotalAmount;
+                    if (request.PaymentStatus is "refunded" or "partial_refunded" &&
+                        request.Amount.HasValue && (request.Amount.Value <= 0 || request.Amount.Value > paidAmount))
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        return new PaymentResult { Success = false, Message = "退款金额无效" };
                     }
 
                     if (order.PaymentStatus == "paid")
@@ -474,6 +481,16 @@ namespace HuanyuFlowerShop.Services
                     // 更新订单的支付信息
                     order.PaymentStatus = request.PaymentStatus;
                     order.PaymentReference = request.PaymentReference ?? order.PaymentReference;
+                    if (request.PaymentStatus == "paid")
+                    {
+                        order.PaidAmount = request.Amount ?? order.TotalAmount;
+                        order.PaidAt ??= DateTime.UtcNow;
+                    }
+                    else if (request.PaymentStatus is "refunded" or "partial_refunded")
+                    {
+                        // 回调没有退款金额时按订单已支付金额处理，避免退款状态与金额脱节。
+                        order.RefundedAmount = Math.Clamp(request.Amount ?? paidAmount, 0m, paidAmount);
+                    }
                     if (!string.IsNullOrEmpty(request.PaymentMethod))
                     {
                         order.PaymentMethod = request.PaymentMethod;

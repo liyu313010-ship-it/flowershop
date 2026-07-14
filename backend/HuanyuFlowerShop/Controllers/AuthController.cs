@@ -73,6 +73,62 @@ namespace HuanyuFlowerShop.Controllers
             return Ok(new { success = true, message = "密码重置成功，请重新登录" });
         }
 
+        [Authorize]
+        [HttpPost("send-verification")]
+        public async Task<IActionResult> SendVerification()
+        {
+            var userId = GetCurrentUserId();
+            var user = await _db.Users.FindAsync(userId);
+            if (user is null) return NotFound(new { message = "用户不存在" });
+            if (user.EmailVerified) return Ok(new { success = true, message = "邮箱已验证" });
+            if (!_email.IsEnabled) return Conflict(new { message = "邮件服务暂未配置" });
+
+            var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+            var oldTokens = await _db.EmailVerificationTokens.Where(t => t.UserId == user.Id && t.UsedAt == null).ToListAsync();
+            foreach (var old in oldTokens) old.UsedAt = DateTime.UtcNow;
+            _db.EmailVerificationTokens.Add(new EmailVerificationToken { UserId = user.Id, TokenHash = hash, ExpiresAt = DateTime.UtcNow.AddHours(24) });
+            await _db.SaveChangesAsync();
+            var verifyUrl = $"{Request.Scheme}://{Request.Host}/auth?verifyToken={Uri.EscapeDataString(rawToken)}";
+            await _email.SendAsync(user.Email, "欢雨鲜花邮箱验证", $"您好，请在24小时内点击链接验证邮箱：\n{verifyUrl}", HttpContext.RequestAborted);
+            return Ok(new { success = true, message = "验证邮件已发送" });
+        }
+
+        [AllowAnonymous]
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Token)) return BadRequest(new { message = "验证令牌不能为空" });
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Token.Trim())));
+            var token = await _db.EmailVerificationTokens.Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.TokenHash == hash && t.UsedAt == null && t.ExpiresAt > DateTime.UtcNow);
+            if (token?.User is null) return BadRequest(new { message = "验证链接无效或已过期" });
+            token.User.EmailVerified = true;
+            token.User.UpdatedAt = DateTime.UtcNow;
+            token.UsedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true, message = "邮箱验证成功" });
+        }
+
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userId = GetCurrentUserId();
+            var user = await _db.Users.FindAsync(userId);
+            if (user is null) return NotFound(new { message = "用户不存在" });
+            user.TokenVersion++;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true, message = "已退出登录" });
+        }
+
+        private int GetCurrentUserId()
+        {
+            var value = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(value, out var id) && id > 0 ? id : throw new UnauthorizedAccessException("登录状态已失效");
+        }
+
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginDto loginDto)
         {
@@ -303,15 +359,6 @@ namespace HuanyuFlowerShop.Controllers
             }
         }
 
-        [HttpPost("logout")]
-        [Authorize]
-        public ActionResult Logout()
-        {
-            // 在实际应用中，可以在这里实现token黑名单机制
-            // 目前只是返回成功响应
-            return Ok(new { Success = true, Message = "退出登录成功" });
-        }
-
         [Authorize]
         [HttpPost("change-password")]
         public async Task<ActionResult<bool>> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
@@ -457,4 +504,9 @@ namespace HuanyuFlowerShop.Controllers
             }
         }
     }
+}
+
+public sealed class VerifyEmailDto
+{
+    public string Token { get; set; } = string.Empty;
 }
