@@ -33,6 +33,12 @@ test -f "$STAGING/backend/HuanyuFlowerShop.dll"
 test -f "$STAGING/frontend/index.html"
 source "$ENV_FILE"
 
+# 保证公网健康检查不会被前端 SPA fallback 接管。
+NGINX_CONFIG="/etc/nginx/sites-available/flowershop"
+if [ -f "$NGINX_CONFIG" ] && ! grep -q 'location \^~ /health/' "$NGINX_CONFIG"; then
+  sed -i '/    location \/api\//i\    location ^~ /health/ {\n        proxy_pass http://127.0.0.1:5002;\n        proxy_set_header Host $host;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }' "$NGINX_CONFIG"
+fi
+
 # 每次发布、尤其是执行迁移前都备份数据库和上传文件，保留最近 7 份。
 BACKUP_DIR="/var/backups/flowershop/$(date +%Y%m%d-%H%M%S)"
 install -d -m 700 "$BACKUP_DIR"
