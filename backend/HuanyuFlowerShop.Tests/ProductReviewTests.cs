@@ -95,6 +95,7 @@ namespace HuanyuFlowerShop.Tests
                 // Assert
                 Assert.NotNull(result);
                 Assert.Equal(1, result.ProductId);
+                Assert.Equal("测试产品", result.ProductName);
                 Assert.Equal(5, result.Rating);
                 Assert.Equal("这是一个测试评价", result.Comment);
                 Assert.Equal("testuser", result.UserName);
