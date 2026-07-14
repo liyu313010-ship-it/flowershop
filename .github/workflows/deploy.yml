@@ -56,11 +56,13 @@ jobs:
 
           cd "$project_dir"
           dotnet tool restore
+          dotnet ef --version
           mapfile -t migrations < <(
             dotnet ef migrations list --no-connect --no-build --configuration Release |
               grep -E '^[0-9]{14}_'
           )
           previous=0
+          test "${#migrations[@]}" -gt 0
           for migration in "${migrations[@]}"; do
             dotnet ef migrations script "$previous" "$migration" \
               --no-build --configuration Release \

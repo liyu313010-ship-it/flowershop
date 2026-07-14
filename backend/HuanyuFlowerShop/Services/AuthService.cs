@@ -123,7 +123,7 @@ namespace HuanyuFlowerShop.Services
                 return new LoginResponseDto
                 {
                     Success = false,
-                    Message = $"登录失败: {ex.Message}"
+                    Message = "登录服务暂不可用，请稍后重试"
                 };
             }
         }

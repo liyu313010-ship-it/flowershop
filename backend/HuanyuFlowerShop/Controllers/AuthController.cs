@@ -145,7 +145,9 @@ namespace HuanyuFlowerShop.Controllers
             
             if (!result.Success)
             {
-                return BadRequest(result);
+                return result.Message == "登录服务暂不可用，请稍后重试"
+                    ? StatusCode(StatusCodes.Status503ServiceUnavailable, result)
+                    : Unauthorized(result);
             }
 
             return Ok(result);
