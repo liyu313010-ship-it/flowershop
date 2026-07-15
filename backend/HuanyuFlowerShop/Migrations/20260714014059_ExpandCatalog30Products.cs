@@ -68,8 +68,8 @@ namespace HuanyuFlowerShop.Migrations
             foreach (var product in products)
             {
                 migrationBuilder.Sql($"""
-                    INSERT INTO `Products` (`Name`, `Description`, `Price`, `ImageUrl`, `Stock`, `IsFeatured`, `IsActive`, `SalesCount`, `Size`, `Material`, `Occasion`, `CategoryId`, `CreatedAt`, `UpdatedAt`)
-                    SELECT '{Escape(product.Name)}', '{Escape(product.Description)}', {product.Price}, '{Escape(product.Image.Replace(".png", ".webp"))}', {product.Stock}, {(product.Featured ? 1 : 0)}, 1, 0, '{Escape(product.Size)}', '{Escape(product.Material)}', '{Escape(product.Occasion)}', c.`Id`, UTC_TIMESTAMP(6), NULL
+                    INSERT INTO `Products` (`Name`, `Description`, `Price`, `ImageUrl`, `Stock`, `IsFeatured`, `IsActive`, `SalesCount`, `Popularity`, `Size`, `Material`, `Occasion`, `CategoryId`, `CreatedAt`, `UpdatedAt`)
+                    SELECT '{Escape(product.Name)}', '{Escape(product.Description)}', {product.Price}, '{Escape(product.Image.Replace(".png", ".webp"))}', {product.Stock}, {(product.Featured ? 1 : 0)}, 1, 0, 0, '{Escape(product.Size)}', '{Escape(product.Material)}', '{Escape(product.Occasion)}', c.`Id`, UTC_TIMESTAMP(6), NULL
                     FROM `Categories` c
                     WHERE c.`Name` = '{Escape(product.Category)}'
                       AND NOT EXISTS (SELECT 1 FROM `Products` WHERE `Name` = '{Escape(product.Name)}')
