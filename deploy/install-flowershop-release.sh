@@ -60,6 +60,11 @@ rm -rf "$APP_NEXT" "$WEB_NEXT"
 install -d "$APP_NEXT" "$WEB_NEXT" "$UPLOAD_DIR"
 cp -a "$STAGING/backend/." "$APP_NEXT/"
 cp -a "$STAGING/frontend/." "$WEB_NEXT/"
+# 保留当前版本的哈希资源，避免已打开页面在发布后懒加载旧 chunk 时失效。
+if [ -d "$WEB_DIR/assets" ]; then
+  install -d "$WEB_NEXT/assets"
+  rsync -a --ignore-existing "$WEB_DIR/assets/" "$WEB_NEXT/assets/"
+fi
 rm -rf "$APP_NEXT/uploads"
 ln -s "$UPLOAD_DIR" "$APP_NEXT/uploads"
 chown -R www-data:www-data "$UPLOAD_DIR"

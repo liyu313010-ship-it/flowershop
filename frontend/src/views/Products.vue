@@ -88,12 +88,22 @@
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="product in filteredProducts" :key="product.id" class="card group cursor-pointer relative">
+                <div
+                  v-for="product in filteredProducts"
+                  :key="product.id"
+                  class="card group cursor-pointer relative"
+                  role="link"
+                  tabindex="0"
+                  @click="quickView(product)"
+                  @keydown.enter="quickView(product)"
+                >
                   <div class="relative overflow-hidden rounded-xl">
                     <div class="w-full h-64 bg-gray-50 overflow-hidden relative">
                       <img 
                         :src="product.image" 
                         :alt="product.name"
+                        loading="lazy"
+                        decoding="async"
                         class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
                         @error="onProductImageError"
                       />
@@ -212,6 +222,7 @@ import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import { favoriteService } from '@/services/favorite'
 import { watchEffect } from 'vue'
 import { getProductDescription } from '@/utils/productCopy'
+import { getCollectionItems } from '@/utils/apiResponse'
 
 const router = useRouter()
 const route = useRoute()
@@ -239,13 +250,31 @@ const productQuantities = ref({})
 categories.value = []
 products.value = []
 
+const mapProduct = (product) => ({
+  id: product.id ?? product.Id,
+  name: product.name ?? product.Name ?? '',
+  description: getProductDescription({
+    name: product.name ?? product.Name,
+    description: product.description ?? product.Description
+  }),
+  price: product.price ?? product.Price ?? 0,
+  image: getProductImageUrl(product.image ?? product.imageUrl ?? product.ImageUrl ?? ''),
+  categoryId: (() => {
+    const num = Number(product.categoryId ?? product.CategoryId)
+    return Number.isFinite(num) ? num : null
+  })(),
+  categoryName: product.categoryName ?? product.CategoryName ?? '',
+  originalPrice: product.originalPrice ?? product.OriginalPrice ?? null,
+  discount: product.discount ?? product.Discount ?? null,
+  reviewCount: product.reviewCount ?? product.ReviewCount ?? 0,
+  salesCount: product.salesCount ?? product.SalesCount ?? 0
+})
+
 // 处理分类筛选
 const selectCategory = async (categoryId) => {
   selectedCategory.value = categoryId
   isLoading.value = true
   try {
-    console.log(`开始筛选分类 ${categoryId} 的商品...`)
-    
     let response;
     // 服务端价格过滤参数
     const priceParams = (() => {
@@ -260,48 +289,15 @@ const selectCategory = async (categoryId) => {
 
     if (!categoryId) {
       // 优先使用服务端搜索（仅价格过滤）
-      const params = { ...priceParams, Page: 1, PageSize: 36 }
+      const params = { ...priceParams, Page: 1, PageSize: 100 }
       response = await productService.searchProducts(params)
     } else {
       // 分类 + 价格过滤（若有价格范围）
-      const params = { ...priceParams, CategoryId: categoryId, Page: 1, PageSize: 36 }
+      const params = { ...priceParams, CategoryId: categoryId, Page: 1, PageSize: 100 }
       response = await productService.searchProducts(params)
     }
     
-    // 详细记录API响应
-    console.log(`分类 ${categoryId} 商品API响应:`, JSON.stringify(response))
-    
-    // 处理API响应，兼容不同的数据格式并进行数据映射
-    if (response) {
-      const productsData = response.data?.items || response.data || response || []
-      if (Array.isArray(productsData)) {
-        // 映射数据格式，确保图片路径正确
-        products.value = productsData.map(product => ({
-          id: product.id || product.Id,
-          name: product.name || product.Name,
-          description: getProductDescription({ name: product.name || product.Name, description: product.description || product.Description }),
-          price: product.price || product.Price || 0,
-          image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
-          categoryId: (() => {
-            const val = product.categoryId ?? product.CategoryId
-            const num = Number(val)
-            return Number.isFinite(num) ? num : null
-          })(),
-          categoryName: product.categoryName || product.CategoryName || '',
-          originalPrice: product.originalPrice || null,
-          discount: product.discount || null,
-          reviewCount: product.reviewCount || 0,
-          salesCount: product.salesCount || product.SalesCount || 0
-        }))
-        console.log(`筛选分类 ${categoryId} 的商品，数量:`, products.value.length)
-      } else {
-        console.warn(`分类 ${categoryId} 商品数据不是数组格式:`, productsData)
-        products.value = []
-      }
-    } else {
-      console.warn(`分类 ${categoryId} 商品响应为空`)
-      products.value = []
-    }
+    products.value = getCollectionItems(response).map(mapProduct)
   } catch (error) {
     console.error(`筛选分类 ${categoryId} 失败:`, error)
     products.value = []
@@ -382,24 +378,7 @@ const loadAllData = async () => {
           description: c.description ?? c.Description ?? ''
         }))
       : []
-    const productsData = productsResponse?.data || productsResponse || []
-    products.value = Array.isArray(productsData) ? productsData.map(product => ({
-        id: product.id || product.Id,
-        name: product.name || product.Name,
-        description: getProductDescription({ name: product.name || product.Name, description: product.description || product.Description }),
-        price: product.price || product.Price || 0,
-        image: getProductImageUrl(product.image || product.imageUrl || product.ImageUrl || ''),
-        categoryId: (() => {
-          const val = product.categoryId ?? product.CategoryId
-          const num = Number(val)
-          return Number.isFinite(num) ? num : null
-        })(),
-        categoryName: product.categoryName || product.CategoryName || '',
-        originalPrice: product.originalPrice || null,
-        discount: product.discount || null,
-        reviewCount: product.reviewCount || 0,
-        salesCount: product.salesCount || product.SalesCount || 0
-      })) : []
+    products.value = getCollectionItems(productsResponse).map(mapProduct)
   } catch (error) {
     products.value = []
     categories.value = []

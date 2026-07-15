@@ -34,6 +34,7 @@ jobs:
           npm ci --legacy-peer-deps
           npm test -- --runInBand
           npm run build
+          node scripts/preserve-production-assets.mjs http://8.148.9.196:8080 dist
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4

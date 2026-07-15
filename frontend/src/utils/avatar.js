@@ -82,44 +82,30 @@ export const getDefaultAvatarUrl = () => {
  * @returns {string} 完整的产品图片URL
  */
 export const getProductImageUrl = (imagePath) => {
-  const timestamp = Date.now();
-  
   // 如果没有图片路径或无效，返回默认产品图片
   if (!imagePath || typeof imagePath !== 'string' || imagePath.trim() === '') {
     return '/images/product-placeholder.svg'
   }
 
-  // 如果已经是完整URL，添加时间戳防止缓存
+  // 完整 URL（例如对象存储/CDN）直接使用
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    const timestampedUrl = imagePath.includes('?') 
-      ? `${imagePath}&t=${timestamp}` 
-      : `${imagePath}?t=${timestamp}`;
-    return timestampedUrl
+    return imagePath
   }
 
   let normalizedPath = imagePath.trim()
-  
-  // 处理产品图片路径
-  if (normalizedPath.startsWith('/uploads/products/')) {
-    if (!normalizedPath.startsWith('/')) {
-      normalizedPath = '/' + normalizedPath
-    }
-  }
-  // 确保有正确的前导斜杠
-  else if (!normalizedPath.startsWith('/')) {
+
+  // 兼容旧管理端曾错误保存/拼接出的 /api/images 与 /api/uploads 地址。
+  // 图片属于静态资源，不应经过仅处理控制器请求的 /api 代理。
+  normalizedPath = normalizedPath.replace(/^\/api(?=\/(?:images|uploads)\/)/i, '')
+
+  // 只有文件名时按上传商品图处理
+  if (normalizedPath.includes('.') && !normalizedPath.includes('/')) {
+    normalizedPath = `/uploads/products/${normalizedPath}`
+  } else if (!normalizedPath.startsWith('/')) {
     normalizedPath = '/' + normalizedPath
   }
-  // 对于产品图片文件名，添加uploads/products路径前缀和API代理前缀
-  else if (normalizedPath.includes('.') && !normalizedPath.includes('/')) {
-    normalizedPath = `/uploads/products/${normalizedPath}`
-  }
 
-  // 添加时间戳防止缓存
-  const timestampedPath = normalizedPath.includes('?') 
-    ? `${normalizedPath}&t=${timestamp}` 
-    : `${normalizedPath}?t=${timestamp}`;
-    
-  return timestampedPath
+  return normalizedPath
 }
 
 /**
