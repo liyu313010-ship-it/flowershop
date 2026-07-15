@@ -132,7 +132,19 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-    location / { try_files $uri $uri/ /index.html; }
+    location = /index.html {
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+        expires -1;
+    }
+    location ^~ /assets/ {
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }
 }
 NGINX
 ln -sfn /etc/nginx/sites-available/flowershop /etc/nginx/sites-enabled/flowershop
