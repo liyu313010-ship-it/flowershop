@@ -1,349 +1,204 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <div class="container mx-auto px-4 py-8">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        
-        <!-- 商品图片 -->
-        <div class="space-y-4">
-          <div class="aspect-square bg-white rounded-lg overflow-hidden">
-            <img 
-              :src="product.image" 
-              :alt="product.name"
-              class="w-full h-full object-cover"
-            >
-          </div>
-          
-          <!-- 缩略图 -->
-          <div class="grid grid-cols-4 gap-2">
-            <div 
-              v-for="(thumb, index) in product.thumbnails" 
-              :key="index"
-              class="aspect-square bg-white rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-huanyu-pink-500"
-            >
-              <img :src="thumb" :alt="`${product.name} ${index + 1}`" class="w-full h-full object-cover">
-            </div>
-          </div>
-        </div>
+  <main class="product-detail-page min-h-screen">
+    <div class="container mx-auto px-4 py-8 md:py-12">
+      <div class="product-shell grid grid-cols-1 gap-10 rounded-[2rem] border border-pink-100 bg-white p-5 shadow-sm md:p-8 lg:grid-cols-2 lg:gap-14">
+        <section aria-label="商品图片">
+          <button class="product-image-wrap block aspect-square w-full overflow-hidden rounded-[1.5rem] bg-pink-50" @click="showImageModal = true">
+            <img :src="product.image" :alt="product.name" class="h-full w-full object-cover transition duration-500 hover:scale-[1.02]">
+          </button>
+        </section>
 
-        <!-- 商品信息 -->
-        <div class="space-y-6">
+        <section class="space-y-6" aria-label="商品购买信息">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ product.name }}</h1>
-            <p class="text-gray-600">{{ getProductDescription(product) }}</p>
+            <p class="mb-2 text-sm font-semibold tracking-[0.2em] text-pink-500">FRESH FLOWERS · 当日鲜制</p>
+            <h1 class="mb-3 text-3xl font-bold text-slate-900 md:text-4xl">{{ product.name }}</h1>
+            <p class="text-base leading-8 text-slate-600">{{ getProductDescription(product) }}</p>
           </div>
 
-          <div class="flex items-baseline space-x-2">
-            <span class="text-3xl font-bold text-huanyu-pink-600">¥{{ product.price }}</span>
-            <span v-if="product.originalPrice" class="text-lg text-gray-400 line-through">
-              ¥{{ product.originalPrice }}
-            </span>
+          <div class="flex items-end gap-3">
+            <span class="text-4xl font-bold text-pink-600"><small class="text-xl">¥</small>{{ product.price }}</span>
+            <span v-if="product.originalPrice" class="pb-1 text-lg text-slate-400 line-through">¥{{ product.originalPrice }}</span>
           </div>
 
-          <!-- 商品标签 -->
           <div class="flex flex-wrap gap-2">
-            <span v-if="product.isHot" class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
-              热卖
-            </span>
-            <span v-if="product.isNew" class="px-3 py-1 bg-huanyu-pink-100 text-huanyu-pink-800 rounded-full text-sm">
-              新品
-            </span>
-            <span v-if="product.stock > 0" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-              现货
-            </span>
-            <span v-else class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
-              缺货
+            <span v-if="product.isHot" class="rounded-full bg-rose-100 px-3 py-1 text-sm text-rose-700">人气花礼</span>
+            <span v-if="product.isNew" class="rounded-full bg-pink-100 px-3 py-1 text-sm text-pink-700">当季新品</span>
+            <span :class="product.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'" class="rounded-full px-3 py-1 text-sm">
+              {{ product.stock > 0 ? `现货 · 库存 ${product.stock}` : '暂时售罄' }}
             </span>
           </div>
 
-          <!-- 库存信息 -->
-          <div class="text-sm text-gray-600">
-            库存: <span v-if="product.stock > 0" class="text-green-600 font-medium">{{ product.stock }}</span>
-            <span v-else class="text-red-600 font-medium">0（缺货）</span>
-          </div>
-
-          <!-- 商品规格 -->
-          <div class="space-y-4">
-            <div id="qty-section">
-              <label class="block text-sm font-medium text-gray-700 mb-2">数量</label>
-              <div class="flex items-center space-x-3">
-                <button 
-                  @click="decreaseQuantity"
-                  class="w-10 h-10 rounded-lg border hover:bg-gray-100 flex items-center justify-center"
-                  :disabled="quantity <= 1"
-                >
-                  -
-                </button>
-                <input 
-                  v-model.number="quantity"
-                  type="number"
-                  min="1"
-                  :max="product.stock || 999"
-                  class="w-20 text-center border rounded-lg px-3 py-2"
-                  @input="validateQuantity"
-                >
-                <button 
-                  @click="increaseQuantity"
-                  class="w-10 h-10 rounded-lg border hover:bg-gray-100 flex items-center justify-center"
-                  :disabled="quantity >= (product.stock || 999)"
-                >
-                  +
-                </button>
-              </div>
-              <p v-if="quantity > (product.stock || 0)" class="mt-1 text-sm text-red-600">
-                库存不足，请选择更少的数量
-              </p>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">配送方式</label>
-              <select class="w-full border rounded-lg px-3 py-2">
-                <option>标准配送 (2-3天)</option>
-                <option>快速配送 (1天)</option>
-                <option>当日配送 (3小时)</option>
-              </select>
+          <div id="qty-section" class="rounded-2xl bg-pink-50/70 p-4">
+            <label class="mb-3 block text-sm font-semibold text-slate-700">选择数量</label>
+            <div class="flex items-center gap-3">
+              <button class="quantity-button" :disabled="quantity <= 1" @click="decreaseQuantity" aria-label="减少数量">−</button>
+              <input v-model.number="quantity" type="number" min="1" :max="product.stock || 1" class="h-11 w-20 rounded-xl border border-pink-200 bg-white text-center" @input="validateQuantity">
+              <button class="quantity-button" :disabled="quantity >= (product.stock || 1)" @click="increaseQuantity" aria-label="增加数量">＋</button>
             </div>
           </div>
 
-          <!-- 操作按钮 -->
-          <div class="space-y-3">
-            <!-- 仅对非管理员显示购物车和购买按钮 -->
-            <template v-if="!userStore.isAdmin">
-              <button 
-                @click="addToCart"
-                class="w-full btn-primary"
-                :disabled="addingToCart || product.stock <= 0 || quantity > (product.stock || 0)"
-              >
-                {{ addingToCart ? '添加中...' : (product.stock <= 0 ? '缺货' : '加入购物车') }}
-              </button>
-              
-              <button 
-                @click="buyNow"
-                class="w-full btn-secondary"
-                :disabled="product.stock <= 0 || quantity > (product.stock || 0)"
-              >
-                {{ product.stock <= 0 ? '缺货' : '立即购买' }}
-              </button>
-
-              <button 
-                @click="toggleFavorite"
-                class="w-full btn-secondary"
-              >
-                {{ isFavorite ? '取消收藏' : '收藏' }}
-              </button>
-            </template>
-            <!-- 管理员显示编辑按钮 -->
-            <template v-if="userStore.isAdmin">
-              <button 
-                @click="editProduct"
-                class="w-full btn-primary"
-              >
-                编辑商品
-              </button>
-            </template>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <button v-if="!userStore.isAdmin" class="btn-primary w-full" :disabled="addingToCart || product.stock <= 0" @click="addToCart">
+              {{ addingToCart ? '添加中…' : (product.stock <= 0 ? '暂时售罄' : '加入购物车') }}
+            </button>
+            <button v-if="!userStore.isAdmin" class="btn-secondary w-full" :disabled="product.stock <= 0" @click="buyNow">立即购买</button>
+            <button v-if="!userStore.isAdmin" class="btn-secondary w-full sm:col-span-2" @click="toggleFavorite">
+              {{ isFavorite ? '已收藏 · 点击取消' : '♡ 收藏这束花' }}
+            </button>
+            <button v-else class="btn-primary w-full sm:col-span-2" @click="editProduct">编辑商品</button>
           </div>
 
-          <!-- 商品详情 -->
-          <div class="border-t pt-6">
-            <h3 class="text-lg font-semibold mb-4">商品详情</h3>
-            <div class="space-y-3 text-gray-600">
-              <div class="flex">
-                <span class="font-medium w-24">花材：</span>
-                <span>{{ product.details.material }}</span>
-              </div>
-              <div class="flex">
-                <span class="font-medium w-24">包装：</span>
-                <span>{{ product.details.packaging }}</span>
-              </div>
-              <div class="flex">
-                <span class="font-medium w-24">保鲜期：</span>
-                <span>{{ product.details.shelfLife }}</span>
-              </div>
-              <div class="flex">
-                <span class="font-medium w-24">适合场合：</span>
-                <span>{{ product.details.occasions }}</span>
-              </div>
-            </div>
+          <div class="border-t border-pink-100 pt-6">
+            <h2 class="mb-4 text-lg font-semibold text-slate-900">花礼详情</h2>
+            <dl class="grid grid-cols-[5rem_1fr] gap-y-3 text-sm leading-6 text-slate-600">
+              <dt class="font-medium text-slate-800">花材</dt><dd>{{ product.details.material || '以商品主花材与当季配叶搭配' }}</dd>
+              <dt class="font-medium text-slate-800">规格</dt><dd>{{ product.details.size || '中型手作花束' }}</dd>
+              <dt class="font-medium text-slate-800">包装</dt><dd>{{ product.details.packaging }}</dd>
+              <dt class="font-medium text-slate-800">保鲜期</dt><dd>{{ product.details.shelfLife }}</dd>
+              <dt class="font-medium text-slate-800">适合场合</dt><dd>{{ product.details.occasions || '生日、纪念日、探望与日常心意' }}</dd>
+            </dl>
           </div>
 
-          <!-- 购买须知 -->
-          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h4 class="font-medium text-yellow-800 mb-2">购买须知</h4>
-            <ul class="text-sm text-yellow-700 space-y-1">
-              <li>• 鲜花为天然产品，实际收到的花材可能略有差异</li>
-              <li>• 建议提前1-2天预订，确保准时送达</li>
-              <li>• 如遇花材短缺，我们将用同等价值的替代花材</li>
-            </ul>
+          <div class="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-sm leading-7 text-amber-800">
+            鲜花为天然产品，花型与开放度会略有差异；如遇临时缺花，花艺师会在保持色系和价值的前提下进行同等替换。
+          </div>
+        </section>
+      </div>
+
+      <section v-if="reviews.length" class="reviews-panel mt-10 rounded-[2rem] border border-pink-100 bg-white p-6 shadow-sm md:p-9" aria-labelledby="product-reviews-title">
+        <div class="mb-7 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="mb-2 text-sm font-semibold tracking-[0.18em] text-pink-500">REAL MOMENTS</p>
+            <h2 id="product-reviews-title" class="text-2xl font-bold text-slate-900">购买过这束花的人这样说</h2>
+          </div>
+          <div class="rounded-2xl bg-pink-50 px-5 py-3 text-right">
+            <strong class="text-2xl text-pink-600">{{ reviewSummary.averageRating.toFixed(1) }}</strong>
+            <span class="ml-1 text-amber-400">★★★★★</span>
+            <p class="text-xs text-slate-500">来自 {{ reviewSummary.totalCount }} 条真实购买评价</p>
           </div>
         </div>
+
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <article v-for="review in reviews" :key="review.id" class="rounded-2xl border border-pink-100 bg-pink-50/40 p-5">
+            <header class="mb-4 flex items-center gap-3">
+              <img :src="review.avatar" :alt="`${review.userName}头像`" class="h-11 w-11 rounded-full object-cover ring-2 ring-white" @error="handleAvatarError">
+              <div>
+                <h3 class="font-semibold text-slate-900">{{ review.userName }}</h3>
+                <div class="text-sm text-amber-400" :aria-label="`${review.rating}星评价`">
+                  <span v-for="star in 5" :key="star">{{ star <= review.rating ? '★' : '☆' }}</span>
+                </div>
+              </div>
+            </header>
+            <p class="min-h-16 leading-7 text-slate-700">{{ review.comment }}</p>
+            <time class="mt-4 block text-xs text-slate-400" :datetime="review.createdAt">{{ formatReviewDate(review.createdAt) }}</time>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <div v-if="showImageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" @click="showImageModal = false">
+      <div class="relative max-h-[92vh] max-w-5xl overflow-hidden rounded-3xl bg-white p-3" @click.stop>
+        <button class="absolute right-5 top-5 z-10 h-10 w-10 rounded-full bg-white/90 text-xl shadow" aria-label="关闭大图" @click="showImageModal = false">×</button>
+        <img :src="product.image" :alt="product.name" class="max-h-[86vh] w-full rounded-2xl object-contain">
       </div>
     </div>
-  </div>
-  <div v-if="showImageModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click="closeImageModal">
-    <div class="bg-white rounded-2xl max-w-5xl w-full overflow-hidden" @click.stop>
-      <div class="flex justify-between items-center px-4 py-3 border-b">
-        <h3 class="text-lg font-semibold text-gray-800">查看大图</h3>
-        <button @click="closeImageModal" class="text-gray-400 hover:text-gray-600">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-      <div class="p-4">
-        <img :src="product.image" :alt="product.name" class="w-full h-auto object-contain" />
-      </div>
-    </div>
-  </div>
+  </main>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { productService } from '@/services/product'
-import { getProductImageUrl } from '@/utils/avatar.js'
-import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
 import { favoriteService } from '@/services/favorite'
+import { getAvatarUrl, getProductImageUrl, handleAvatarError } from '@/utils/avatar.js'
 import { getProductDescription } from '@/utils/productCopy'
+import { notifyError, notifyInfo, notifySuccess } from '@/utils/notify'
 
 const route = useRoute()
 const router = useRouter()
 const cartStore = useCartStore()
 const userStore = useUserStore()
-const isFavorite = ref(false)
 
 const quantity = ref(1)
 const addingToCart = ref(false)
 const loading = ref(false)
+const isFavorite = ref(false)
+const showImageModal = ref(false)
+const reviews = ref([])
+const reviewSummary = ref({ totalCount: 0, averageRating: 0 })
 
-// 商品数据
 const product = ref({
   id: 0,
   name: '',
   description: '',
   price: 0,
   originalPrice: 0,
-  image: '',
-  thumbnails: [],
+  image: '/images/product-placeholder.svg',
+  stock: 0,
   isHot: false,
   isNew: false,
-  details: {
-    material: '',
-    packaging: '',
-    shelfLife: '',
-    occasions: ''
-  }
+  details: { material: '', size: '', packaging: '粉白定制花纸与缎带手工包装', shelfLife: '约 5–7 天', occasions: '' }
 })
 
-const increaseQuantity = () => {
-  if (quantity.value < (product.value.stock || 999)) {
-    quantity.value++
-  }
-}
+const valueOf = (object, pascal, camel) => object?.[pascal] ?? object?.[camel]
 
-const decreaseQuantity = () => {
-  if (quantity.value > 1) {
-    quantity.value--
-  }
-}
-
-const validateQuantity = () => {
-  // 确保数量不为负数
-  if (quantity.value < 1) {
-    quantity.value = 1
-  }
-  // 确保不超过库存
-  if (product.value.stock > 0 && quantity.value > product.value.stock) {
-    quantity.value = product.value.stock
-  }
-}
-
-const addToCart = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    notifyInfo('请先登录再加入购物车')
-    router.push('/auth')
-    return
-  }
-  // 前端库存检查
-  if (product.value.stock <= 0) {
-    notifyError('抱歉，该商品暂时缺货')
-    return
-  }
-  
-  if (quantity.value > product.value.stock) {
-    notifyError(`抱歉，库存不足。当前库存：${product.value.stock}`)
-    quantity.value = product.value.stock
-    return
-  }
-  
-  addingToCart.value = true
-  
+const loadReviews = async (productId) => {
   try {
-    const result = await cartStore.addToCart(product.value, quantity.value)
-    if (result.success) {
-      notifySuccess(`已添加 ${quantity.value} 件 ${product.value.name} 到购物车`)
-    } else {
-      notifyError(result.message || '添加到购物车失败')
+    const response = await productService.getProductReviews(productId, { pageNumber: 1, pageSize: 12 })
+    const payload = response?.data ?? response ?? {}
+    const items = payload.Items ?? payload.items ?? (Array.isArray(payload) ? payload : [])
+    reviews.value = items.map((review) => ({
+      id: valueOf(review, 'Id', 'id'),
+      userName: valueOf(review, 'UserName', 'userName') || '匿名花友',
+      avatar: getAvatarUrl(valueOf(review, 'Avatar', 'avatar')),
+      rating: Number(valueOf(review, 'Rating', 'rating') || 0),
+      comment: valueOf(review, 'Comment', 'comment') || '',
+      createdAt: valueOf(review, 'CreatedAt', 'createdAt')
+    })).filter((review) => review.comment)
+    reviewSummary.value = {
+      totalCount: Number(payload.TotalCount ?? payload.totalCount ?? reviews.value.length),
+      averageRating: Number(payload.AverageRating ?? payload.averageRating ?? 0)
     }
-  } catch (error) {
-    console.error('添加到购物车失败:', error)
-    notifyError('添加到购物车失败，请重试')
-  } finally {
-    addingToCart.value = false
+  } catch {
+    reviews.value = []
+    reviewSummary.value = { totalCount: 0, averageRating: 0 }
   }
 }
 
-const buyNow = () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    notifyInfo('请先登录再购买')
-    router.push('/auth')
-    return
-  }
-  addToCart().then(() => {
-    router.push('/checkout')
-  }).catch((e) => {
-    console.error('立即购买失败:', e)
-    notifyError('立即购买失败')
-  })
-}
-
-// 管理员编辑商品
-const editProduct = () => {
-  // 跳转到商品管理页面或打开编辑模态框
-  router.push('/admin/products')
-}
-
-// 加载商品数据
 const loadProduct = async () => {
   loading.value = true
+  const productId = Number(route.params.id)
   try {
-    const productId = route.params.id
     const response = await productService.getProductById(productId)
-    const data = response?.data || response || {}
+    const data = response?.data ?? response ?? {}
     product.value = {
-      id: data.Id || data.id || 0,
-      name: data.Name || data.name || '',
-      description: getProductDescription({ name: data.Name || data.name, description: data.Description || data.description }),
-      price: data.Price || data.price || 0,
-      originalPrice: data.OriginalPrice || data.originalPrice || 0,
-      image: getProductImageUrl(data.ImageUrl || data.imageUrl || data.image || ''),
-      thumbnails: Array.isArray(data.thumbnails) ? data.thumbnails : [],
-      isHot: data.IsHot || data.isHot || false,
-      isNew: data.IsNew || data.isNew || false,
-      stock: data.Stock || data.stock || 0,
+      id: valueOf(data, 'Id', 'id') || 0,
+      name: valueOf(data, 'Name', 'name') || '',
+      description: valueOf(data, 'Description', 'description') || '',
+      price: valueOf(data, 'Price', 'price') || 0,
+      originalPrice: valueOf(data, 'OriginalPrice', 'originalPrice') || 0,
+      image: getProductImageUrl(valueOf(data, 'ImageUrl', 'imageUrl') || ''),
+      stock: valueOf(data, 'Stock', 'stock') || 0,
+      isHot: Boolean(valueOf(data, 'IsFeatured', 'isFeatured')),
+      isNew: Boolean(valueOf(data, 'IsNew', 'isNew')),
       details: {
-        material: (data.Details?.Material) || (data.details?.material) || '',
-        packaging: (data.Details?.Packaging) || (data.details?.packaging) || '',
-        shelfLife: (data.Details?.ShelfLife) || (data.details?.shelfLife) || '',
-        occasions: (data.Details?.Occasions) || (data.details?.occasions) || ''
+        material: valueOf(data, 'Material', 'material') || '',
+        size: valueOf(data, 'Size', 'size') || '',
+        packaging: '粉白定制花纸与缎带手工包装',
+        shelfLife: '约 5–7 天，随花附养护卡',
+        occasions: valueOf(data, 'Occasion', 'occasion') || ''
       }
     }
+    quantity.value = 1
+    await loadReviews(product.value.id)
     try {
       const check = await favoriteService.check(product.value.id)
-      isFavorite.value = !!(check?.data?.isFavorite || check?.isFavorite || check?.success)
-    } catch {}
+      isFavorite.value = Boolean(check?.data?.isFavorite || check?.isFavorite || check?.success)
+    } catch {
+      isFavorite.value = false
+    }
   } catch (error) {
     console.error('加载商品失败:', error)
     notifyError('商品不存在或加载失败')
@@ -353,51 +208,65 @@ const loadProduct = async () => {
   }
 }
 
-onMounted(() => {
-  loadProduct()
-})
+const increaseQuantity = () => { if (quantity.value < product.value.stock) quantity.value += 1 }
+const decreaseQuantity = () => { if (quantity.value > 1) quantity.value -= 1 }
+const validateQuantity = () => {
+  quantity.value = Math.max(1, Math.min(Number(quantity.value) || 1, product.value.stock || 1))
+}
+
+const addToCart = async () => {
+  if (!localStorage.getItem('token')) {
+    notifyInfo('请先登录再加入购物车')
+    router.push('/auth')
+    return false
+  }
+  if (product.value.stock <= 0) return false
+  addingToCart.value = true
+  try {
+    const result = await cartStore.addToCart(product.value, quantity.value)
+    if (!result.success) throw new Error(result.message || '添加失败')
+    notifySuccess(`已添加 ${quantity.value} 件 ${product.value.name} 到购物车`)
+    return true
+  } catch (error) {
+    notifyError(error?.message || '添加到购物车失败，请重试')
+    return false
+  } finally {
+    addingToCart.value = false
+  }
+}
+
+const buyNow = async () => {
+  if (await addToCart()) router.push('/checkout')
+}
 
 const toggleFavorite = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
+  if (!localStorage.getItem('token')) {
     notifyInfo('请先登录再收藏')
     router.push('/auth')
     return
   }
   try {
-    if (isFavorite.value) {
-      await favoriteService.remove(product.value.id)
-      isFavorite.value = false
-      notifySuccess('已取消收藏')
-    } else {
-      await favoriteService.add(product.value.id)
-      isFavorite.value = true
-      notifySuccess('已添加收藏')
-    }
-  } catch (e) {
+    if (isFavorite.value) await favoriteService.remove(product.value.id)
+    else await favoriteService.add(product.value.id)
+    isFavorite.value = !isFavorite.value
+    notifySuccess(isFavorite.value ? '已添加收藏' : '已取消收藏')
+  } catch {
     notifyError('收藏操作失败')
   }
 }
+
+const editProduct = () => router.push('/admin/products')
+const formatReviewDate = (value) => value ? new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(value)) : ''
+
+onMounted(loadProduct)
+watch(() => route.params.id, (next, previous) => { if (next !== previous) loadProduct() })
 </script>
-const showImageModal = ref(false)
-const overlayCartClickedOnce = ref(false)
 
-const openImageModal = () => { showImageModal.value = true }
-const closeImageModal = () => { showImageModal.value = false }
-
-const handleOverlayAddToCart = () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    notifyInfo('请先登录再加入购物车')
-    router.push('/auth')
-    return
-  }
-  if (!overlayCartClickedOnce.value) {
-    overlayCartClickedOnce.value = true
-    const el = document.getElementById('qty-section')
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    return
-  }
-  addToCart()
-  overlayCartClickedOnce.value = false
-}
+<style scoped>
+.product-detail-page { background: radial-gradient(circle at 85% 5%, #ffe9f2 0, transparent 30%), linear-gradient(180deg, #fffafb 0%, #fff 55%, #fff7fa 100%); }
+.product-shell, .reviews-panel { box-shadow: 0 24px 70px rgba(181, 79, 122, .09); }
+.product-image-wrap { box-shadow: inset 0 0 0 1px rgba(244, 182, 207, .28); }
+.quantity-button { width: 2.75rem; height: 2.75rem; border: 1px solid #f3bfd2; border-radius: .75rem; background: white; color: #ad416f; font-size: 1.15rem; transition: .2s ease; }
+.quantity-button:hover:not(:disabled) { background: #fff0f5; transform: translateY(-1px); }
+.quantity-button:disabled { cursor: not-allowed; opacity: .4; }
+</style>

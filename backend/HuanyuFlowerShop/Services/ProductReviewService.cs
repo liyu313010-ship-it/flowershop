@@ -77,6 +77,7 @@ namespace HuanyuFlowerShop.Services
             {
                 Id = review.Id,
                 ProductId = review.ProductId,
+                ProductName = product.Name,
                 UserId = review.UserId,
                 UserName = user?.Username ?? "匿名用户",
                 Avatar = user?.Avatar,
@@ -92,6 +93,7 @@ namespace HuanyuFlowerShop.Services
         public async Task<ProductReviewDto> UpdateReviewAsync(int reviewId, int userId, UpdateProductReviewRequest request)
         {
             var review = await _context.ProductReviews
+                .Include(r => r.Product)
                 .FirstOrDefaultAsync(r => r.Id == reviewId && r.UserId == userId && !r.IsDeleted);
 
             if (review == null)
@@ -113,6 +115,7 @@ namespace HuanyuFlowerShop.Services
             {
                 Id = review.Id,
                 ProductId = review.ProductId,
+                ProductName = review.Product?.Name,
                 UserId = review.UserId,
                 UserName = user?.Username ?? "匿名用户",
                 Avatar = user?.Avatar,
@@ -166,6 +169,7 @@ namespace HuanyuFlowerShop.Services
         {
             var review = await _context.ProductReviews
                 .Include(r => r.User)
+                .Include(r => r.Product)
                 .FirstOrDefaultAsync(r => r.UserId == userId && r.ProductId == productId && !r.IsDeleted);
             
             if (review == null)
@@ -177,6 +181,7 @@ namespace HuanyuFlowerShop.Services
             {
                 Id = review.Id,
                 ProductId = review.ProductId,
+                ProductName = review.Product?.Name,
                 UserId = review.UserId,
                 UserName = review.User?.Username ?? "匿名用户",
                 Avatar = review.User?.Avatar,
@@ -196,6 +201,7 @@ namespace HuanyuFlowerShop.Services
         {
             var review = await _context.ProductReviews
                 .Include(r => r.User)
+                .Include(r => r.Product)
                 .FirstOrDefaultAsync(r => r.Id == reviewId && !r.IsDeleted);
 
             if (review == null)
@@ -207,6 +213,7 @@ namespace HuanyuFlowerShop.Services
             {
                 Id = review.Id,
                 ProductId = review.ProductId,
+                ProductName = review.Product?.Name,
                 UserId = review.UserId,
                 UserName = review.User?.Username ?? "匿名用户",
                 Avatar = review.User?.Avatar,
@@ -254,7 +261,8 @@ namespace HuanyuFlowerShop.Services
             // 获取所有评价（未删除的）
             var reviews = _context.ProductReviews
                 .Where(r => r.ProductId == productId && !r.IsDeleted)
-                .Include(r => r.User);
+                .Include(r => r.User)
+                .Include(r => r.Product);
 
             // 计算总数
             var totalCount = await reviews.CountAsync();
@@ -282,6 +290,7 @@ namespace HuanyuFlowerShop.Services
             {
                 Id = r.Id,
                 ProductId = r.ProductId,
+                ProductName = r.Product?.Name,
                 UserId = r.UserId,
                 UserName = r.User?.Username ?? "匿名用户",
                 Avatar = r.User?.Avatar,
@@ -312,6 +321,7 @@ namespace HuanyuFlowerShop.Services
             var reviews = await _context.ProductReviews
                 .Where(r => !r.IsDeleted)
                 .Include(r => r.User)
+                .Include(r => r.Product)
                 .OrderByDescending(r => r.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
@@ -322,6 +332,7 @@ namespace HuanyuFlowerShop.Services
             {
                 Id = r.Id,
                 ProductId = r.ProductId,
+                ProductName = r.Product?.Name,
                 UserId = r.UserId,
                 UserName = r.User?.Username ?? "匿名用户",
                 Avatar = r.User?.Avatar,

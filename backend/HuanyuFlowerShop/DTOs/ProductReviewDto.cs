@@ -18,6 +18,11 @@ namespace HuanyuFlowerShop.DTOs
         public int ProductId { get; set; }
 
         /// <summary>
+        /// 产品名称，供评价列表直接链接到对应商品
+        /// </summary>
+        public string? ProductName { get; set; }
+
+        /// <summary>
         /// 用户ID
         /// </summary>
         public int UserId { get; set; }

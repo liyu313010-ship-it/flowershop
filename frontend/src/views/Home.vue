@@ -597,7 +597,15 @@
                 </div>
               </div>
             </div>
-            <p class="text-gray-700 leading-relaxed line-clamp-3 mt-1">{{ review.comment }}</p>
+            <p class="text-gray-700 leading-relaxed line-clamp-3 mt-1">
+              <router-link
+                v-if="review.productId"
+                :to="{ name: 'ProductDetail', params: { id: review.productId } }"
+                class="review-product-link"
+                :aria-label="`查看${review.productName || '该评价商品'}详情`"
+              >@{{ review.productName || `商品${review.productId}` }}</router-link>
+              <span>{{ getReviewCommentBody(review) }}</span>
+            </p>
             <div class="mt-2 text-xs text-gray-500 flex flex-wrap gap-2">
               <span class="px-2 py-0.5 bg-gray-100 rounded-full">评价ID: {{ review.id || review.Id }}</span>
               <span class="px-2 py-0.5 bg-gray-100 rounded-full">产品ID: {{ review.productId || review.ProductId }}</span>
@@ -863,6 +871,7 @@ const fetchReviews = async () => {
         id: review.Id || review.id,
         userId: review.UserId || review.userId,
         productId: review.ProductId || review.productId,
+        productName: review.ProductName || review.productName || extractProductName(review.Comment || review.comment || ''),
         createdAt: review.CreatedAt || review.createdAt,
         updatedAt: review.UpdatedAt || review.updatedAt
       }))
@@ -906,6 +915,20 @@ const visibleReviews = computed(() => {
   return showAllReviews.value ? list : list.slice(0, 3)
 })
 const toggleShowAllReviews = () => { showAllReviews.value = !showAllReviews.value }
+
+const extractProductName = (comment = '') => {
+  const match = String(comment).trim().match(/^@([^\s，。！？]+)/)
+  return match?.[1] || ''
+}
+
+const getReviewCommentBody = (review) => {
+  const comment = String(review?.comment || '').trim()
+  const productName = review?.productName
+  if (productName && comment.startsWith(`@${productName}`)) {
+    return comment.slice(productName.length + 1).trim()
+  }
+  return comment.replace(/^@[^\s，。！？]+\s*/, '')
+}
 
 const toggleReviewDetail = async (review) => {
   const rid = review.id || review.Id
@@ -2289,6 +2312,15 @@ const handleQuickViewImageError = (event) => {
 .hero-note-link span { float: right; font-size: 1rem; }
 @keyframes heroNoteFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(.6deg); } }
 .hero-note { animation: heroNoteFloat 7s ease-in-out infinite; }
+.review-product-link {
+  margin-right: .35rem;
+  color: #d83a78;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(216, 58, 120, .32);
+  text-underline-offset: .2rem;
+}
+.review-product-link:hover { color: #aa285d; text-decoration-color: currentColor; }
 
 @media (max-width: 640px) {
   .hero-wash { background: linear-gradient(90deg, rgba(255, 248, 251, .86), rgba(255, 248, 251, .16)); }
