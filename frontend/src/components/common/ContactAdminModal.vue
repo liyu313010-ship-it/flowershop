@@ -4,7 +4,10 @@
       <div class="modal-content" @click.stop>
         <!-- 弹窗头部 -->
         <div class="modal-header">
-          <h3 class="text-xl font-semibold">联系管理员</h3>
+          <div>
+            <h3 class="text-xl font-semibold">欢雨在线客服</h3>
+            <p class="service-subtitle">选花、配送和订单问题，我们都在这里</p>
+          </div>
           <button 
             class="text-gray-500 hover:text-gray-700" 
             @click="close"
@@ -27,7 +30,6 @@
               v-if="chatStore.currentConversation || adminConversationId !== null" 
               :conversation-id="adminConversationId ?? (chatStore.currentConversation?.id ?? 0)" 
               @close="close"
-              @message-sent="handleMessageSent"
             />
             <div v-else class="flex flex-col items-center justify-center h-full p-6 text-center">
               <svg class="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,11 +83,6 @@ const close = () => {
   emit('close')
 }
 
-const handleMessageSent = () => {
-  // 消息发送成功后的处理
-  console.log('消息发送成功')
-}
-
 const initializeChat = async () => {
   if (!props.isVisible) return
   if (!userStore.isAuthenticated) {
@@ -97,17 +94,17 @@ const initializeChat = async () => {
   try {
     isInitialized.value = false
     if (initTimer) { clearTimeout(initTimer); initTimer = null }
-    initTimer = setTimeout(() => { isInitialized.value = true }, 3000)
-    try {
-      // 重新连接Hub，确保使用最新用户的Token
-      chatStore.disconnectHub()
-      await chatStore.connectHub()
-    } catch {}
+    initTimer = setTimeout(() => {
+      chatStore.error ||= '连接客服超时，请点击重试'
+      isInitialized.value = true
+    }, 10000)
+    await chatStore.connectHub()
     const conversation = await chatStore.fetchAdminConversation()
     adminConversationId.value = conversation.id
+    if (initTimer) { clearTimeout(initTimer); initTimer = null }
     isInitialized.value = true
   } catch (error) {
-    console.error('初始化聊天失败:', error)
+    chatStore.error = error?.response?.data?.message || error.message || '暂时无法连接客服'
     isInitialized.value = true
     adminConversationId.value = null
   }
@@ -194,6 +191,12 @@ const goToAuth = () => { emit('close'); router.push('/auth') }
   align-items: center;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.service-subtitle {
+  margin-top: 2px;
+  color: #9f6a82;
+  font-size: 12px;
 }
 
 .modal-body {
