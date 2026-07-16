@@ -6,6 +6,7 @@ using System.Text;
 using System.IO;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.ResponseCompression;
+using HuanyuFlowerShop.Hubs;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.IO.Compression;
@@ -75,6 +76,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs/chat"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async context =>
             {
                 var id = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -93,6 +101,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSignalR();
 
 // CORS配置 - 从配置文件读取允许的源
 var securitySettings = builder.Configuration.GetSection("SecuritySettings");
@@ -175,6 +184,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
     builder.Services.AddScoped<IOrderStatusHistoryService, OrderStatusHistoryService>();
         builder.Services.AddScoped<IAuditLogService, AuditLogService>();
         builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
+        builder.Services.AddScoped<IChatService, ChatService>();
 
 
 // 注册Category仓储
@@ -271,6 +281,7 @@ app.UseMiddleware<RateLimitingMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false

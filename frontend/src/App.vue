@@ -16,6 +16,7 @@
     
     <!-- 页脚组件 -->
     <Footer v-if="!isStandaloneRoute && !isAdminRoute" />
+    <SupportChatLauncher v-if="!isStandaloneRoute && !isAdminRoute" />
   </div>
 </template>
 
@@ -27,6 +28,7 @@ import { useCartStore } from '@/stores/cart'
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
+import SupportChatLauncher from '@/components/common/SupportChatLauncher.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()

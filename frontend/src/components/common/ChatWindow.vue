@@ -2,7 +2,12 @@
   <div class="chat-window">
     <!-- 聊天头部 -->
     <div class="chat-header">
-      <h3 class="text-lg font-semibold">{{ chatTitle }}</h3>
+      <div>
+        <h3 class="text-lg font-semibold">{{ chatTitle }}</h3>
+        <p class="connection-status" :class="chatStore.isConnected ? 'online' : 'offline'">
+          {{ chatStore.isConnected ? '实时连接中' : '连接中断，消息仍会保存' }}
+        </p>
+      </div>
       <button 
         class="text-gray-500 hover:text-gray-700" 
         @click="onCloseClick"
@@ -22,6 +27,7 @@
           <span class="ml-2 text-sm text-gray-500">加载消息中...</span>
         </div>
       </div>
+      <div v-if="chatStore.error" class="error-message">{{ chatStore.error }}</div>
       <div>
         <div 
           v-for="message in sortedCurrentMessages" 
@@ -49,6 +55,8 @@
         v-model="messageText"
         class="message-input"
         placeholder="输入消息..."
+        maxlength="2000"
+        :disabled="isClosed"
         rows="1"
         @keydown.enter.exact="sendMessage"
         @keydown.enter.shift="handleShiftEnter"
@@ -57,7 +65,7 @@
       <button 
         class="send-button" 
         @click="sendMessage"
-        :disabled="!messageText.trim() || isSending"
+        :disabled="!messageText.trim() || isSending || isClosed"
       >
         <svg v-if="isSending" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -67,6 +75,7 @@
         </svg>
       </button>
     </div>
+    <div v-if="isClosed" class="closed-message">本次客服会话已结束，重新打开客服可发起新会话。</div>
   </div>
 </template>
 
@@ -105,9 +114,10 @@ const chatTitle = computed(() => {
   const c = chatStore.currentConversation
   if (!c) return '聊天'
   const isAdmin = userStore.isAdmin
-  const otherName = isAdmin ? (c.UserName || c.userName) : (c.AdminName || c.adminName)
-  return otherName || (isAdmin ? '用户' : '联系管理员')
+  const otherName = isAdmin ? c.userName : c.adminName
+  return otherName || (isAdmin ? '用户' : '欢雨在线客服')
 })
+const isClosed = computed(() => chatStore.currentConversation?.status === 'closed')
 
 // Methods
 const formatTime = (dateString) => {
@@ -120,29 +130,8 @@ const sendMessage = async () => {
 
   try {
     isSending.value = true
-    let c = chatStore.currentConversation || {}
-    if ((!c.UserId && !c.AdminId) && props.conversationId) {
-      c = (chatStore.conversations || []).find(cv => cv.id === props.conversationId) || c
-      if (!c.UserId && !c.AdminId) {
-        try {
-          const fresh = await chatService.getConversation(props.conversationId)
-          c = fresh || c
-          if (fresh) chatStore.setCurrentConversation(fresh)
-        } catch {}
-      }
-    }
-    const isAdmin = userStore.isAdmin
-    // 优先使用后端返回的 AdminId/UserId，如果是本地占位符则使用 adminId/userId
-    // 对于普通用户，接收者是管理员 (AdminId)
-    // 对于管理员，接收者是用户 (UserId)
-    const receiverId = isAdmin 
-      ? ((c.UserId ?? c.userId) || 0) 
-      : ((c.AdminId ?? c.adminId) || 1) // 默认为1 (管理员)
-      
-    if (!receiverId) throw new Error('缺少接收者ID')
-    
-    console.log('Sending message to:', receiverId, 'Conversation:', c.id)
-    await chatStore.sendMessage(messageText.value, receiverId)
+    chatStore.error = null
+    await chatStore.sendMessage(messageText.value)
     messageText.value = ''
     
     // 触发消息发送事件
@@ -152,21 +141,20 @@ const sendMessage = async () => {
     await nextTick()
     scrollToBottom()
   } catch (error) {
-    console.error('发送消息失败:', error)
+    chatStore.error = error?.response?.data?.message || error.message || '消息发送失败，请重试'
   } finally {
     isSending.value = false
   }
 }
 
 const handleShiftEnter = (event) => {
-  // 允许Shift+Enter换行
-  event.target.value += '\n'
-  event.preventDefault()
-  autoResizeTextarea()
+  // Shift+Enter 使用 textarea 默认换行行为。
+  autoResizeTextarea(event)
 }
 
 const autoResizeTextarea = (e) => {
-  const textarea = e.target
+  const textarea = e?.target
+  if (!textarea) return
   textarea.style.height = 'auto'
   textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px' // 限制最大高度
 }
@@ -179,22 +167,14 @@ const scrollToBottom = () => {
 
 const onCloseClick = () => { emit('close') }
 
-const fetchMessages = async () => {
-  try {
-    await chatStore.fetchMessages(props.conversationId)
+// Watchers
+watch(() => props.conversationId, async (newId) => {
+  if (newId) {
+    let conversation = (chatStore.conversations || []).find(c => c.id === newId)
+    if (!conversation) conversation = await chatService.getConversation(newId)
+    await chatStore.setCurrentConversation(conversation)
     await nextTick()
     scrollToBottom()
-  } catch (error) {
-    console.error('获取消息失败:', error)
-  }
-}
-
-// Watchers
-watch(() => props.conversationId, (newId) => {
-  if (newId) {
-    const conv = (chatStore.conversations || []).find(c => c.id === newId) || { id: newId }
-    chatStore.setCurrentConversation(conv)
-    fetchMessages()
   }
 }, { immediate: true })
 
@@ -226,8 +206,12 @@ onMounted(async () => {
   align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  background: linear-gradient(135deg, #fff7fb, #fff);
 }
+
+.connection-status { margin-top: 2px; font-size: 11px; }
+.connection-status.online { color: #16a34a; }
+.connection-status.offline { color: #b45309; }
 
 .messages-container {
   flex: 1;
@@ -257,7 +241,7 @@ onMounted(async () => {
 }
 
 .message-item.sent .message-content {
-  background-color: #3b82f6;
+  background: linear-gradient(135deg, #ec4899, #db2777);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -311,8 +295,8 @@ onMounted(async () => {
 }
 
 .message-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #ec4899;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
 }
 
 .send-button {
@@ -323,7 +307,7 @@ onMounted(async () => {
   height: 36px;
   border: none;
   border-radius: 50%;
-  background-color: #3b82f6;
+  background-color: #ec4899;
   color: #fff;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -331,13 +315,16 @@ onMounted(async () => {
 }
 
 .send-button:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #db2777;
 }
 
 .send-button:disabled {
-  background-color: #93c5fd;
+  background-color: #f9a8d4;
   cursor: not-allowed;
 }
+
+.error-message { margin: 8px 16px; padding: 8px 12px; border-radius: 10px; background: #fff1f2; color: #be123c; font-size: 13px; }
+.closed-message { padding: 8px 16px 12px; background: #fff7ed; color: #9a3412; text-align: center; font-size: 12px; }
 
 /* 滚动条样式 */
 .messages-container::-webkit-scrollbar {

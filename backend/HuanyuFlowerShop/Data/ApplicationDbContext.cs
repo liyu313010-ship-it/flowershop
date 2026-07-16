@@ -30,6 +30,8 @@ namespace HuanyuFlowerShop.Data
         public DbSet<ProductRecommendation> ProductRecommendations { get; set; } = null!;
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
         public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
+        public DbSet<SupportConversation> SupportConversations { get; set; } = null!;
+        public DbSet<SupportMessage> SupportMessages { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -75,6 +77,44 @@ namespace HuanyuFlowerShop.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<SupportConversation>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
+                entity.Property(e => e.LastMessage).HasMaxLength(500);
+                entity.Property(e => e.UserUnreadCount).HasDefaultValue(0);
+                entity.Property(e => e.AdminUnreadCount).HasDefaultValue(0);
+                entity.HasIndex(e => new { e.UserId, e.Status });
+                entity.HasIndex(e => new { e.AdminId, e.Status });
+                entity.HasIndex(e => e.LastMessageAt);
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Admin)
+                    .WithMany()
+                    .HasForeignKey(e => e.AdminId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<SupportMessage>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Content).HasMaxLength(2000).IsRequired();
+                entity.Property(e => e.MessageType).HasMaxLength(20).IsRequired();
+                entity.Property(e => e.ClientMessageId).HasMaxLength(64);
+                entity.HasIndex(e => new { e.ConversationId, e.CreatedAt });
+                entity.HasIndex(e => new { e.SenderId, e.ClientMessageId }).IsUnique();
+                entity.HasOne(e => e.Conversation)
+                    .WithMany(e => e.Messages)
+                    .HasForeignKey(e => e.ConversationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Sender)
+                    .WithMany()
+                    .HasForeignKey(e => e.SenderId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // 配置Category实体

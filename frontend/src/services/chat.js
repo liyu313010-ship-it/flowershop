@@ -52,6 +52,14 @@ class ChatService {
   async markConversationAsRead(conversationId) {
     return api.put(`/chat/conversations/${conversationId}/read`, null, { silent: true })
   }
+
+  async assignConversation(conversationId) {
+    return api.put(`/chat/conversations/${conversationId}/assign`, null)
+  }
+
+  async closeConversation(conversationId) {
+    return api.put(`/chat/conversations/${conversationId}/close`, null)
+  }
 }
 
 export default new ChatService()
