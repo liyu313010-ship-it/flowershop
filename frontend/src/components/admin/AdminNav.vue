@@ -152,11 +152,6 @@ const menuItems = [
     icon: 'ReviewIcon'
   },
   {
-    name: '客服消息',
-    path: '/admin/messages',
-    icon: 'ReviewIcon'
-  },
-  {
     name: '优惠券',
     path: '/admin/coupons',
     icon: 'StatsIcon'

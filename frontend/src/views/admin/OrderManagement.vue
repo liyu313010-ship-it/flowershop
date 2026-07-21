@@ -293,7 +293,7 @@
                     <td class="px-4 py-2">
                       <div class="flex items-center">
                         <img 
-                          :src="item.productImage || item.image || '/images/product-placeholder.svg'" 
+                          :src="getProductImageUrl(item.productImage || item.image || '')"
                           :alt="item.productName || item.name" 
                           class="w-12 h-12 object-cover rounded"
                           @error="handleImageError"
@@ -406,7 +406,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { getAvatarUrl } from '@/utils/avatar.js'
+import { getAvatarUrl, getProductImageUrl } from '@/utils/avatar.js'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import adminService from '@/services/adminService.js'
 import { ElMessage, ElMessageBox } from 'element-plus'

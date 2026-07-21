@@ -81,10 +81,23 @@ export const getDefaultAvatarUrl = () => {
  * @param {string} imagePath - 产品图片路径
  * @returns {string} 完整的产品图片URL
  */
+export const appendAssetVersion = (assetPath) => {
+  if (!assetPath || typeof assetPath !== 'string') return assetPath
+  if (/^(?:https?:|blob:|data:)/i.test(assetPath)) return assetPath
+  if (/[?&]v=/.test(assetPath)) return assetPath
+
+  const version = globalThis.__APP_BUILD_ID__ || 'local'
+  const hashIndex = assetPath.indexOf('#')
+  const path = hashIndex >= 0 ? assetPath.slice(0, hashIndex) : assetPath
+  const hash = hashIndex >= 0 ? assetPath.slice(hashIndex) : ''
+  const separator = path.includes('?') ? '&' : '?'
+  return `${path}${separator}v=${encodeURIComponent(version)}${hash}`
+}
+
 export const getProductImageUrl = (imagePath) => {
   // 如果没有图片路径或无效，返回默认产品图片
   if (!imagePath || typeof imagePath !== 'string' || imagePath.trim() === '') {
-    return '/images/product-placeholder.svg'
+    return appendAssetVersion('/images/product-placeholder.svg')
   }
 
   // 完整 URL（例如对象存储/CDN）直接使用
@@ -105,7 +118,7 @@ export const getProductImageUrl = (imagePath) => {
     normalizedPath = '/' + normalizedPath
   }
 
-  return normalizedPath
+  return appendAssetVersion(normalizedPath)
 }
 
 /**
