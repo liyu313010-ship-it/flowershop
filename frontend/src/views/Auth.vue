@@ -10,7 +10,7 @@
       <!-- Logo和标题 -->
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-20 h-20 bg-transparent rounded-full mb-4 shadow-lg">
-          <img src="/images/brand-mark.svg" alt="欢雨flower 标志" class="w-16 h-16 object-contain" />
+          <img src="/images/huanyu-flower-mark.svg" alt="欢雨flower 标志" class="w-16 h-16 object-contain" />
         </div>
         <h1 class="auth-title text-3xl font-bold mb-2">欢雨flower</h1>
         <p class="text-gray-600">您的专属花店</p>
@@ -426,7 +426,7 @@ import {
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
-const loginLogoUrl = ref('/images/brand-mark.svg')
+const loginLogoUrl = ref('/images/huanyu-flower-mark.svg')
 
 // 响应式数据
 const activeTab = ref('login') // login 或 register

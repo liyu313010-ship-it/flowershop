@@ -1,0 +1,35 @@
+<svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">欢雨鲜花品牌标志</title>
+  <desc id="desc">粉白色花瓣、花枝与晨露组成的欢雨鲜花标志</desc>
+  <defs>
+    <linearGradient id="shell" x1="10" y1="7" x2="63" y2="66" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFF1F7"/>
+    </linearGradient>
+    <linearGradient id="petal" x1="27" y1="17" x2="48" y2="39" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDA4C5"/>
+      <stop offset="1" stop-color="#D94A86"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="22" y1="43" x2="53" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C65382"/>
+      <stop offset="1" stop-color="#7D2B51"/>
+    </linearGradient>
+    <filter id="shadow" x="-12" y="-10" width="96" height="96" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#A93769" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="64" height="64" rx="21" fill="url(#shell)" stroke="#F6C7D9" stroke-width="1.5" filter="url(#shadow)"/>
+  <circle cx="36" cy="34" r="22" fill="#FFF7FA"/>
+  <path d="M35.5 56.5C36.7 48.8 36.3 42.5 34.6 36.6" stroke="#873256" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M35.8 48.6C42.2 45.1 48.2 45 53.5 48.2" stroke="#A3436C" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M35.1 44C30.2 41.4 25.5 41.8 21.7 45.1" stroke="#A3436C" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M40.1 50.1C44.5 47.1 49 47.3 52.7 50.5C48.3 53.4 44.1 53.3 40.1 50.1Z" fill="url(#leaf)"/>
+  <path d="M33.2 45.3C29.4 42.9 25.7 43.3 22.5 46.3C26.2 48.5 29.8 48.2 33.2 45.3Z" fill="#D37A9F"/>
+  <path d="M35.8 35.9C28.9 34.5 24.7 30.1 24.4 23.8C30.5 23.2 35.1 27.3 35.8 35.9Z" fill="#F7A9C4"/>
+  <path d="M35.7 35.7C30.8 30.3 31.2 23.6 36.7 18.1C42 22.2 41.6 29.2 35.7 35.7Z" fill="url(#petal)"/>
+  <path d="M36.1 35.8C37.6 27.8 42.4 23.7 49.1 24.1C49.2 30.7 44.7 34.8 36.1 35.8Z" fill="#F47DA8"/>
+  <path d="M35.9 35.6C31.7 31 32.2 26.5 36.8 22.4C40.7 26 40.4 30.5 35.9 35.6Z" fill="#FFF5F9" fill-opacity="0.92"/>
+  <circle cx="36" cy="35" r="3.2" fill="#A93769"/>
+  <path d="M53.8 17.2L54.9 19.8L57.6 20.9L54.9 22L53.8 24.7L52.7 22L50 20.9L52.7 19.8L53.8 17.2Z" fill="#F28CB3"/>
+  <circle cx="19" cy="26" r="2" fill="#FBCFE0"/>
+</svg>

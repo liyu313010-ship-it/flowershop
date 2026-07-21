@@ -1,0 +1,26 @@
+<svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">欢雨鲜花管理员标志</title>
+  <desc id="desc">粉白花朵与星形徽章组成的管理员标志</desc>
+  <defs>
+    <linearGradient id="background" x1="9" y1="8" x2="63" y2="65" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F9A8C8"/>
+      <stop offset="1" stop-color="#C74378"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="45" y1="44" x2="62" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFE5F0"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="64" height="64" rx="21" fill="url(#background)"/>
+  <rect x="7" y="7" width="58" height="58" rx="18" stroke="#FFFFFF" stroke-opacity="0.58" stroke-width="1.5"/>
+  <circle cx="34" cy="33" r="19" fill="#FFF8FB"/>
+  <path d="M33.5 50C34.2 43.9 33.8 38.3 32.1 33.7" stroke="#9D3564" stroke-width="2" stroke-linecap="round"/>
+  <path d="M33.8 43.8C38.5 41.1 42.7 41.3 46.2 44" stroke="#B64B78" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M33.1 39.8C29.3 37.7 25.9 38 23.2 40.7" stroke="#B64B78" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M33.2 33.6C27.7 32.4 24.3 28.7 24.3 23.8C29.2 23.3 32.8 26.7 33.2 33.6Z" fill="#F8A8C4"/>
+  <path d="M33.2 33.6C29.6 29.1 30.1 24.1 34.6 20.2C38.8 23.7 38.3 28.9 33.2 33.6Z" fill="#DE5B8F"/>
+  <path d="M33.4 33.6C34.6 27.3 38.5 24.1 43.7 24.6C43.7 29.8 40.2 33 33.4 33.6Z" fill="#F17BA5"/>
+  <circle cx="33.3" cy="33.2" r="2.8" fill="#9D3564"/>
+  <circle cx="53" cy="53" r="11" fill="url(#badge)" stroke="#F7B5CE" stroke-width="1.2"/>
+  <path d="M53 46.8L54.7 50.6L58.8 51.1L55.8 53.9L56.6 58L53 55.9L49.4 58L50.2 53.9L47.2 51.1L51.3 50.6L53 46.8Z" fill="#C74378"/>
+</svg>

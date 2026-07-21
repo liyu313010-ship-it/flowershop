@@ -7,12 +7,12 @@
           <div class="flex items-center space-x-2">
             <div class="w-8 h-8 bg-transparent rounded-lg flex items-center justify-center overflow-hidden">
               <img 
-                src="/images/后台管理员.svg" 
-                alt="Logo" 
+                src="/images/admin-flower-mark.svg"
+                alt="管理员后台"
                 class="w-full h-full object-cover"
               />
             </div>
-            <h1 class="text-xl font-bold text-gray-800 truncate max-w-[200px]">欢雨flower管理后台</h1>
+            <h1 class="text-xl font-bold text-gray-800 truncate max-w-[200px]">管理员后台</h1>
           </div>
         </div>
 
