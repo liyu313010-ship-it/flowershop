@@ -122,47 +122,59 @@
               <router-link 
                 v-if="userStore.isAdmin"
                 to="/admin" 
-                class="block min-h-11 px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 focus-visible:outline-none"
+                class="account-menu-item"
                 role="menuitem"
               >
-                管理员后台
+                <svg class="account-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
+                </svg>
+                <span>管理员后台</span>
               </router-link>
               <router-link
                 v-if="userStore.isAdmin"
                 to="/admin/messages"
-                class="admin-message-menu-item"
+                class="account-menu-item account-menu-item-between"
                 role="menuitem"
               >
-                <span class="flex items-center gap-2">
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <span class="account-menu-label">
+                  <svg class="account-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 10h.01M12 10h.01M16 10h.01M21 11.5a8.38 8.38 0 01-9 8.5 9.6 9.6 0 01-4.2-.95L3 20l1.4-3.7A8.1 8.1 0 013 11.5C3 6.8 7 3 12 3s9 3.8 9 8.5z" />
                   </svg>
-                  客服消息
+                  <span>客服消息</span>
                 </span>
                 <span v-if="adminUnreadCount > 0" class="admin-menu-badge">{{ adminUnreadLabel }}</span>
               </router-link>
               <router-link 
                 to="/profile" 
-                class="block min-h-11 px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 focus-visible:outline-none"
+                class="account-menu-item"
                 role="menuitem"
               >
-                个人中心
+                <svg class="account-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15.5 7.5a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zM5 20a7 7 0 0114 0" />
+                </svg>
+                <span>个人中心</span>
               </router-link>
               <router-link 
                 v-if="!userStore.isAdmin"
                 to="/orders" 
-                class="block min-h-11 px-4 py-2 text-gray-700 hover:bg-huanyu-pink-50 hover:text-huanyu-pink-600 focus-visible:outline-none"
+                class="account-menu-item"
                 role="menuitem"
               >
-                我的订单
+                <svg class="account-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 3h10l2 4v13H5V7l2-4zM5 8h14M9 12h6M9 16h4" />
+                </svg>
+                <span>我的订单</span>
               </router-link>
               <hr class="my-1">
               <button 
                 @click="handleLogout"
-                class="w-full min-h-11 text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none"
+                class="account-menu-item account-menu-item-danger"
                 role="menuitem"
               >
-                退出登录
+                <svg class="account-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
+                </svg>
+                <span>退出登录</span>
               </button>
             </div>
           </div>
@@ -481,22 +493,50 @@ watch(
   border: 2px solid white;
 }
 
-.admin-message-menu-item {
+.account-menu-item {
   display: flex;
+  width: 100%;
   min-height: 44px;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: .5rem 1rem;
   color: #374151;
+  font-size: 14px;
+  text-align: left;
   transition: background-color .2s, color .2s;
 }
 
-.admin-message-menu-item:hover,
-.admin-message-menu-item:focus-visible {
+.account-menu-item:hover,
+.account-menu-item:focus-visible {
   color: #db2777;
   background: #fdf2f8;
   outline: none;
+}
+
+.account-menu-item-between {
+  justify-content: space-between;
+}
+
+.account-menu-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-menu-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.account-menu-item-danger {
+  color: #dc2626;
+}
+
+.account-menu-item-danger:hover,
+.account-menu-item-danger:focus-visible {
+  color: #b91c1c;
+  background: #fff1f2;
 }
 
 .admin-message-mobile {
