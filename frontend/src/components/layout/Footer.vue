@@ -11,7 +11,7 @@
           <div class="flex items-center space-x-2 mb-4">
             <!-- 品牌Logo -->
             <img 
-              src="/images/brand-mark.svg" 
+              src="/images/huanyu-flower-mark.svg"
               alt="欢雨鲜花Logo" 
               class="w-10 h-10 rounded-full object-cover"
             >

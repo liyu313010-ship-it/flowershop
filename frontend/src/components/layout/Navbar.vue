@@ -8,9 +8,9 @@
         <div class="flex items-center space-x-2">
           <!-- Logo图片 - 可替换为自己的logo -->
           <img 
-            src="/images/brand-mark.svg" 
+            src="/images/huanyu-flower-mark.svg"
             alt="欢雨鲜花Logo" 
-            class="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover"
+            class="w-10 h-10 sm:w-11 sm:h-11 object-contain drop-shadow-sm"
           >
           <router-link 
             to="/" 
