@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:regions": "node scripts/generate-region-data.mjs",
+    "prebuild": "npm run generate:regions",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
@@ -21,6 +23,7 @@
     "vue-router": "^4.2.0"
   },
   "devDependencies": {
+    "@vant/area-data": "^2.1.0",
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "@typescript-eslint/eslint-plugin": "^8.48.1",

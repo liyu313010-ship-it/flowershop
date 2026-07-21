@@ -672,11 +672,14 @@ const loadAddresses = async () => {
 const handleProvinceChange = (code) => {
   cities.value = []
   districts.value = []
+  newAddress.value.city = ''
+  newAddress.value.district = ''
   if (code) cities.value = getCities(code)
 }
 
 const handleCityChange = (code) => {
   districts.value = []
+  newAddress.value.district = ''
   if (newAddress.value.province && code) districts.value = getDistricts(newAddress.value.province, code)
 }
 
