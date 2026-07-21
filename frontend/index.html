@@ -6,10 +6,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>欢雨鲜花 - 您的专属花店</title>
   <meta name="description" content="欢雨鲜花售卖网站，提供各种优质鲜花服务">
-  <!-- 字体引入 - 支持中文显示 -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    // 入口模块或样式若遇到浏览器磁盘缓存损坏，绕过旧缓存自动重试一次。
+    (() => {
+      const retryParameter = '__cache_retry'
+
+      window.addEventListener('error', (event) => {
+        const asset = event.target
+        if (!(asset instanceof HTMLScriptElement || asset instanceof HTMLLinkElement)) return
+        if (asset.dataset.cacheRetried === 'true') return
+
+        const source = asset instanceof HTMLScriptElement ? asset.src : asset.href
+        if (!source) return
+
+        let url
+        try {
+          url = new URL(source, window.location.href)
+        } catch {
+          return
+        }
+
+        if (url.origin !== window.location.origin || !/^https?:$/.test(url.protocol)) return
+
+        event.preventDefault()
+        event.stopImmediatePropagation()
+
+        url.searchParams.set(retryParameter, Date.now().toString(36))
+        const replacement = asset.cloneNode()
+        replacement.dataset.cacheRetried = 'true'
+
+        if (replacement instanceof HTMLScriptElement) {
+          replacement.src = url.href
+        } else {
+          replacement.href = url.href
+        }
+
+        asset.replaceWith(replacement)
+      }, true)
+    })()
+  </script>
 </head>
 <body class="font-sans antialiased">
   <div id="app"></div>

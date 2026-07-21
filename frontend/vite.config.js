@@ -12,7 +12,8 @@ export default defineConfig({
         manualChunks: {
           'vue-core': ['vue', 'vue-router', 'pinia'],
           'element-plus': ['element-plus'],
-          'charts': ['chart.js']
+          'charts': ['chart.js'],
+          'signalr': ['@microsoft/signalr']
         }
       }
     }
