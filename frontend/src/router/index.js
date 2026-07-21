@@ -52,6 +52,7 @@ const Shipping = () => import('@/views/Shipping.vue') // 配送说明页面
 const Returns = () => import('@/views/Returns.vue') // 退换货政策页面
 const FAQ = () => import('@/views/FAQ.vue') // 常见问题页面
 const Privacy = () => import('@/views/Privacy.vue') // 隐私政策页面
+const Terms = () => import('@/views/Terms.vue') // 服务条款页面
 
 // 路由配置
 const routes = [
@@ -102,6 +103,15 @@ const routes = [
     name: 'Privacy',
     component: Privacy,
     meta: { title: '隐私政策 - 欢雨鲜花' }
+  },
+  {
+    path: '/terms',
+    name: 'Terms',
+    component: Terms,
+    meta: {
+      title: '服务条款 - 欢雨鲜花',
+      description: '了解欢雨鲜花的账户、商品订单、支付、配送、售后退款、隐私保护与用户行为规则。'
+    }
   },
   {
     path: '/auth',
@@ -315,6 +325,14 @@ router.beforeEach(async (to, from, next) => {
   
   // 设置页面标题
   document.title = to.meta.title || '欢雨鲜花'
+  const description = to.meta.description || '欢雨鲜花，为您提供鲜花选购、花礼定制、配送与售后服务。'
+  let descriptionMeta = document.querySelector('meta[name="description"]')
+  if (!descriptionMeta) {
+    descriptionMeta = document.createElement('meta')
+    descriptionMeta.setAttribute('name', 'description')
+    document.head.appendChild(descriptionMeta)
+  }
+  descriptionMeta.setAttribute('content', description)
   
   // 检查是否需要登录权限
   if (to.meta.requiresAuth && !userStore.isLoggedIn) {
