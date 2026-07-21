@@ -94,6 +94,7 @@
             <li><a href="/shipping" class="text-pink-600 hover:text-pink-800 transition-colors">配送说明</a></li>
             <li><a href="/returns" class="text-pink-600 hover:text-pink-800 transition-colors">退换货政策</a></li>
             <li><a href="/faq" class="text-pink-600 hover:text-pink-800 transition-colors">常见问题</a></li>
+            <li><a href="/terms" class="text-pink-600 hover:text-pink-800 transition-colors">服务条款</a></li>
             <li><a href="/privacy" class="text-pink-600 hover:text-pink-800 transition-colors">隐私政策</a></li>
           </ul>
         </div>
@@ -135,7 +136,7 @@
       <!-- 版权信息 -->
       <div class="border-t border-pink-300 mt-8 pt-8 text-center">
         <p class="text-pink-600">
-          © 2025 欢雨flower. All rights reserved. | 
+          © {{ currentYear }} 欢雨flower. All rights reserved. |
           <a href="/terms" class="hover:text-pink-800 transition-colors">服务条款</a> | 
           <a href="/privacy" class="hover:text-pink-800 transition-colors">隐私政策</a>
         </p>
@@ -148,7 +149,7 @@
 </template>
 
 <script setup>
-// 页脚组件 - 主要展示品牌信息和联系方式
+const currentYear = new Date().getFullYear()
 </script>
 
 <style scoped>
