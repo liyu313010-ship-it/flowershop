@@ -792,7 +792,7 @@ import { useUserStore } from '@/stores/user'
 import { productService } from '@/services/product'
 import { recommendationService } from '@/services/recommendation'
 import { favoriteService } from '@/services/favorite'
-import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
+import { getAvatarUrl, getProductImageUrl, handleAvatarError } from '@/utils/avatar.js'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import PageTransition from '@/components/PageTransition.vue'
 import ParticleField from '@/components/ParticleField.vue'
@@ -1051,7 +1051,7 @@ const loadFeaturedProducts = async () => {
         name: product.Name || product.name || '未命名商品',
         description: getProductDescription({ name: product.Name || product.name, description: product.Description || product.description }),
         price: product.Price || product.price || 0,
-        image: imageUrl,
+        image: getProductImageUrl(imageUrl),
         isHot: (product.SalesCount || product.salesCount || 0) > 10,
         isNew: product.CreatedAt ? new Date(product.CreatedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) : false,
         salesCount: product.SalesCount || product.salesCount || 0,
@@ -1092,7 +1092,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0
         }
       } catch { return null }
@@ -1110,7 +1110,7 @@ const loadRecommendedProducts = async () => {
         name: p.Name || p.name || '未命名商品',
         description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
         price: p.Price || p.price || 0,
-        image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+        image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
         salesCount: p.SalesCount || p.salesCount || 0
       }))
     } else {
@@ -1122,7 +1122,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0
         }))
       } else {
@@ -1133,7 +1133,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0
         }))
       }
@@ -1149,7 +1149,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0
         }))
         return
@@ -1162,7 +1162,7 @@ const loadRecommendedProducts = async () => {
           name: p.Name || p.name || '未命名商品',
           description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
           price: p.Price || p.price || 0,
-          image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+          image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
           salesCount: p.SalesCount || p.salesCount || 0
         }))
         return
@@ -1174,7 +1174,7 @@ const loadRecommendedProducts = async () => {
         name: p.Name || p.name || '未命名商品',
         description: getProductDescription({ name: p.Name || p.name, description: p.Description || p.description }),
         price: p.Price || p.price || 0,
-        image: (p.ImageUrl || p.imageUrl || p.image || '/images/default-product.svg'),
+        image: getProductImageUrl(p.ImageUrl || p.imageUrl || p.image || ''),
         salesCount: p.SalesCount || p.salesCount || 0
       }))
     } catch {

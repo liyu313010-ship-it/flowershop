@@ -96,14 +96,21 @@
           
           <!-- 用户头像和下拉菜单 -->
           <div v-if="userStore.isLoggedIn" class="relative group">
-            <button class="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huanyu-pink-400" :aria-label="`${userStore.userName}账户菜单`" aria-haspopup="menu">
+            <button class="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-huanyu-pink-400" :aria-label="accountMenuLabel" aria-haspopup="menu">
               <!-- 用户头像 - 可替换为用户上传的头像 -->
-              <div 
-                :style="{ backgroundImage: `url(${userAvatar})` }" 
-                :alt="userStore.userName"
-                class="w-8 h-8 rounded-full bg-center bg-cover border-2 border-huanyu-pink-200"
-                @error="handleAvatarError($event)"
-              ></div>
+              <div class="relative shrink-0">
+                <div
+                  :style="{ backgroundImage: `url(${userAvatar})` }"
+                  :alt="userStore.userName"
+                  class="w-8 h-8 rounded-full bg-center bg-cover border-2 border-huanyu-pink-200"
+                  @error="handleAvatarError($event)"
+                ></div>
+                <span
+                  v-if="userStore.isAdmin && adminUnreadCount > 0"
+                  class="admin-avatar-badge"
+                  :aria-label="`${adminUnreadCount}条未读客服消息`"
+                >{{ adminUnreadLabel }}</span>
+              </div>
               <span class="hidden lg:inline text-sm font-medium text-gray-700 max-w-24 truncate">{{ userStore.userName }}</span>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -119,6 +126,20 @@
                 role="menuitem"
               >
                 管理员后台
+              </router-link>
+              <router-link
+                v-if="userStore.isAdmin"
+                to="/admin/messages"
+                class="admin-message-menu-item"
+                role="menuitem"
+              >
+                <span class="flex items-center gap-2">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 10h.01M12 10h.01M16 10h.01M21 11.5a8.38 8.38 0 01-9 8.5 9.6 9.6 0 01-4.2-.95L3 20l1.4-3.7A8.1 8.1 0 013 11.5C3 6.8 7 3 12 3s9 3.8 9 8.5z" />
+                  </svg>
+                  客服消息
+                </span>
+                <span v-if="adminUnreadCount > 0" class="admin-menu-badge">{{ adminUnreadLabel }}</span>
               </router-link>
               <router-link 
                 to="/profile" 
@@ -217,6 +238,16 @@
             我的订单
           </router-link>
           <router-link
+            v-if="userStore.isAdmin"
+            to="/admin/messages"
+            class="mobile-nav-link admin-message-mobile"
+            role="menuitem"
+            @click="showMobileMenu = false"
+          >
+            <span>客服消息</span>
+            <span v-if="adminUnreadCount > 0" class="admin-menu-badge">{{ adminUnreadLabel }}</span>
+          </router-link>
+          <router-link
             v-if="userStore.isLoggedIn"
             to="/profile"
             class="mobile-nav-link"
@@ -265,11 +296,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
+import { useChatStore } from '@/stores/chat'
 import { getAvatarUrl, handleAvatarError } from '@/utils/avatar.js'
+import { formatUnreadBadge } from '@/utils/chatData'
 import { categoryService } from '@/services/category'
 
 // 响应式数据
@@ -280,12 +313,38 @@ const navbarCategories = ref([])
 const router = useRouter()
 const userStore = useUserStore()
 const cartStore = useCartStore()
+const chatStore = useChatStore()
 
 // 计算属性 - 用户头像
 const userAvatar = computed(() => {
   // 使用头像处理工具函数处理头像URL
   return getAvatarUrl(userStore.user?.avatar)
 })
+const adminUnreadCount = computed(() => Math.max(0, Number(chatStore.unreadCount || 0)))
+const adminUnreadLabel = computed(() => formatUnreadBadge(adminUnreadCount.value))
+const accountMenuLabel = computed(() => {
+  const unread = userStore.isAdmin && adminUnreadCount.value > 0
+    ? `，${adminUnreadCount.value}条未读客服消息`
+    : ''
+  return `${userStore.userName}账户菜单${unread}`
+})
+
+let adminChatInitialization = null
+const initializeAdminMessages = async () => {
+  if (!userStore.isAuthenticated || !userStore.isAdmin) return
+  if (adminChatInitialization) return adminChatInitialization
+
+  adminChatInitialization = (async () => {
+    await chatStore.connectHub().catch(() => {})
+    await chatStore.fetchUnreadCount()
+  })()
+
+  try {
+    await adminChatInitialization
+  } finally {
+    adminChatInitialization = null
+  }
+}
 
 // 方法
 const toggleMobileMenu = () => {
@@ -293,6 +352,7 @@ const toggleMobileMenu = () => {
 }
 
 const handleLogout = () => {
+  chatStore.reset()
   userStore.logout()
   router.push('/')
   showMobileMenu.value = false
@@ -322,6 +382,12 @@ onMounted(async () => {
     navbarCategories.value = []
   }
 })
+
+watch(
+  () => [userStore.user?.id, userStore.isAuthenticated, userStore.isAdmin],
+  initializeAdminMessages,
+  { immediate: true }
+)
 
 
 
@@ -389,6 +455,54 @@ onMounted(async () => {
   justify-content: center;
   padding: 0 4px;
   transform: translate(25%, -25%);
+}
+
+.admin-avatar-badge,
+.admin-menu-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: white;
+  background: #ef4444;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 3px 9px rgba(239, 68, 68, .3);
+}
+
+.admin-avatar-badge {
+  position: absolute;
+  top: -7px;
+  right: -8px;
+  border: 2px solid white;
+}
+
+.admin-message-menu-item {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: .5rem 1rem;
+  color: #374151;
+  transition: background-color .2s, color .2s;
+}
+
+.admin-message-menu-item:hover,
+.admin-message-menu-item:focus-visible {
+  color: #db2777;
+  background: #fdf2f8;
+  outline: none;
+}
+
+.admin-message-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 @media (max-width: 640px) {

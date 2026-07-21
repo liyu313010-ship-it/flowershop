@@ -24,13 +24,22 @@ describe('product API data normalization', () => {
 describe('product image URL normalization', () => {
   it('removes an invalid API prefix from catalog images', () => {
     expect(getProductImageUrl('/api/images/catalog/four-season-garden.webp'))
-      .toBe('/images/catalog/four-season-garden.webp')
+      .toBe('/images/catalog/four-season-garden.webp?v=local')
   })
 
   it('keeps static and uploaded image paths on the web origin', () => {
     expect(getProductImageUrl('/images/catalog/daisy-sunshine.webp'))
-      .toBe('/images/catalog/daisy-sunshine.webp')
+      .toBe('/images/catalog/daisy-sunshine.webp?v=local')
     expect(getProductImageUrl('/uploads/products/example.webp'))
-      .toBe('/uploads/products/example.webp')
+      .toBe('/uploads/products/example.webp?v=local')
+  })
+
+  it('preserves existing query parameters and does not version CDN images twice', () => {
+    expect(getProductImageUrl('/uploads/products/example.webp?size=large'))
+      .toBe('/uploads/products/example.webp?size=large&v=local')
+    expect(getProductImageUrl('/uploads/products/example.webp?v=release-1'))
+      .toBe('/uploads/products/example.webp?v=release-1')
+    expect(getProductImageUrl('https://cdn.example.com/example.webp'))
+      .toBe('https://cdn.example.com/example.webp')
   })
 })

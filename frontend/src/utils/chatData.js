@@ -1,6 +1,11 @@
 const valueOf = (object, camel, pascal, fallback = undefined) =>
   object?.[camel] ?? object?.[pascal] ?? fallback
 
+export const formatUnreadBadge = (count, limit = 99) => {
+  const normalized = Math.max(0, Number(count) || 0)
+  return normalized > limit ? `${limit}+` : String(normalized)
+}
+
 export const normalizeConversation = (conversation = {}) => ({
   ...conversation,
   id: Number(valueOf(conversation, 'id', 'Id', 0)),

@@ -108,7 +108,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import ChatWindow from '@/components/common/ChatWindow.vue'
 import { notifySuccess, notifyError } from '@/utils/notify'
@@ -192,13 +192,10 @@ const onAvatarError = (e) => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  // 连接聊天Hub
-  await chatStore.connectHub()
-  // 初始化聊天数据
+  // 顶部管理员菜单负责维持全局实时连接，这里只加载会话数据。
   await chatStore.initChat()
 })
 
-onUnmounted(() => chatStore.disconnectHub())
 </script>
 
 <style scoped>

@@ -1,4 +1,4 @@
-import { normalizeConversation, normalizeMessage } from '@/utils/chatData'
+import { formatUnreadBadge, normalizeConversation, normalizeMessage } from '@/utils/chatData'
 
 describe('客服数据兼容处理', () => {
   it('兼容后端 PascalCase 会话响应', () => {
@@ -56,5 +56,11 @@ describe('客服数据兼容处理', () => {
       attachmentSize: 2048,
       attachmentAvailable: true
     })
+  })
+
+  it('格式化管理员未读消息红点数字', () => {
+    expect(formatUnreadBadge(8)).toBe('8')
+    expect(formatUnreadBadge(108)).toBe('99+')
+    expect(formatUnreadBadge(-1)).toBe('0')
   })
 })
