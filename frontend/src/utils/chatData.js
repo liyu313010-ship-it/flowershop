@@ -26,5 +26,10 @@ export const normalizeMessage = (message = {}, conversationId = 0) => ({
   content: valueOf(message, 'content', 'Content', ''),
   messageType: valueOf(message, 'messageType', 'MessageType', 'text'),
   isRead: Boolean(valueOf(message, 'isRead', 'IsRead', false)),
-  createdAt: valueOf(message, 'createdAt', 'CreatedAt', null)
+  createdAt: valueOf(message, 'createdAt', 'CreatedAt', null),
+  attachmentName: valueOf(message, 'attachmentName', 'AttachmentName', null),
+  attachmentContentType: valueOf(message, 'attachmentContentType', 'AttachmentContentType', null),
+  attachmentSize: valueOf(message, 'attachmentSize', 'AttachmentSize', null),
+  attachmentAvailable: Boolean(valueOf(message, 'attachmentAvailable', 'AttachmentAvailable', false)),
+  attachmentUrl: valueOf(message, 'attachmentUrl', 'AttachmentUrl', null)
 })

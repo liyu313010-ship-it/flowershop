@@ -36,7 +36,8 @@
           :class="message.senderId === currentUserId ? 'sent' : 'received'"
         >
           <div class="message-content">
-            <div class="message-text">{{ message.content }}</div>
+            <ChatAttachment v-if="message.attachmentName" :message="message" />
+            <div v-if="shouldShowText(message)" class="message-text">{{ message.content }}</div>
             <div class="message-meta">
               <span class="text-xs text-gray-400">{{ formatTime(message.createdAt) }}</span>
               <span v-if="message.isRead && message.senderId === currentUserId" class="ml-2 text-xs text-blue-400">已读</span>
@@ -50,7 +51,21 @@
     </div>
 
     <!-- 消息输入区域 -->
-    <div class="chat-input-area">
+    <div v-if="selectedFile" class="selected-attachment">
+      <div>
+        <strong>{{ selectedFile.name }}</strong>
+        <span>{{ formatFileSize(selectedFile.size) }}<template v-if="uploadProgress"> · {{ uploadProgress }}%</template></span>
+      </div>
+      <button type="button" aria-label="移除附件" :disabled="isSending" @click="clearSelectedFile">×</button>
+      <div v-if="isSending" class="upload-progress"><span :style="{ width: `${uploadProgress}%` }"></span></div>
+    </div>
+    <div class="chat-input-area" @dragover.prevent @drop.prevent="handleDrop">
+      <input ref="fileInput" class="sr-only" type="file" :accept="acceptedFileTypes" @change="handleFileInput" />
+      <button type="button" class="attachment-button" :disabled="isClosed || isSending" title="发送图片或文件" aria-label="选择图片或文件" @click="fileInput?.click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <path d="M21.4 11.6l-8.9 8.9a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5" />
+        </svg>
+      </button>
       <textarea
         v-model="messageText"
         class="message-input"
@@ -61,11 +76,12 @@
         @keydown.enter.exact="sendMessage"
         @keydown.enter.shift="handleShiftEnter"
         @input="autoResizeTextarea($event)"
+        @paste="handlePaste"
       ></textarea>
       <button 
         class="send-button" 
         @click="sendMessage"
-        :disabled="!messageText.trim() || isSending || isClosed"
+        :disabled="(!messageText.trim() && !selectedFile) || isSending || isClosed"
       >
         <svg v-if="isSending" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -84,6 +100,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import chatService from '@/services/chat'
 import { useUserStore } from '@/stores/user'
+import ChatAttachment from './ChatAttachment.vue'
 
 // Props
 const props = defineProps({
@@ -104,6 +121,12 @@ const userStore = useUserStore()
 const messageText = ref('')
 const isSending = ref(false)
 const messagesContainer = ref(null)
+const fileInput = ref(null)
+const selectedFile = ref(null)
+const uploadProgress = ref(0)
+const maxAttachmentSize = 10 * 1024 * 1024
+const acceptedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'doc', 'docx', 'xls', 'xlsx']
+const acceptedFileTypes = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx'
 
 // Computed properties
 const isLoading = computed(() => chatStore.isLoading)
@@ -126,12 +149,17 @@ const formatTime = (dateString) => {
 }
 
 const sendMessage = async () => {
-  if (!messageText.value.trim() || isSending.value) return
+  if ((!messageText.value.trim() && !selectedFile.value) || isSending.value) return
 
   try {
     isSending.value = true
     chatStore.error = null
-    await chatStore.sendMessage(messageText.value)
+    if (selectedFile.value) {
+      await chatStore.sendAttachment(selectedFile.value, messageText.value, value => { uploadProgress.value = value })
+      clearSelectedFile()
+    } else {
+      await chatStore.sendMessage(messageText.value)
+    }
     messageText.value = ''
     
     // 触发消息发送事件
@@ -146,6 +174,46 @@ const sendMessage = async () => {
     isSending.value = false
   }
 }
+
+const validateAndSelectFile = file => {
+  if (!file) return
+  const extension = file.name.split('.').pop()?.toLowerCase() || ''
+  if (!acceptedExtensions.includes(extension)) {
+    chatStore.error = '仅支持图片、PDF、TXT、Word 和 Excel 文件'
+    return
+  }
+  if (file.size > maxAttachmentSize) {
+    chatStore.error = '文件大小不能超过10MB'
+    return
+  }
+  if (file.size <= 0) {
+    chatStore.error = '不能发送空文件'
+    return
+  }
+  chatStore.error = null
+  selectedFile.value = file
+  uploadProgress.value = 0
+}
+
+const handleFileInput = event => validateAndSelectFile(event.target.files?.[0])
+const handleDrop = event => validateAndSelectFile(event.dataTransfer?.files?.[0])
+const handlePaste = event => {
+  const file = [...(event.clipboardData?.files || [])][0]
+  if (file) {
+    event.preventDefault()
+    validateAndSelectFile(file)
+  }
+}
+const clearSelectedFile = () => {
+  selectedFile.value = null
+  uploadProgress.value = 0
+  if (fileInput.value) fileInput.value.value = ''
+}
+const formatFileSize = size => size < 1024 * 1024
+  ? `${(size / 1024).toFixed(1)} KB`
+  : `${(size / 1024 / 1024).toFixed(1)} MB`
+const shouldShowText = message => message.messageType === 'text'
+  || (message.content && message.content !== message.attachmentName)
 
 const handleShiftEnter = (event) => {
   // Shift+Enter 使用 textarea 默认换行行为。
@@ -259,6 +327,8 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 
+.chat-attachment + .message-text { margin-top: 7px; }
+
 .message-meta {
   display: flex;
   justify-content: flex-end;
@@ -279,6 +349,41 @@ onMounted(async () => {
   background-color: #fff;
   gap: 8px;
 }
+
+.attachment-button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #be185d;
+  background: #fff1f7;
+  transition: background-color .2s ease, transform .2s ease;
+}
+
+.attachment-button:hover:not(:disabled) { background: #fce7f3; transform: translateY(-1px); }
+.attachment-button:disabled { cursor: not-allowed; opacity: .45; }
+.attachment-button svg { width: 20px; height: 20px; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.selected-attachment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 16px;
+  border-top: 1px solid #fce7f3;
+  color: #831843;
+  background: #fff7fb;
+}
+
+.selected-attachment div { min-width: 0; display: flex; flex-direction: column; }
+.selected-attachment strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.selected-attachment span { margin-top: 2px; color: #9d6a80; font-size: 10px; }
+.selected-attachment button { width: 26px; height: 26px; border-radius: 50%; color: #9f1239; background: #ffe4e6; }
+.upload-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: #fbcfe8; }
+.upload-progress span { display: block; height: 100%; background: #db2777; transition: width .15s ease; }
 
 .message-input {
   flex: 1;

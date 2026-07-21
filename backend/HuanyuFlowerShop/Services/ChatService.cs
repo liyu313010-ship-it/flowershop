@@ -138,6 +138,105 @@ public class ChatService : IChatService
         return MapMessage(savedMessage, conversation);
     }
 
+    public async Task<AttachmentMessageResult> SendAttachmentMessageAsync(
+        int actorId,
+        bool isAdmin,
+        UploadChatAttachmentRequest request,
+        StoredChatAttachment attachment)
+    {
+        var caption = (request.Caption ?? string.Empty).Trim();
+        if (caption.Length > 500) throw new BusinessException("附件说明不能超过500个字符");
+
+        var conversation = await _db.SupportConversations
+            .Include(c => c.User)
+            .Include(c => c.Admin)
+            .SingleOrDefaultAsync(c => c.Id == request.ConversationId)
+            ?? throw new BusinessException("客服会话不存在");
+
+        if (!isAdmin && conversation.UserId != actorId) throw new UnauthorizedAccessException();
+        if (conversation.Status == "closed") throw new BusinessException("该客服会话已结束，请重新发起会话");
+
+        if (isAdmin)
+        {
+            if (conversation.AdminId.HasValue && conversation.AdminId != actorId)
+                throw new BusinessException("该会话已由其他客服接待");
+            if (!conversation.AdminId.HasValue)
+            {
+                conversation.AdminId = actorId;
+                conversation.Admin = await _db.Users.SingleAsync(u => u.Id == actorId);
+            }
+            conversation.Status = "active";
+        }
+
+        var clientMessageId = string.IsNullOrWhiteSpace(request.ClientMessageId)
+            ? null
+            : request.ClientMessageId.Trim();
+        if (clientMessageId is not null)
+        {
+            var existing = await _db.SupportMessages.AsNoTracking()
+                .Include(m => m.Sender)
+                .Include(m => m.Conversation)
+                .FirstOrDefaultAsync(m => m.ConversationId == request.ConversationId
+                    && m.SenderId == actorId
+                    && m.ClientMessageId == clientMessageId);
+            if (existing is not null)
+                return new AttachmentMessageResult(MapMessage(existing, existing.Conversation), false);
+        }
+
+        var now = DateTime.UtcNow;
+        var content = caption.Length > 0 ? caption : attachment.OriginalName;
+        var preview = attachment.MessageType == "image"
+            ? $"[图片] {content}"
+            : $"[文件] {attachment.OriginalName}";
+        var message = new SupportMessage
+        {
+            ConversationId = conversation.Id,
+            SenderId = actorId,
+            Content = content,
+            MessageType = attachment.MessageType,
+            ClientMessageId = clientMessageId,
+            AttachmentName = attachment.OriginalName,
+            AttachmentStorageName = attachment.StorageName,
+            AttachmentContentType = attachment.ContentType,
+            AttachmentSize = attachment.Size,
+            IsRead = false,
+            CreatedAt = now
+        };
+        _db.SupportMessages.Add(message);
+        conversation.LastMessage = preview.Length <= 500 ? preview : preview[..500];
+        conversation.LastMessageAt = now;
+        conversation.UpdatedAt = now;
+        if (isAdmin) conversation.UserUnreadCount++;
+        else conversation.AdminUnreadCount++;
+
+        await _db.SaveChangesAsync();
+        var savedMessage = await _db.SupportMessages.AsNoTracking()
+            .Include(m => m.Sender)
+            .SingleAsync(m => m.Id == message.Id);
+        return new AttachmentMessageResult(MapMessage(savedMessage, conversation), true);
+    }
+
+    public async Task<ChatAttachmentDownload?> GetAttachmentAsync(int messageId, int actorId, bool isAdmin)
+    {
+        var message = await _db.SupportMessages.AsNoTracking()
+            .Include(m => m.Conversation)
+            .SingleOrDefaultAsync(m => m.Id == messageId);
+        if (message is null
+            || (!isAdmin && message.Conversation.UserId != actorId)
+            || string.IsNullOrWhiteSpace(message.AttachmentStorageName)
+            || string.IsNullOrWhiteSpace(message.AttachmentName)
+            || string.IsNullOrWhiteSpace(message.AttachmentContentType)
+            || !message.AttachmentSize.HasValue)
+            return null;
+
+        return new ChatAttachmentDownload(
+            message.Id,
+            message.AttachmentName,
+            message.AttachmentStorageName,
+            message.AttachmentContentType,
+            message.AttachmentSize.Value);
+    }
+
     public async Task<bool> MarkMessageReadAsync(int messageId, int actorId, bool isAdmin)
     {
         var message = await _db.SupportMessages.Include(m => m.Conversation).SingleOrDefaultAsync(m => m.Id == messageId);
@@ -236,7 +335,14 @@ public class ChatService : IChatService
             MessageType = message.MessageType,
             IsRead = message.IsRead,
             CreatedAt = message.CreatedAt,
-            ConversationId = message.ConversationId
+            ConversationId = message.ConversationId,
+            AttachmentName = message.AttachmentName,
+            AttachmentContentType = message.AttachmentContentType,
+            AttachmentSize = message.AttachmentSize,
+            AttachmentAvailable = !string.IsNullOrWhiteSpace(message.AttachmentStorageName),
+            AttachmentUrl = string.IsNullOrWhiteSpace(message.AttachmentStorageName)
+                ? null
+                : $"/api/chat/messages/{message.Id}/attachment"
         };
     }
 }

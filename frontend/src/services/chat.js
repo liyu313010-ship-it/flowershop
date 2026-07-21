@@ -18,6 +18,22 @@ class ChatService {
     return api.post('/chat/messages', messageData, { silent: true })
   }
 
+  async sendAttachment(formData, onUploadProgress) {
+    return api.post('/chat/messages/attachments', formData, {
+      silent: true,
+      timeout: 30000,
+      onUploadProgress
+    })
+  }
+
+  async getAttachment(messageId) {
+    return api.get(`/chat/messages/${messageId}/attachment`, {
+      responseType: 'blob',
+      silent: true,
+      timeout: 30000
+    })
+  }
+
   // 标记消息为已读
   async markAsRead(messageId) {
     return api.put(`/chat/messages/${messageId}/read`, null, { silent: true })

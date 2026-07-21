@@ -23,6 +23,17 @@ public class SupportMessage
     [Column(TypeName = "varchar(64)")]
     public string? ClientMessageId { get; set; }
 
+    [StringLength(255)]
+    public string? AttachmentName { get; set; }
+
+    [StringLength(500)]
+    public string? AttachmentStorageName { get; set; }
+
+    [StringLength(100)]
+    public string? AttachmentContentType { get; set; }
+
+    public long? AttachmentSize { get; set; }
+
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

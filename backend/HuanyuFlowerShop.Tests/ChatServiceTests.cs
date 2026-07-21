@@ -3,6 +3,7 @@ using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Entities;
 using HuanyuFlowerShop.Exceptions;
 using HuanyuFlowerShop.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace HuanyuFlowerShop.Tests;
@@ -96,6 +97,39 @@ public class ChatServiceTests
         Assert.NotNull(await service.AssignConversationAsync(conversation.Id, 1));
         Assert.Null(await service.AssignConversationAsync(conversation.Id, 4));
         Assert.Equal(1, (await service.GetConversationAsync(conversation.Id, 1, true))?.AdminId);
+    }
+
+    [Fact]
+    public async Task AttachmentMessagePersistsMetadata_IsIdempotent_AndRequiresConversationAccess()
+    {
+        await using var db = CreateDb();
+        SeedUsers(db);
+        var service = new ChatService(db);
+        var conversation = await service.GetOrCreateSupportConversationAsync(2);
+        var request = new UploadChatAttachmentRequest
+        {
+            ConversationId = conversation.Id,
+            File = new FormFile(Stream.Null, 0, 0, "file", "bouquet.jpg"),
+            Caption = "收到的花有一点压痕",
+            ClientMessageId = "attachment-1"
+        };
+        var attachment = new StoredChatAttachment(
+            "bouquet.jpg", "2026/07/random.jpg", "image/jpeg", 2048, "image");
+
+        var first = await service.SendAttachmentMessageAsync(2, false, request, attachment);
+        var duplicate = await service.SendAttachmentMessageAsync(2, false, request, attachment);
+
+        Assert.True(first.Created);
+        Assert.False(duplicate.Created);
+        Assert.Equal(first.Message.Id, duplicate.Message.Id);
+        Assert.Equal("image", first.Message.MessageType);
+        Assert.Equal("bouquet.jpg", first.Message.AttachmentName);
+        Assert.True(first.Message.AttachmentAvailable);
+        Assert.Single(db.SupportMessages);
+        Assert.NotNull(await service.GetAttachmentAsync(first.Message.Id, 2, false));
+        Assert.NotNull(await service.GetAttachmentAsync(first.Message.Id, 1, true));
+        Assert.Null(await service.GetAttachmentAsync(first.Message.Id, 3, false));
+        Assert.Equal(1, await service.GetUnreadCountAsync(1, true));
     }
 
     private static ApplicationDbContext CreateDb()

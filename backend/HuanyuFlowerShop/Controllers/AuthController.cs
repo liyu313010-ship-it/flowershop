@@ -11,6 +11,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
 using BCrypt.Net;
+using HuanyuFlowerShop.Options;
+using Microsoft.Extensions.Options;
 
 namespace HuanyuFlowerShop.Controllers
 {
@@ -25,8 +27,9 @@ namespace HuanyuFlowerShop.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly ApplicationDbContext _db;
         private readonly IEmailService _email;
+        private readonly StorageOptions _storageOptions;
 
-        public AuthController(IAuthService authService, IOrderService orderService, IWebHostEnvironment environment, ILogger<AuthController> logger, ApplicationDbContext db, IEmailService email)
+        public AuthController(IAuthService authService, IOrderService orderService, IWebHostEnvironment environment, ILogger<AuthController> logger, ApplicationDbContext db, IEmailService email, IOptions<StorageOptions> storageOptions)
         {
             _authService = authService;
             _orderService = orderService;
@@ -34,6 +37,7 @@ namespace HuanyuFlowerShop.Controllers
             _logger = logger;
             _db = db;
             _email = email;
+            _storageOptions = storageOptions.Value;
         }
 
         [AllowAnonymous]
@@ -460,7 +464,10 @@ namespace HuanyuFlowerShop.Controllers
             try
             {
                 // 创建上传目录
-                var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "avatars");
+                var rootPath = Path.IsPathRooted(_storageOptions.RootPath)
+                    ? _storageOptions.RootPath
+                    : Path.Combine(_environment.ContentRootPath, _storageOptions.RootPath);
+                var uploadsFolder = Path.Combine(rootPath, "avatars");
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);

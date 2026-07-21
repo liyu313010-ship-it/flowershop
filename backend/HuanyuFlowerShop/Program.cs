@@ -7,6 +7,7 @@ using System.IO;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.ResponseCompression;
 using HuanyuFlowerShop.Hubs;
+using HuanyuFlowerShop.Options;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.IO.Compression;
@@ -184,7 +185,9 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
     builder.Services.AddScoped<IOrderStatusHistoryService, OrderStatusHistoryService>();
         builder.Services.AddScoped<IAuditLogService, AuditLogService>();
         builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
-        builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSingleton<IChatAttachmentStorage, ChatAttachmentStorage>();
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 
 
 // 注册Category仓储
@@ -237,8 +240,8 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
     var csp = app.Environment.IsDevelopment()
-        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://localhost:5173 http://localhost:5002 ws://localhost:5173"
-        : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'";
+        ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' http://localhost:5173 http://localhost:5002 ws://localhost:5173"
+        : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'";
     context.Response.Headers.Append("Content-Security-Policy", csp);
     await next();
 });
@@ -262,16 +265,24 @@ app.UseMiddleware<AuditLogMiddleware>();
 app.UseStaticFiles();
 
 // 为uploads目录配置静态文件服务
-var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+var configuredUploadsPath = builder.Configuration["Storage:RootPath"];
+var uploadsPath = string.IsNullOrWhiteSpace(configuredUploadsPath) ? "uploads" : configuredUploadsPath;
+if (!Path.IsPathRooted(uploadsPath)) uploadsPath = Path.Combine(app.Environment.ContentRootPath, uploadsPath);
 if (!Directory.Exists(uploadsPath))
 {
     Directory.CreateDirectory(uploadsPath);
 }
-app.UseStaticFiles(new StaticFileOptions
+// 仅公开头像和商品图片。客服附件必须通过鉴权接口读取，不能暴露为静态文件。
+foreach (var publicDirectory in new[] { "avatars", "products" })
 {
-    FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads"
-});
+    var physicalPath = Path.Combine(uploadsPath, publicDirectory);
+    Directory.CreateDirectory(physicalPath);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(physicalPath),
+        RequestPath = $"/uploads/{publicDirectory}"
+    });
+}
 
 app.UseCors("AllowSpecificOrigins");
 

@@ -105,6 +105,9 @@ namespace HuanyuFlowerShop.Data
                 entity.Property(e => e.Content).HasMaxLength(2000).IsRequired();
                 entity.Property(e => e.MessageType).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.ClientMessageId).HasMaxLength(64);
+                entity.Property(e => e.AttachmentName).HasMaxLength(255);
+                entity.Property(e => e.AttachmentStorageName).HasMaxLength(500);
+                entity.Property(e => e.AttachmentContentType).HasMaxLength(100);
                 entity.HasIndex(e => new { e.ConversationId, e.CreatedAt });
                 entity.HasIndex(e => new { e.SenderId, e.ClientMessageId }).IsUnique();
                 entity.HasOne(e => e.Conversation)

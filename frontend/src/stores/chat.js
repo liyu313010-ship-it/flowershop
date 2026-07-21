@@ -105,6 +105,23 @@ export const useChatStore = defineStore('chat', {
       return message
     },
 
+    async sendAttachment(file, caption = '', onProgress) {
+      if (!this.currentConversation?.id) throw new Error('请先选择客服会话')
+      const clientMessageId = globalThis.crypto?.randomUUID?.()
+        || `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      const formData = new FormData()
+      formData.append('conversationId', String(this.currentConversation.id))
+      formData.append('file', file)
+      if (caption.trim()) formData.append('caption', caption.trim())
+      formData.append('clientMessageId', clientMessageId)
+      const response = await chatService.sendAttachment(formData, event => {
+        if (event.total && onProgress) onProgress(Math.round((event.loaded * 100) / event.total))
+      })
+      const message = normalizeMessage(response, this.currentConversation.id)
+      this.addNewMessage(message, false)
+      return message
+    },
+
     async markAsRead(messageId) {
       await chatService.markAsRead(messageId)
       const message = this.messages.find(item => item.id === messageId)
