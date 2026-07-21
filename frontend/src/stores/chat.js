@@ -13,7 +13,8 @@ export const useChatStore = defineStore('chat', {
     isLoading: false,
     error: null,
     hubConnection: null,
-    isConnected: false
+    isConnected: false,
+    unreadCountRetryAt: 0
   }),
 
   getters: {
@@ -141,11 +142,16 @@ export const useChatStore = defineStore('chat', {
     },
 
     async fetchUnreadCount() {
+      if (Date.now() < this.unreadCountRetryAt) return this.unreadCount
       try {
         const response = await chatService.getUnreadCount()
         this.unreadCount = Number(response?.unreadCount ?? response?.UnreadCount ?? response ?? 0)
-      } catch {
-        this.unreadCount = 0
+        this.unreadCountRetryAt = 0
+      } catch (error) {
+        if (error?.response?.status === 429) {
+          const retryAfter = Number(error.response?.headers?.['x-ratelimit-retry-after'] || 30)
+          this.unreadCountRetryAt = Date.now() + Math.min(Math.max(retryAfter, 30), 120) * 1000
+        }
       }
       return this.unreadCount
     },
@@ -255,6 +261,7 @@ export const useChatStore = defineStore('chat', {
       this.currentConversation = null
       this.messages = []
       this.unreadCount = 0
+      this.unreadCountRetryAt = 0
       this.error = null
     }
   }
