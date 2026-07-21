@@ -23,8 +23,15 @@ namespace HuanyuFlowerShop.Services
 
         public bool TryAllowRequest(string key)
         {
+            return TryAllowRequest(key, _requestsPerMinute);
+        }
+
+        public bool TryAllowRequest(string key, int requestsPerMinute)
+        {
             if (string.IsNullOrEmpty(key))
                 return false;
+            if (requestsPerMinute <= 0)
+                requestsPerMinute = _requestsPerMinute;
 
             // 获取或创建客户端锁
             var clientLock = _clientLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
@@ -44,7 +51,7 @@ namespace HuanyuFlowerShop.Services
                 }
                 
                 // 检查是否超过限制
-                if (requestQueue.Count >= _requestsPerMinute)
+                if (requestQueue.Count >= requestsPerMinute)
                 {
                     return false;
                 }

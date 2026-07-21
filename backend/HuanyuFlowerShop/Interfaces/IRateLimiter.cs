@@ -11,6 +11,14 @@ namespace HuanyuFlowerShop.Interfaces
         /// <param name="key">客户端标识键</param>
         /// <returns>是否允许请求</returns>
         bool TryAllowRequest(string key);
+
+        /// <summary>
+        /// 按指定限制检查请求是否允许
+        /// </summary>
+        /// <param name="key">客户端标识键</param>
+        /// <param name="requestsPerMinute">每分钟允许的请求数</param>
+        /// <returns>是否允许请求</returns>
+        bool TryAllowRequest(string key, int requestsPerMinute);
         
         /// <summary>
         /// 设置速率限制规则

@@ -25,6 +25,9 @@ export const favoriteService = {
       // 兼容后端 PascalCase 与 camelCase 两种序列化配置。
       return res?.favorites ?? res?.Favorites ?? res?.data ?? []
     } catch (error) {
+      if (error?.response?.status === 429 && import.meta.env.DEV) {
+        console.info('收藏列表请求过于频繁，已暂时跳过')
+      }
       return []
     }
   }
