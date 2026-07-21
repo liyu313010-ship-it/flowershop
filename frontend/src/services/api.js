@@ -15,6 +15,10 @@ const api = axios.create({
 // 请求拦截器 - 添加认证token
 api.interceptors.request.use(
   (config) => {
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      // 让浏览器自动生成 multipart boundary，不能沿用实例默认的 application/json。
+      delete config.headers['Content-Type']
+    }
     // 从localStorage直接获取token，避免在请求拦截器中创建store实例
     const token = localStorage.getItem('token')
     if (token) {

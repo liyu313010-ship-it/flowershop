@@ -6,6 +6,8 @@ using HuanyuFlowerShop.Entities;
 using HuanyuFlowerShop.Repositories;
 using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
+using HuanyuFlowerShop.Options;
+using Microsoft.Extensions.Options;
 
 namespace HuanyuFlowerShop.Controllers
 {
@@ -17,13 +19,15 @@ public class AdminController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _environment;
     private readonly ICacheService _cacheService;
+    private readonly StorageOptions _storageOptions;
     private static readonly string[] AllowedImageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
-        public AdminController(ApplicationDbContext context, IWebHostEnvironment environment, ICacheService cacheService)
+        public AdminController(ApplicationDbContext context, IWebHostEnvironment environment, ICacheService cacheService, IOptions<StorageOptions> storageOptions)
         {
             _context = context;
             _environment = environment;
             _cacheService = cacheService;
+            _storageOptions = storageOptions.Value;
         }
 
     
@@ -1177,7 +1181,10 @@ public class AdminController : ControllerBase
                 }
 
                 // 创建上传目录
-                var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "products");
+                var rootPath = Path.IsPathRooted(_storageOptions.RootPath)
+                    ? _storageOptions.RootPath
+                    : Path.Combine(_environment.ContentRootPath, _storageOptions.RootPath);
+                var uploadsFolder = Path.Combine(rootPath, "products");
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);

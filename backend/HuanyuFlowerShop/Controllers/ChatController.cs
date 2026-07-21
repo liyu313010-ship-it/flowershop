@@ -14,11 +14,16 @@ namespace HuanyuFlowerShop.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
+    private readonly IChatAttachmentStorage _attachmentStorage;
     private readonly IHubContext<ChatHub> _hub;
 
-    public ChatController(IChatService chatService, IHubContext<ChatHub> hub)
+    public ChatController(
+        IChatService chatService,
+        IChatAttachmentStorage attachmentStorage,
+        IHubContext<ChatHub> hub)
     {
         _chatService = chatService;
+        _attachmentStorage = attachmentStorage;
         _hub = hub;
     }
 
@@ -55,19 +60,55 @@ public class ChatController : ControllerBase
     {
         if (!await _chatService.CanAccessConversationAsync(request.ConversationId, UserId, IsAdmin)) return Forbid();
         var message = await _chatService.SendMessageAsync(UserId, IsAdmin, request);
-        var conversation = await _chatService.GetConversationAsync(request.ConversationId, UserId, IsAdmin);
-
-        await _hub.Clients.Group($"conversation:{request.ConversationId}").SendAsync("ReceiveMessage", message);
-        if (conversation is not null)
-        {
-            if (IsAdmin)
-                await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ReceiveMessage", message);
-            else
-                await _hub.Clients.Group("admins").SendAsync("ReceiveMessage", message);
-            await _hub.Clients.Group("admins").SendAsync("ConversationUpdated", conversation);
-            await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ConversationUpdated", conversation);
-        }
+        await BroadcastMessageAsync(request.ConversationId, message);
         return Ok(message);
+    }
+
+    [HttpPost("messages/attachments")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(20 * 1024 * 1024)]
+    public async Task<ActionResult<MessageDto>> SendAttachment(
+        [FromForm] UploadChatAttachmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!await _chatService.CanAccessConversationAsync(request.ConversationId, UserId, IsAdmin)) return Forbid();
+
+        StoredChatAttachment? stored = null;
+        AttachmentMessageResult result;
+        try
+        {
+            stored = await _attachmentStorage.SaveAsync(request.File, cancellationToken);
+            result = await _chatService.SendAttachmentMessageAsync(UserId, IsAdmin, request, stored);
+        }
+        catch
+        {
+            if (stored is not null)
+                await _attachmentStorage.DeleteAsync(stored.StorageName, cancellationToken);
+            throw;
+        }
+        if (!result.Created)
+            await _attachmentStorage.DeleteAsync(stored.StorageName, cancellationToken);
+        await BroadcastMessageAsync(request.ConversationId, result.Message);
+        return Ok(result.Message);
+    }
+
+    [HttpGet("messages/{messageId:int}/attachment")]
+    public async Task<IActionResult> GetAttachment(
+        int messageId,
+        [FromQuery] bool download = false,
+        CancellationToken cancellationToken = default)
+    {
+        var attachment = await _chatService.GetAttachmentAsync(messageId, UserId, IsAdmin);
+        if (attachment is null) return NotFound();
+        var stream = await _attachmentStorage.OpenReadAsync(attachment.StorageName, cancellationToken);
+        if (stream is null) return NotFound(new { message = "附件文件已不存在" });
+
+        Response.Headers.CacheControl = "private, no-store";
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        var inlineImage = attachment.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) && !download;
+        return inlineImage
+            ? File(stream, attachment.ContentType, enableRangeProcessing: true)
+            : File(stream, attachment.ContentType, attachment.OriginalName, enableRangeProcessing: true);
     }
 
     [HttpPut("messages/{messageId:int}/read")]
@@ -112,4 +153,18 @@ public class ChatController : ControllerBase
         ? id
         : throw new UnauthorizedAccessException();
     private bool IsAdmin => User.IsInRole("admin");
+
+    private async Task BroadcastMessageAsync(int conversationId, MessageDto message)
+    {
+        var conversation = await _chatService.GetConversationAsync(conversationId, UserId, IsAdmin);
+        await _hub.Clients.Group($"conversation:{conversationId}").SendAsync("ReceiveMessage", message);
+        if (conversation is null) return;
+
+        if (IsAdmin)
+            await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ReceiveMessage", message);
+        else
+            await _hub.Clients.Group("admins").SendAsync("ReceiveMessage", message);
+        await _hub.Clients.Group("admins").SendAsync("ConversationUpdated", conversation);
+        await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ConversationUpdated", conversation);
+    }
 }

@@ -17,6 +17,11 @@ namespace HuanyuFlowerShop.DTOs
         public bool IsRead { get; set; } = false;
         public DateTime CreatedAt { get; set; }
         public int ConversationId { get; set; }
+        public string? AttachmentName { get; set; }
+        public string? AttachmentContentType { get; set; }
+        public long? AttachmentSize { get; set; }
+        public bool AttachmentAvailable { get; set; }
+        public string? AttachmentUrl { get; set; }
     }
 
     /// <summary>

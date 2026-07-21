@@ -39,4 +39,22 @@ describe('客服数据兼容处理', () => {
     expect(normalizeConversation()).toMatchObject({ id: 0, unreadCount: 0, status: 'waiting' })
     expect(normalizeMessage()).toMatchObject({ id: 0, conversationId: 0, content: '' })
   })
+
+  it('规范化聊天附件元数据', () => {
+    expect(normalizeMessage({
+      Id: 9,
+      MessageType: 'image',
+      AttachmentName: '花束.jpg',
+      AttachmentContentType: 'image/jpeg',
+      AttachmentSize: 2048,
+      AttachmentAvailable: true,
+      AttachmentUrl: '/api/chat/messages/9/attachment'
+    })).toMatchObject({
+      id: 9,
+      messageType: 'image',
+      attachmentName: '花束.jpg',
+      attachmentSize: 2048,
+      attachmentAvailable: true
+    })
+  })
 })
