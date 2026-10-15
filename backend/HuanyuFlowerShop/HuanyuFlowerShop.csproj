@@ -16,7 +16,7 @@
     <PackageReference Include="MySql.EntityFrameworkCore" Version="9.0.9" />
     
     <!-- 身份验证和授权 -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.17" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
     
     <!-- API文档 -->
