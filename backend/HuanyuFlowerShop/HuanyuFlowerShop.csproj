@@ -23,7 +23,7 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.0.0" />
     
     <!-- CORS支持 -->
-    <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.3.11" />
     
     <!-- 数据验证 -->
     <PackageReference Include="FluentValidation" Version="11.5.1" />
