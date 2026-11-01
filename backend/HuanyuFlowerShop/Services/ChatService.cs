@@ -1,348 +1,454 @@
 using HuanyuFlowerShop.Data;
 using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Entities;
-using HuanyuFlowerShop.Exceptions;
 using HuanyuFlowerShop.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
-namespace HuanyuFlowerShop.Services;
-
-public class ChatService : IChatService
+namespace HuanyuFlowerShop.Services
 {
-    private readonly ApplicationDbContext _db;
-
-    public ChatService(ApplicationDbContext db) => _db = db;
-
-    public async Task<ConversationDto> GetOrCreateSupportConversationAsync(int userId)
+    /// <summary>
+    /// 聊天服务实现
+    /// </summary>
+    public class ChatService : IChatService
     {
-        var conversation = await ConversationQuery()
-            .Where(c => c.UserId == userId && c.Status != "closed")
-            .OrderByDescending(c => c.UpdatedAt)
-            .FirstOrDefaultAsync();
+        private readonly ApplicationDbContext _dbContext;
+        private readonly ILogger<ChatService> _logger;
 
-        if (conversation is not null) return MapConversation(conversation, false);
-
-        var userExists = await _db.Users.AnyAsync(u => u.Id == userId && u.Status == "active");
-        if (!userExists) throw new UserNotFoundException(userId);
-
-        conversation = new SupportConversation
+        public ChatService(ApplicationDbContext dbContext, ILogger<ChatService> logger)
         {
-            UserId = userId,
-            Status = "waiting",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-        _db.SupportConversations.Add(conversation);
-        await _db.SaveChangesAsync();
-        conversation = await ConversationQuery().SingleAsync(c => c.Id == conversation.Id);
-        return MapConversation(conversation, false);
-    }
+            _dbContext = dbContext;
+            _logger = logger;
+        }
 
-    public async Task<IReadOnlyList<ConversationDto>> GetConversationsAsync(int actorId, bool isAdmin, string? status = null)
-    {
-        var query = ConversationQuery();
-        if (!isAdmin) query = query.Where(c => c.UserId == actorId);
-        if (!string.IsNullOrWhiteSpace(status)) query = query.Where(c => c.Status == status);
-
-        return (await query.OrderByDescending(c => c.LastMessageAt ?? c.UpdatedAt).ToListAsync())
-            .Select(c => MapConversation(c, isAdmin))
-            .ToList();
-    }
-
-    public async Task<ConversationDto?> GetConversationAsync(int conversationId, int actorId, bool isAdmin)
-    {
-        var conversation = await ConversationQuery().SingleOrDefaultAsync(c => c.Id == conversationId);
-        if (conversation is null || (!isAdmin && conversation.UserId != actorId)) return null;
-        return MapConversation(conversation, isAdmin);
-    }
-
-    public async Task<IReadOnlyList<MessageDto>> GetMessagesAsync(int conversationId, int actorId, bool isAdmin, int page, int pageSize)
-    {
-        if (!await CanAccessConversationAsync(conversationId, actorId, isAdmin)) return Array.Empty<MessageDto>();
-
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, 100);
-        var conversation = await _db.SupportConversations.AsNoTracking().SingleAsync(c => c.Id == conversationId);
-        var messages = await _db.SupportMessages.AsNoTracking()
-            .Include(m => m.Sender)
-            .Where(m => m.ConversationId == conversationId)
-            .OrderByDescending(m => m.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        messages.Reverse();
-        return messages.Select(m => MapMessage(m, conversation)).ToList();
-    }
-
-    public async Task<MessageDto> SendMessageAsync(int actorId, bool isAdmin, SendMessageRequest request)
-    {
-        var content = (request.Content ?? string.Empty).Trim();
-        if (content.Length == 0) throw new BusinessException("消息内容不能为空");
-        if (content.Length > 2000) throw new BusinessException("消息内容不能超过2000个字符");
-
-        var conversation = await _db.SupportConversations
-            .Include(c => c.User)
-            .Include(c => c.Admin)
-            .SingleOrDefaultAsync(c => c.Id == request.ConversationId)
-            ?? throw new BusinessException("客服会话不存在");
-
-        if (!isAdmin && conversation.UserId != actorId) throw new UnauthorizedAccessException();
-        if (conversation.Status == "closed") throw new BusinessException("该客服会话已结束，请重新发起会话");
-
-        if (isAdmin)
+        #region 消息相关
+        /// <inheritdoc/>
+        public async Task<PagedResult<MessageDto>> GetMessagesAsync(int userId, int conversationId, int page = 1, int pageSize = 50)
         {
-            if (conversation.AdminId.HasValue && conversation.AdminId != actorId)
-                throw new BusinessException("该会话已由其他客服接待");
-            if (!conversation.AdminId.HasValue)
+            // 验证会话是否存在且用户有权访问
+            var conversation = await _dbContext.Conversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId && (c.UserId == userId || c.AdminId == userId));
+
+            if (conversation == null)
             {
-                conversation.AdminId = actorId;
-                conversation.Admin = await _db.Users.SingleAsync(u => u.Id == actorId);
+                return new PagedResult<MessageDto>();
             }
-            conversation.Status = "active";
-        }
 
-        var clientMessageId = string.IsNullOrWhiteSpace(request.ClientMessageId)
-            ? null
-            : request.ClientMessageId.Trim();
-        if (clientMessageId is not null)
-        {
-            var existing = await _db.SupportMessages.AsNoTracking()
-                .Include(m => m.Sender)
-                .FirstOrDefaultAsync(m => m.SenderId == actorId && m.ClientMessageId == clientMessageId);
-            if (existing is not null) return MapMessage(existing, conversation);
-        }
+            // 查询消息
+            var query = _dbContext.Messages
+                .Where(m => 
+                    (m.SenderId == userId && m.ReceiverId == conversation.UserId) ||
+                    (m.SenderId == userId && m.ReceiverId == conversation.AdminId) ||
+                    (m.SenderId == conversation.UserId && m.ReceiverId == userId) ||
+                    (m.SenderId == conversation.AdminId && m.ReceiverId == userId))
+                .OrderByDescending(m => m.CreatedAt);
 
-        var now = DateTime.UtcNow;
-        var message = new SupportMessage
-        {
-            ConversationId = conversation.Id,
-            SenderId = actorId,
-            Content = content,
-            MessageType = request.MessageType == "system" ? "system" : "text",
-            ClientMessageId = clientMessageId,
-            IsRead = false,
-            CreatedAt = now
-        };
-        _db.SupportMessages.Add(message);
-        conversation.LastMessage = content.Length <= 500 ? content : content[..500];
-        conversation.LastMessageAt = now;
-        conversation.UpdatedAt = now;
-        if (isAdmin) conversation.UserUnreadCount++;
-        else conversation.AdminUnreadCount++;
+            // 计算总数
+            var totalCount = await query.CountAsync();
 
-        await _db.SaveChangesAsync();
-        var savedMessage = await _db.SupportMessages.AsNoTracking()
-            .Include(m => m.Sender)
-            .SingleAsync(m => m.Id == message.Id);
-        return MapMessage(savedMessage, conversation);
-    }
+            // 分页查询
+            var messages = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .OrderBy(m => m.CreatedAt) // 最终按时间正序返回
+                .ToListAsync();
 
-    public async Task<AttachmentMessageResult> SendAttachmentMessageAsync(
-        int actorId,
-        bool isAdmin,
-        UploadChatAttachmentRequest request,
-        StoredChatAttachment attachment)
-    {
-        var caption = (request.Caption ?? string.Empty).Trim();
-        if (caption.Length > 500) throw new BusinessException("附件说明不能超过500个字符");
+            // 转换为DTO
+            var messageDtos = await ConvertMessagesToDtos(messages);
 
-        var conversation = await _db.SupportConversations
-            .Include(c => c.User)
-            .Include(c => c.Admin)
-            .SingleOrDefaultAsync(c => c.Id == request.ConversationId)
-            ?? throw new BusinessException("客服会话不存在");
-
-        if (!isAdmin && conversation.UserId != actorId) throw new UnauthorizedAccessException();
-        if (conversation.Status == "closed") throw new BusinessException("该客服会话已结束，请重新发起会话");
-
-        if (isAdmin)
-        {
-            if (conversation.AdminId.HasValue && conversation.AdminId != actorId)
-                throw new BusinessException("该会话已由其他客服接待");
-            if (!conversation.AdminId.HasValue)
+            return new PagedResult<MessageDto>
             {
-                conversation.AdminId = actorId;
-                conversation.Admin = await _db.Users.SingleAsync(u => u.Id == actorId);
+                Items = messageDtos,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        /// <inheritdoc/>
+        public async Task<MessageDto> SendMessageAsync(int senderId, SendMessageRequest request)
+        {
+            // 验证接收者是否存在
+            var receiver = await _dbContext.Users.FindAsync(request.ReceiverId);
+            if (receiver == null)
+            {
+                throw new ArgumentException("接收者不存在");
             }
-            conversation.Status = "active";
+
+            // 验证发送者是否存在
+            var sender = await _dbContext.Users.FindAsync(senderId);
+            if (sender == null)
+            {
+                throw new ArgumentException("发送者不存在");
+            }
+
+            // 创建消息
+            var message = new Message
+            {
+                SenderId = senderId,
+                ReceiverId = request.ReceiverId,
+                Content = request.Content,
+                MessageType = request.MessageType,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _dbContext.Messages.Add(message);
+            await _dbContext.SaveChangesAsync();
+
+            // 创建或更新会话
+            await CreateOrUpdateConversationAsync(senderId, request.ReceiverId, request.Content);
+
+            // 转换为DTO
+            var messageDto = await ConvertMessageToDto(message);
+
+            return messageDto;
         }
 
-        var clientMessageId = string.IsNullOrWhiteSpace(request.ClientMessageId)
-            ? null
-            : request.ClientMessageId.Trim();
-        if (clientMessageId is not null)
+        /// <inheritdoc/>
+        public async Task<bool> MarkMessagesAsReadAsync(int userId, int conversationId)
         {
-            var existing = await _db.SupportMessages.AsNoTracking()
-                .Include(m => m.Sender)
-                .Include(m => m.Conversation)
-                .FirstOrDefaultAsync(m => m.ConversationId == request.ConversationId
-                    && m.SenderId == actorId
-                    && m.ClientMessageId == clientMessageId);
-            if (existing is not null)
-                return new AttachmentMessageResult(MapMessage(existing, existing.Conversation), false);
+            // 验证会话是否存在且用户有权访问
+            var conversation = await _dbContext.Conversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId && (c.UserId == userId || c.AdminId == userId));
+
+            if (conversation == null)
+            {
+                return false;
+            }
+
+            // 查询未读消息
+            var unreadMessages = await _dbContext.Messages
+                .Where(m => m.ReceiverId == userId && 
+                    ((m.SenderId == conversation.UserId && m.ReceiverId == conversation.AdminId) ||
+                     (m.SenderId == conversation.AdminId && m.ReceiverId == conversation.UserId)))
+                .ToListAsync();
+
+            // 标记为已读
+            foreach (var message in unreadMessages)
+            {
+                message.IsRead = true;
+                message.UpdatedAt = DateTime.UtcNow;
+            }
+
+            // 重置未读计数
+            conversation.UnreadCount = 0;
+            conversation.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+
+            return true;
         }
 
-        var now = DateTime.UtcNow;
-        var content = caption.Length > 0 ? caption : attachment.OriginalName;
-        var preview = attachment.MessageType == "image"
-            ? $"[图片] {content}"
-            : $"[文件] {attachment.OriginalName}";
-        var message = new SupportMessage
+        /// <inheritdoc/>
+        public async Task<bool> DeleteMessageAsync(int userId, int messageId)
         {
-            ConversationId = conversation.Id,
-            SenderId = actorId,
-            Content = content,
-            MessageType = attachment.MessageType,
-            ClientMessageId = clientMessageId,
-            AttachmentName = attachment.OriginalName,
-            AttachmentStorageName = attachment.StorageName,
-            AttachmentContentType = attachment.ContentType,
-            AttachmentSize = attachment.Size,
-            IsRead = false,
-            CreatedAt = now
-        };
-        _db.SupportMessages.Add(message);
-        conversation.LastMessage = preview.Length <= 500 ? preview : preview[..500];
-        conversation.LastMessageAt = now;
-        conversation.UpdatedAt = now;
-        if (isAdmin) conversation.UserUnreadCount++;
-        else conversation.AdminUnreadCount++;
+            // 查找消息
+            var message = await _dbContext.Messages.FindAsync(messageId);
+            if (message == null || (message.SenderId != userId && message.ReceiverId != userId))
+            {
+                return false;
+            }
 
-        await _db.SaveChangesAsync();
-        var savedMessage = await _db.SupportMessages.AsNoTracking()
-            .Include(m => m.Sender)
-            .SingleAsync(m => m.Id == message.Id);
-        return new AttachmentMessageResult(MapMessage(savedMessage, conversation), true);
-    }
+            // 删除消息
+            _dbContext.Messages.Remove(message);
+            await _dbContext.SaveChangesAsync();
 
-    public async Task<ChatAttachmentDownload?> GetAttachmentAsync(int messageId, int actorId, bool isAdmin)
-    {
-        var message = await _db.SupportMessages.AsNoTracking()
-            .Include(m => m.Conversation)
-            .SingleOrDefaultAsync(m => m.Id == messageId);
-        if (message is null
-            || (!isAdmin && message.Conversation.UserId != actorId)
-            || string.IsNullOrWhiteSpace(message.AttachmentStorageName)
-            || string.IsNullOrWhiteSpace(message.AttachmentName)
-            || string.IsNullOrWhiteSpace(message.AttachmentContentType)
-            || !message.AttachmentSize.HasValue)
-            return null;
+            return true;
+        }
+        #endregion
 
-        return new ChatAttachmentDownload(
-            message.Id,
-            message.AttachmentName,
-            message.AttachmentStorageName,
-            message.AttachmentContentType,
-            message.AttachmentSize.Value);
-    }
-
-    public async Task<bool> MarkMessageReadAsync(int messageId, int actorId, bool isAdmin)
-    {
-        var message = await _db.SupportMessages.Include(m => m.Conversation).SingleOrDefaultAsync(m => m.Id == messageId);
-        if (message is null || (!isAdmin && message.Conversation.UserId != actorId)) return false;
-        if (message.SenderId == actorId) return true;
-        message.IsRead = true;
-        await _db.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<bool> MarkConversationReadAsync(int conversationId, int actorId, bool isAdmin)
-    {
-        var conversation = await _db.SupportConversations.SingleOrDefaultAsync(c => c.Id == conversationId);
-        if (conversation is null || (!isAdmin && conversation.UserId != actorId)) return false;
-
-        var unread = await _db.SupportMessages
-            .Where(m => m.ConversationId == conversationId && m.SenderId != actorId && !m.IsRead)
-            .ToListAsync();
-        unread.ForEach(m => m.IsRead = true);
-        if (isAdmin) conversation.AdminUnreadCount = 0;
-        else conversation.UserUnreadCount = 0;
-        conversation.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<ConversationDto?> AssignConversationAsync(int conversationId, int adminId)
-    {
-        var conversation = await ConversationQuery(true).SingleOrDefaultAsync(c => c.Id == conversationId);
-        if (conversation is null || conversation.Status == "closed"
-            || (conversation.AdminId.HasValue && conversation.AdminId != adminId)) return null;
-        conversation.AdminId = adminId;
-        conversation.Status = "active";
-        conversation.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        conversation = await ConversationQuery().SingleAsync(c => c.Id == conversationId);
-        return MapConversation(conversation, true);
-    }
-
-    public async Task<ConversationDto?> CloseConversationAsync(int conversationId, int adminId)
-    {
-        var conversation = await ConversationQuery(true).SingleOrDefaultAsync(c => c.Id == conversationId);
-        if (conversation is null || (conversation.AdminId.HasValue && conversation.AdminId != adminId)) return null;
-        conversation.AdminId ??= adminId;
-        conversation.Status = "closed";
-        conversation.ClosedAt = DateTime.UtcNow;
-        conversation.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        conversation = await ConversationQuery().SingleAsync(c => c.Id == conversationId);
-        return MapConversation(conversation, true);
-    }
-
-    public Task<int> GetUnreadCountAsync(int actorId, bool isAdmin) => isAdmin
-        ? _db.SupportConversations.SumAsync(c => c.AdminUnreadCount)
-        : _db.SupportConversations.Where(c => c.UserId == actorId).SumAsync(c => c.UserUnreadCount);
-
-    public Task<bool> CanAccessConversationAsync(int conversationId, int actorId, bool isAdmin) => isAdmin
-        ? _db.SupportConversations.AnyAsync(c => c.Id == conversationId)
-        : _db.SupportConversations.AnyAsync(c => c.Id == conversationId && c.UserId == actorId);
-
-    private IQueryable<SupportConversation> ConversationQuery(bool tracking = false)
-    {
-        var query = _db.SupportConversations.Include(c => c.User).Include(c => c.Admin).AsQueryable();
-        return tracking ? query : query.AsNoTracking();
-    }
-
-    private static ConversationDto MapConversation(SupportConversation c, bool viewerIsAdmin) => new()
-    {
-        Id = c.Id,
-        UserId = c.UserId,
-        UserName = c.User?.Username ?? string.Empty,
-        UserAvatar = c.User?.Avatar ?? string.Empty,
-        AdminId = c.AdminId,
-        AdminName = c.Admin?.Username ?? "欢雨客服",
-        LastMessage = c.LastMessage ?? "",
-        LastMessageTime = c.LastMessageAt,
-        UnreadCount = viewerIsAdmin ? c.AdminUnreadCount : c.UserUnreadCount,
-        Status = c.Status,
-        CreatedAt = c.CreatedAt,
-        UpdatedAt = c.UpdatedAt
-    };
-
-    private static MessageDto MapMessage(SupportMessage message, SupportConversation conversation)
-    {
-        var receiverId = message.SenderId == conversation.UserId
-            ? conversation.AdminId ?? 0
-            : conversation.UserId;
-        return new MessageDto
+        #region 会话相关
+        /// <inheritdoc/>
+        public async Task<IEnumerable<ConversationDto>> GetUserConversationsAsync(int userId)
         {
-            Id = message.Id,
-            SenderId = message.SenderId,
-            SenderName = message.Sender?.Username ?? string.Empty,
-            SenderAvatar = message.Sender?.Avatar ?? string.Empty,
-            ReceiverId = receiverId,
-            Content = message.Content,
-            MessageType = message.MessageType,
-            IsRead = message.IsRead,
-            CreatedAt = message.CreatedAt,
-            ConversationId = message.ConversationId,
-            AttachmentName = message.AttachmentName,
-            AttachmentContentType = message.AttachmentContentType,
-            AttachmentSize = message.AttachmentSize,
-            AttachmentAvailable = !string.IsNullOrWhiteSpace(message.AttachmentStorageName),
-            AttachmentUrl = string.IsNullOrWhiteSpace(message.AttachmentStorageName)
-                ? null
-                : $"/api/chat/messages/{message.Id}/attachment"
-        };
+            // 获取当前用户的角色
+            var user = await _dbContext.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return Enumerable.Empty<ConversationDto>();
+            }
+
+            IQueryable<Conversation> query;
+            if (string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                // 管理员获取所有会话
+                query = _dbContext.Conversations.OrderByDescending(c => c.UpdatedAt);
+            }
+            else
+            {
+                // 普通用户获取与管理员的会话
+                query = _dbContext.Conversations
+                    .Where(c => c.UserId == userId)
+                    .OrderByDescending(c => c.UpdatedAt);
+            }
+
+            var conversations = await query.ToListAsync();
+            return await ConvertConversationsToDtos(conversations, userId);
+        }
+
+        /// <inheritdoc/>
+        public async Task<ConversationDto?> GetConversationAsync(int userId, int conversationId)
+        {
+            // 查找会话
+            var conversation = await _dbContext.Conversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId && (c.UserId == userId || c.AdminId == userId));
+
+            if (conversation == null)
+            {
+                return null;
+            }
+
+            // 转换为DTO
+            var conversationDtos = await ConvertConversationsToDtos(new List<Conversation> { conversation }, userId);
+            if (conversationDtos.Count == 0) { throw new Exception("会话创建失败"); }
+            return conversationDtos[0];
+        }
+
+        /// <inheritdoc/>
+        public async Task<ConversationDto?> CreateOrGetAdminConversationAsync(int userId)
+        {
+            // 查找管理员
+            var admin = await _dbContext.Users.FirstOrDefaultAsync(u => string.Equals(u.Role, "admin", StringComparison.OrdinalIgnoreCase));
+            if (admin == null)
+            {
+                throw new Exception("管理员不存在");
+            }
+
+            // 查找是否已存在会话
+            var conversation = await _dbContext.Conversations
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.AdminId == admin.Id);
+
+            if (conversation == null)
+            {
+                // 创建新会话
+                conversation = new Conversation
+                {
+                    UserId = userId,
+                    AdminId = admin.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _dbContext.Conversations.Add(conversation);
+                await _dbContext.SaveChangesAsync();
+            }
+
+            // 转换为DTO
+            var conversationDtos = await ConvertConversationsToDtos(new List<Conversation> { conversation }, userId);
+            if (conversationDtos.Count == 0) { return null; }
+            return conversationDtos[0];
+        }
+
+        /// <inheritdoc/>
+        public async Task<int> GetUnreadCountAsync(int userId, int conversationId)
+        {
+            // 查找会话
+            var conversation = await _dbContext.Conversations
+                .FirstOrDefaultAsync(c => c.Id == conversationId && (c.UserId == userId || c.AdminId == userId));
+
+            if (conversation == null)
+            {
+                return 0;
+            }
+
+            // 计算未读消息数
+            var unreadCount = await _dbContext.Messages
+                .Where(m => m.ReceiverId == userId && 
+                    ((m.SenderId == conversation.UserId && m.ReceiverId == conversation.AdminId) ||
+                     (m.SenderId == conversation.AdminId && m.ReceiverId == conversation.UserId)) &&
+                    !m.IsRead)
+                .CountAsync();
+
+            return unreadCount;
+        }
+
+        /// <inheritdoc/>
+        public async Task<int> GetAllUnreadMessagesCountAsync(int userId)
+        {
+            // 计算用户的所有未读消息总数
+            var unreadCount = await _dbContext.Messages
+                .Where(m => m.ReceiverId == userId && !m.IsRead)
+                .CountAsync();
+
+            return unreadCount;
+        }
+        #endregion
+
+        #region 辅助方法
+        /// <summary>
+        /// 创建或更新会话
+        /// </summary>
+        private async Task CreateOrUpdateConversationAsync(int senderId, int receiverId, string lastMessage)
+        {
+            // 获取当前用户和接收者的角色
+            var sender = await _dbContext.Users.FindAsync(senderId);
+            var receiver = await _dbContext.Users.FindAsync(receiverId);
+
+            if (sender == null || receiver == null)
+            {
+                return;
+            }
+
+            // 确定用户ID和管理员ID
+            int userId, adminId;
+            if (string.Equals(sender.Role, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                adminId = senderId;
+                userId = receiverId;
+            }
+            else if (string.Equals(receiver.Role, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                userId = senderId;
+                adminId = receiverId;
+            }
+            else
+            {
+                // 如果双方都不是管理员，不创建会话
+                return;
+            }
+
+            // 查找会话
+            var conversation = await _dbContext.Conversations
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.AdminId == adminId);
+
+            if (conversation == null)
+            {
+                // 创建新会话
+                conversation = new Conversation
+                {
+                    UserId = userId,
+                    AdminId = adminId,
+                    LastMessage = lastMessage,
+                    LastMessageTime = DateTime.UtcNow,
+                    UnreadCount = 1, // 新消息，未读计数为1
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _dbContext.Conversations.Add(conversation);
+            }
+            else
+            {
+                // 更新现有会话
+                conversation.LastMessage = lastMessage;
+                conversation.LastMessageTime = DateTime.UtcNow;
+                conversation.UpdatedAt = DateTime.UtcNow;
+
+                // 如果接收者是管理员，增加未读计数
+                if (receiverId == adminId)
+                {
+                    conversation.UnreadCount += 1;
+                }
+            }
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// 将消息转换为DTO
+        /// </summary>
+        private async Task<MessageDto> ConvertMessageToDto(Message message)
+        {
+            var sender = await _dbContext.Users.FindAsync(message.SenderId);
+            var receiver = await _dbContext.Users.FindAsync(message.ReceiverId);
+            var conversationId = await GetConversationIdAsync(message.SenderId, message.ReceiverId);
+
+            return new MessageDto
+            {
+                Id = message.Id,
+                SenderId = message.SenderId,
+                SenderName = sender?.Username ?? "未知用户",
+                SenderAvatar = sender?.Avatar ?? string.Empty,
+                ReceiverId = message.ReceiverId,
+                Content = message.Content,
+                MessageType = message.MessageType,
+                IsRead = message.IsRead,
+                CreatedAt = message.CreatedAt,
+                ConversationId = conversationId
+            };
+        }
+
+        /// <summary>
+        /// 将消息列表转换为DTO列表
+        /// </summary>
+        private async Task<List<MessageDto>> ConvertMessagesToDtos(List<Message> messages)
+        {
+            var dtos = new List<MessageDto>();
+            foreach (var message in messages)
+            {
+                var dto = await ConvertMessageToDto(message);
+                dtos.Add(dto);
+            }
+            return dtos;
+        }
+
+        /// <summary>
+        /// 将会话转换为DTO
+        /// </summary>
+        private async Task<List<ConversationDto>> ConvertConversationsToDtos(List<Conversation> conversations, int currentUserId)
+        {
+            var dtos = new List<ConversationDto>();
+
+            foreach (var conversation in conversations)
+            {
+                var user = await _dbContext.Users.FindAsync(conversation.UserId);
+                var admin = await _dbContext.Users.FindAsync(conversation.AdminId);
+
+                var dto = new ConversationDto
+                {
+                    Id = conversation.Id,
+                    UserId = conversation.UserId,
+                    UserName = user?.Username ?? "未知用户",
+                    UserAvatar = user?.Avatar ?? string.Empty,
+                    AdminId = conversation.AdminId,
+                    AdminName = admin?.Username ?? "未知管理员",
+                    LastMessage = conversation.LastMessage,
+                    LastMessageTime = conversation.LastMessageTime,
+                    UnreadCount = conversation.UnreadCount,
+                    CreatedAt = conversation.CreatedAt,
+                    UpdatedAt = conversation.UpdatedAt
+                };
+
+                dtos.Add(dto);
+            }
+
+            return dtos;
+        }
+
+        /// <summary>
+        /// 获取会话ID（基于发送者与接收者的角色）
+        /// </summary>
+        private async Task<int> GetConversationIdAsync(int senderId, int receiverId)
+        {
+            var sender = await _dbContext.Users.FindAsync(senderId);
+            var receiver = await _dbContext.Users.FindAsync(receiverId);
+            if (sender == null || receiver == null)
+            {
+                return 0;
+            }
+
+            int userId, adminId;
+            if (string.Equals(sender.Role, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                adminId = senderId;
+                userId = receiverId;
+            }
+            else if (string.Equals(receiver.Role, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                userId = senderId;
+                adminId = receiverId;
+            }
+            else
+            {
+                return 0;
+            }
+
+            var conv = await _dbContext.Conversations
+                .FirstOrDefaultAsync(c => c.UserId == userId && c.AdminId == adminId);
+            return conv?.Id ?? 0;
+        }
+        #endregion
     }
 }

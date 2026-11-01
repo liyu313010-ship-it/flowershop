@@ -6,6 +6,12 @@ namespace HuanyuFlowerShop.DTOs
         public string OrderNumber { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public decimal TotalAmount { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal ShippingFee { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public string? CouponCode { get; set; }
+        public DateTime? ShippedAt { get; set; }
+        public DateTime? DeliveredAt { get; set; }
         public string ShippingAddress { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string RecipientName { get; set; } = string.Empty;
@@ -53,6 +59,8 @@ namespace HuanyuFlowerShop.DTOs
 
     public class CreateOrderDto
     {
+        public string? ClientRequestId { get; set; }
+        public decimal? ExpectedTotal { get; set; }
         public string RecipientName { get; set; } = string.Empty;
         public string ShippingAddress { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
@@ -70,5 +78,19 @@ namespace HuanyuFlowerShop.DTOs
     public class UpdateOrderStatusDto
     {
         public string Status { get; set; } = string.Empty;
+    }
+
+    public class OrderQuoteRequest
+    {
+        public string ShippingMethod { get; set; } = "standard";
+        public string? CouponCode { get; set; }
+    }
+
+    public class OrderQuoteDto
+    {
+        public decimal Subtotal { get; set; }
+        public decimal ShippingFee { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal TotalAmount { get; set; }
     }
 }

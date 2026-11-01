@@ -3,6 +3,12 @@ using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
+using System.Data;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using HuanyuFlowerShop.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace HuanyuFlowerShop.Services
 {
@@ -20,6 +26,7 @@ namespace HuanyuFlowerShop.Services
         private readonly IPaymentService _paymentService;
         private readonly IConfiguration _configuration;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ApplicationDbContext _db;
 
         private const string USER_ORDERS_CACHE_KEY_PREFIX = "user_orders_";
         private const string ORDER_CACHE_KEY_PREFIX = "order_";
@@ -36,9 +43,7 @@ namespace HuanyuFlowerShop.Services
             IRepository<UserCoupon> userCouponRepository,
             ICacheService cacheService,
             ILogger<OrderService> logger,
-            IPaymentService paymentService,
-            IConfiguration configuration,
-            IUnitOfWork unitOfWork)
+            IPaymentService paymentService, IConfiguration configuration, IUnitOfWork unitOfWork, ApplicationDbContext db)
         {
             _orderRepository = orderRepository;
             _orderItemRepository = orderItemRepository;
@@ -50,8 +55,7 @@ namespace HuanyuFlowerShop.Services
             _cacheService = cacheService;
             _logger = logger;
             _paymentService = paymentService;
-            _configuration = configuration;
-            _unitOfWork = unitOfWork;
+            _configuration = configuration; _unitOfWork = unitOfWork; _db = db;
         }
 
         [GeneratedRegex("(物流公司|快递公司)[：:]\\s*([^；,，\\n\\r]+)", RegexOptions.Compiled)]
@@ -94,14 +98,14 @@ namespace HuanyuFlowerShop.Services
                 foreach (var orderItem in orderItemsForOrder)
                 {
                     var product = await _productRepository.GetByIdAsync(orderItem.ProductId);
-                    if (product != null)
+                    if (orderItem != null)
                     {
                         orderItemDtos.Add(new OrderItemDto
                         {
                             Id = orderItem.Id,
                             ProductId = orderItem.ProductId,
-                            ProductName = product.Name,
-                        ProductImage = product.ImageUrl ?? "",
+                            ProductName = string.IsNullOrWhiteSpace(orderItem.ProductName) ? product?.Name ?? "已下架商品" : orderItem.ProductName,
+                        ProductImage = string.IsNullOrWhiteSpace(orderItem.ProductImage) ? product?.ImageUrl ?? "" : orderItem.ProductImage,
                         Price = orderItem.UnitPrice,
                         Quantity = orderItem.Quantity,
                         TotalPrice = orderItem.Subtotal
@@ -139,16 +143,14 @@ namespace HuanyuFlowerShop.Services
                     OrderNumber = order.OrderNumber ?? "",
                     Status = order.Status ?? "unknown",
                     TotalAmount = order.TotalAmount,
+                    Subtotal = order.Subtotal, ShippingFee = order.ShippingFee,
+                    RecipientName = order.RecipientName, DeliveryDate = order.DeliveryDate,
+                    ShippingMethod = order.ShippingMethod, DeliveryTime = order.DeliveryTime,
+                    ShippedAt = order.ShippedAt, DeliveredAt = order.DeliveredAt,
+                    DiscountAmount = order.DiscountAmount,
+                    CouponCode = order.CouponCode,
                     ShippingAddress = order.DeliveryAddress ?? "",
                     Phone = order.RecipientPhone ?? "",
-                    RecipientName = order.IsAnonymous ? "匿名收货人" : order.RecipientName,
-                    DeliveryDate = order.DeliveryDate,
-                    ShippingMethod = order.ShippingMethod,
-                    DeliveryTime = order.DeliveryTime,
-                    SenderName = order.IsAnonymous ? null : order.SenderName,
-                    CardMessage = order.IsAnonymous ? null : order.CardMessage,
-                    IsAnonymous = order.IsAnonymous,
-                    SubstitutionPreference = order.SubstitutionPreference,
                     CreatedAt = order.CreatedAt,
                     UpdatedAt = order.UpdatedAt,
                     OrderItems = orderItemDtos,
@@ -206,14 +208,14 @@ namespace HuanyuFlowerShop.Services
             foreach (var orderItem in orderItemsForOrder)
             {
                 var product = await _productRepository.GetByIdAsync(orderItem.ProductId);
-                if (product != null)
+                if (orderItem != null)
                 {
                     orderItemDtos.Add(new OrderItemDto
                     {
                         Id = orderItem.Id,
                         ProductId = orderItem.ProductId,
-                        ProductName = product.Name,
-                        ProductImage = product.ImageUrl ?? "",
+                        ProductName = string.IsNullOrWhiteSpace(orderItem.ProductName) ? product?.Name ?? "已下架商品" : orderItem.ProductName,
+                        ProductImage = string.IsNullOrWhiteSpace(orderItem.ProductImage) ? product?.ImageUrl ?? "" : orderItem.ProductImage,
                         Price = orderItem.UnitPrice,
                         Quantity = orderItem.Quantity,
                         TotalPrice = orderItem.Subtotal
@@ -251,16 +253,14 @@ namespace HuanyuFlowerShop.Services
                 OrderNumber = order.OrderNumber ?? "",
                 Status = order.Status ?? "unknown",
                 TotalAmount = order.TotalAmount,
+                    Subtotal = order.Subtotal, ShippingFee = order.ShippingFee,
+                    RecipientName = order.RecipientName, DeliveryDate = order.DeliveryDate,
+                    ShippingMethod = order.ShippingMethod, DeliveryTime = order.DeliveryTime,
+                    ShippedAt = order.ShippedAt, DeliveredAt = order.DeliveredAt,
+                DiscountAmount = order.DiscountAmount,
+                CouponCode = order.CouponCode,
                 ShippingAddress = order.DeliveryAddress ?? "",
                 Phone = order.RecipientPhone ?? "",
-                RecipientName = order.IsAnonymous ? "匿名收货人" : order.RecipientName,
-                DeliveryDate = order.DeliveryDate,
-                ShippingMethod = order.ShippingMethod,
-                DeliveryTime = order.DeliveryTime,
-                SenderName = order.IsAnonymous ? null : order.SenderName,
-                CardMessage = order.IsAnonymous ? null : order.CardMessage,
-                IsAnonymous = order.IsAnonymous,
-                SubstitutionPreference = order.SubstitutionPreference,
                 CreatedAt = order.CreatedAt,
                 UpdatedAt = order.UpdatedAt,
                 OrderItems = orderItemDtos,
@@ -283,339 +283,171 @@ namespace HuanyuFlowerShop.Services
             return result;
         }
 
-        public async Task<OrderDto> CreateOrderAsync(int userId, CreateOrderDto createOrderDto)
+        public async Task<OrderQuoteDto> GetQuoteAsync(int userId, OrderQuoteRequest request)
         {
-            await _unitOfWork.BeginTransactionAsync();
-            try
-            {
-                var result = await CreateOrderCoreAsync(userId, createOrderDto);
-                await _unitOfWork.CommitTransactionAsync();
-                return result;
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
-            }
+            var quote = await BuildQuoteAsync(userId, request, false);
+            return quote.Quote;
         }
 
-        private async Task<OrderDto> CreateOrderCoreAsync(int userId, CreateOrderDto createOrderDto)
+        private async Task<(List<CartItem> Cart, List<OrderItem> Items, Coupon? Coupon, OrderQuoteDto Quote)> BuildQuoteAsync(
+            int userId, OrderQuoteRequest request, bool reserve)
         {
-            if (userId <= 0) throw new ArgumentException("用户ID必须大于0", nameof(userId));
-            if (createOrderDto == null) throw new ArgumentNullException(nameof(createOrderDto));
+            var method = (request.ShippingMethod ?? "standard").Trim().ToLowerInvariant();
+            var cart = reserve && _db.Database.IsRelational()
+                ? await _db.CartItems.FromSqlInterpolated($"SELECT * FROM `CartItems` WHERE `UserId` = {userId} FOR UPDATE").AsNoTracking().ToListAsync()
+                : await _db.CartItems.AsNoTracking().Where(c => c.UserId == userId).ToListAsync();
+            if (cart.Count == 0) throw new ArgumentException("购物车为空");
+            var items = new List<OrderItem>();
+            foreach (var item in cart.OrderBy(c => c.ProductId))
+            {
+                Product? product;
+                if (reserve && _db.Database.IsRelational())
+                    product = (await _db.Products.FromSqlInterpolated($"SELECT * FROM `Products` WHERE `Id` = {item.ProductId} FOR UPDATE").AsNoTracking().ToListAsync()).SingleOrDefault();
+                else product = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == item.ProductId);
+                if (product is null || !product.IsActive) throw new ArgumentException("购物车包含不存在或已下架的商品");
+                if (item.Quantity is < 1 or > 99) throw new ArgumentException("商品数量必须在1到99之间");
+                if (product.Stock < item.Quantity) throw new ArgumentException($"产品 {product.Name} 库存不足");
+                items.Add(new OrderItem { ProductId = product.Id, ProductName = product.Name,
+                    ProductImage = product.ImageUrl ?? "", UnitPrice = product.Price,
+                    Quantity = item.Quantity, Subtotal = product.Price * item.Quantity });
+            }
+            var subtotal = items.Sum(i => i.Subtotal);
+            var shipping = OrderBusinessRules.ShippingFee(subtotal, method, _configuration);
+            Coupon? coupon = null;
+            decimal discount = 0;
+            if (!string.IsNullOrWhiteSpace(request.CouponCode))
+            {
+                var code = request.CouponCode.Trim().ToUpperInvariant();
+                coupon = await _db.Coupons.AsNoTracking().FirstOrDefaultAsync(c => c.Code.ToUpper() == code);
+                if (reserve && coupon is not null && _db.Database.IsRelational())
+                    coupon = (await _db.Coupons.FromSqlInterpolated($"SELECT * FROM `Coupons` WHERE `Id` = {coupon.Id} FOR UPDATE").AsNoTracking().ToListAsync()).SingleOrDefault();
+                var userCoupon = coupon is null ? null : await _db.UserCoupons.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserId == userId && u.CouponId == coupon.Id);
+                discount = OrderBusinessRules.CouponDiscount(coupon, userCoupon, subtotal, DateTime.UtcNow);
+            }
+            return (cart, items, coupon, new OrderQuoteDto { Subtotal = subtotal, ShippingFee = shipping,
+                DiscountAmount = discount, TotalAmount = subtotal + shipping - discount });
+        }
 
-            // 订单字段由服务端统一校验，避免空地址/伪造支付方式进入订单。
-            if (string.IsNullOrWhiteSpace(createOrderDto.RecipientName) || createOrderDto.RecipientName.Length > 50)
-                throw new ArgumentException("收货人姓名无效");
-            if (string.IsNullOrWhiteSpace(createOrderDto.ShippingAddress) || createOrderDto.ShippingAddress.Length > 255)
-                throw new ArgumentException("收货地址无效");
-            if (string.IsNullOrWhiteSpace(createOrderDto.Phone) || createOrderDto.Phone.Length > 20)
-                throw new ArgumentException("收货电话无效");
-            var deliveryDate = createOrderDto.DeliveryDate?.Date ?? DateTime.UtcNow.Date;
-            if (deliveryDate < DateTime.UtcNow.Date || deliveryDate > DateTime.UtcNow.Date.AddDays(30))
-                throw new ArgumentException("配送日期必须是今天至未来30天内");
-            var shippingMethod = (createOrderDto.ShippingMethod ?? "standard").Trim().ToLowerInvariant();
-            if (shippingMethod is not ("standard" or "same_day")) throw new ArgumentException("不支持的配送方式");
-            if (shippingMethod == "same_day" && DateTime.Now.Hour >= _configuration.GetValue("Shipping:SameDayCutoffHour", 15) && deliveryDate == DateTime.UtcNow.Date)
+        public async Task<OrderDto> CreateOrderAsync(int userId, CreateOrderDto dto)
+        {
+            if (userId <= 0) throw new ArgumentException("用户ID必须大于0");
+            ArgumentNullException.ThrowIfNull(dto);
+            if (string.IsNullOrWhiteSpace(dto.RecipientName) || dto.RecipientName.Length > 50) throw new ArgumentException("收货人姓名无效");
+            if (string.IsNullOrWhiteSpace(dto.ShippingAddress) || dto.ShippingAddress.Length > 200) throw new ArgumentException("收货地址无效");
+            if (string.IsNullOrWhiteSpace(dto.Phone) || !Regex.IsMatch(dto.Phone, @"^1[3-9]\d{9}$")) throw new ArgumentException("收货电话无效");
+            var today = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(8)).Date;
+            var deliveryDate = dto.DeliveryDate?.Date ?? today;
+            if (deliveryDate < today || deliveryDate > today.AddDays(30)) throw new ArgumentException("配送日期必须是今天至未来30天内");
+            var method = (dto.ShippingMethod ?? "standard").Trim().ToLowerInvariant();
+            if (method == "same_day" && deliveryDate == today && DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(8)).Hour >= _configuration.GetValue("Shipping:SameDayCutoffHour", 15))
                 throw new ArgumentException("已超过当日配送截止时间，请选择其他日期");
-            var substitution = (createOrderDto.SubstitutionPreference ?? "contact_me").Trim().ToLowerInvariant();
+            var substitution = (dto.SubstitutionPreference ?? "contact_me").Trim().ToLowerInvariant();
             if (substitution is not ("contact_me" or "allow_similar" or "no_substitution")) throw new ArgumentException("不支持的替换偏好");
-            var requestedPaymentMethod = (createOrderDto.PaymentMethod ?? "cod").Trim().ToLowerInvariant() switch
+            var paymentMethod = (dto.PaymentMethod ?? "cod").Trim().ToLowerInvariant() switch
             {
-                "alipay" or "wechat_pay" or "wechat" or "online" => "online",
                 "cash_on_delivery" or "cash" or "cod" => "cod",
-                _ => string.Empty
+                "alipay" or "wechat_pay" or "wechat" or "online" => "online",
+                _ => throw new ArgumentException("暂不支持该支付方式")
             };
-            if (requestedPaymentMethod is not ("cod" or "online"))
-                throw new ArgumentException("暂不支持该支付方式");
-
-            // 获取购物车项目
-            var cartItems = await _cartRepository.GetAllAsync();
-            var userCartItems = cartItems.Where(ci => ci.UserId == userId).ToList();
-
-            if (!userCartItems.Any())
+            var requestId = string.IsNullOrWhiteSpace(dto.ClientRequestId) ? null : dto.ClientRequestId.Trim();
+            if (requestId?.Length > 64) throw new ArgumentException("请求编号过长");
+            var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(dto))));
+            int orderId;
+            await using (var transaction = _db.Database.IsRelational()
+                ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted) : null)
             {
-                throw new ArgumentException("购物车为空");
-            }
-
-            // 计算总金额并检查库存
-            decimal totalAmount = 0;
-            var orderItems = new List<OrderItem>();
-
-            foreach (var cartItem in userCartItems)
-            {
-                var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
-                if (product == null)
+                // Serializes checkout requests for this user across app instances.
+                if (_db.Database.IsRelational())
                 {
-                    throw new ArgumentException($"产品 {cartItem.ProductId} 不存在");
+                    var users = await _db.Users.FromSqlInterpolated($"SELECT * FROM `Users` WHERE `Id` = {userId} FOR UPDATE").AsNoTracking().ToListAsync();
+                    if (users.SingleOrDefault()?.Status != "active") throw new UnauthorizedAccessException("账户不可用");
                 }
-
-                if (cartItem.Quantity <= 0 || cartItem.Quantity > 99)
-                    throw new ArgumentException("商品数量必须在1到99之间");
-                if (!product.IsActive)
-                    throw new ArgumentException($"产品 {product.Name} 已下架");
-                if (product.Stock < cartItem.Quantity)
+                var existing = requestId is null ? null : await _db.Orders.AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.UserId == userId && o.ClientRequestId == requestId);
+                if (existing is not null)
                 {
-                    throw new ArgumentException($"产品 {product.Name} 库存不足");
+                    if (existing.RequestFingerprint != fingerprint) throw new ArgumentException("请求编号已用于其他订单，请刷新后重试");
+                    orderId = existing.Id;
                 }
-
-                totalAmount += product.Price * cartItem.Quantity;
-
-                orderItems.Add(new OrderItem
+                else
                 {
-                    ProductId = cartItem.ProductId,
-                    ProductName = product.Name,
-                    ProductImage = product.ImageUrl ?? string.Empty,
-                    UnitPrice = product.Price,
-                    Quantity = cartItem.Quantity,
-                    Subtotal = product.Price * cartItem.Quantity
-                });
-            }
-
-            var shippingFee = totalAmount >= _configuration.GetValue("Shipping:FreeThreshold", 299m)
-                ? 0m
-                : _configuration.GetValue("Shipping:BaseFee", 15m);
-            if (shippingMethod == "same_day") shippingFee += _configuration.GetValue("Shipping:SameDayFee", 20m);
-
-            // 创建订单
-            var order = new Order
-            {
-                UserId = userId,
-                OrderNumber = GenerateOrderNumber(),
-                Status = "pending",
-                PaymentStatus = "unpaid",
-                PaymentMethod = requestedPaymentMethod,
-                PaymentExpiresAt = DateTime.UtcNow.AddMinutes(30), // 支付超时时间30分钟
-                TotalAmount = totalAmount + shippingFee,
-                Subtotal = totalAmount,
-                ShippingFee = shippingFee,
-                DiscountAmount = 0,
-                CouponCode = string.IsNullOrWhiteSpace(createOrderDto.CouponCode) ? null : createOrderDto.CouponCode?.Trim(),
-                RecipientName = createOrderDto.RecipientName ?? "用户",
-                RecipientPhone = createOrderDto.Phone ?? "",
-                DeliveryAddress = createOrderDto.ShippingAddress ?? "",
-                DeliveryDate = deliveryDate,
-                ShippingMethod = shippingMethod,
-                DeliveryTime = string.IsNullOrWhiteSpace(createOrderDto.DeliveryTime) ? null : createOrderDto.DeliveryTime.Trim(),
-                SenderName = string.IsNullOrWhiteSpace(createOrderDto.SenderName) ? null : createOrderDto.SenderName.Trim(),
-                CardMessage = string.IsNullOrWhiteSpace(createOrderDto.CardMessage) ? null : createOrderDto.CardMessage.Trim(),
-                IsAnonymous = createOrderDto.IsAnonymous,
-                SubstitutionPreference = substitution,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            
-            _logger.LogInformation("创建订单，用户ID: {UserId}，支付方式: {PaymentMethod}，支付超时时间: {PaymentExpiresAt}", 
-                userId, createOrderDto.PaymentMethod, order.PaymentExpiresAt);
-
-            // 在保存订单前处理优惠券
-            if (!string.IsNullOrWhiteSpace(order.CouponCode))
-            {
-                try
-                {
-                    var coupons = await _couponRepository.GetAllAsync();
-                    var coupon = coupons.FirstOrDefault(c => string.Equals(c.Code, order.CouponCode, StringComparison.OrdinalIgnoreCase) && c.Status == "active" &&
-                        (!c.StartAt.HasValue || c.StartAt <= DateTime.UtcNow) && (!c.EndAt.HasValue || c.EndAt >= DateTime.UtcNow));
-                    var userCoupons = await _userCouponRepository.GetAllAsync();
-                    var userCoupon = coupon == null ? null : userCoupons.FirstOrDefault(x => x.UserId == userId && x.CouponId == coupon.Id);
-                    var alreadyUsed = userCoupon?.Status == "used";
-                    var exhausted = coupon?.UsageLimit is > 0 && coupon.UsedCount >= coupon.UsageLimit;
-                    if (coupon != null && !alreadyUsed && !exhausted && totalAmount >= coupon.MinOrderAmount)
+                    var quoted = await BuildQuoteAsync(userId, new OrderQuoteRequest { ShippingMethod = method, CouponCode = dto.CouponCode }, true);
+                    if (dto.ExpectedTotal.HasValue && dto.ExpectedTotal.Value != quoted.Quote.TotalAmount)
+                        throw new ArgumentException("订单金额已变化，请刷新报价并确认后重新提交");
+                    var now = DateTime.UtcNow;
+                    var order = new Order { UserId = userId, OrderNumber = GenerateOrderNumber(),
+                        ClientRequestId = requestId, RequestFingerprint = fingerprint,
+                        Status = "pending", PaymentStatus = "unpaid", PaymentMethod = paymentMethod,
+                        PaymentExpiresAt = paymentMethod == "online" ? now.AddMinutes(30) : null,
+                        Subtotal = quoted.Quote.Subtotal, ShippingFee = quoted.Quote.ShippingFee,
+                        DiscountAmount = quoted.Quote.DiscountAmount, TotalAmount = quoted.Quote.TotalAmount,
+                        CouponId = quoted.Coupon?.Id, CouponCode = quoted.Coupon?.Code,
+                        RecipientName = dto.RecipientName.Trim(), RecipientPhone = dto.Phone.Trim(), DeliveryAddress = dto.ShippingAddress.Trim(),
+                        DeliveryDate = deliveryDate, DeliveryTime = dto.DeliveryTime?.Trim(), ShippingMethod = method,
+                        SenderName = dto.SenderName?.Trim(), CardMessage = dto.CardMessage?.Trim(),
+                        IsAnonymous = dto.IsAnonymous, SubstitutionPreference = substitution, CreatedAt = now, UpdatedAt = now,
+                        OrderItems = quoted.Items };
+                    foreach (var item in quoted.Items)
                     {
-                        decimal discount = 0;
-                if (string.Equals(coupon.DiscountType ?? "amount", "percent", StringComparison.OrdinalIgnoreCase))
+                        if (_db.Database.IsRelational())
                         {
-                            discount = Math.Round(totalAmount * (coupon.Value / 100m), 2);
-                            if (coupon.MaxDiscount.HasValue) discount = Math.Min(discount, coupon.MaxDiscount.Value);
+                            var changed = await _db.Products.Where(p => p.Id == item.ProductId && p.IsActive && p.Stock >= item.Quantity)
+                                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock - item.Quantity));
+                            if (changed != 1) throw new ArgumentException($"产品 {item.ProductName} 库存不足");
                         }
-                        else
-                        {
-                            discount = coupon.Value;
-                        }
-                        if (discount > 0)
-                        {
-                            order.DiscountAmount = discount;
-                            order.TotalAmount = Math.Max(0, order.Subtotal + order.ShippingFee - discount);
-                            // 标记用户优惠券使用
-                            var uc = userCoupon;
-                            if (uc == null)
-                            {
-                                await _userCouponRepository.AddAsync(new UserCoupon { UserId = userId, CouponId = coupon.Id, ClaimedAt = DateTime.UtcNow, UsedAt = DateTime.UtcNow, Status = "used" });
-                            }
-                            else if (uc.Status != "used")
-                            {
-                                uc.UsedAt = DateTime.UtcNow;
-                                uc.Status = "used";
-                                await _userCouponRepository.UpdateAsync(uc);
-                            }
-                            // 增加优惠券使用计数
-                            coupon.UsedCount += 1;
-                            await _couponRepository.UpdateAsync(coupon);
-                        }
+                        else (await _db.Products.FindAsync(item.ProductId))!.Stock -= item.Quantity;
                     }
+                    if (quoted.Coupon is not null && quoted.Quote.DiscountAmount > 0)
+                    {
+                        var couponId = quoted.Coupon.Id;
+                        var userCoupon = await _db.UserCoupons.FirstOrDefaultAsync(u => u.UserId == userId && u.CouponId == couponId);
+                        if (userCoupon is null)
+                            _db.UserCoupons.Add(new UserCoupon { UserId = userId, CouponId = couponId, Status = "used", ClaimedAt = now, UsedAt = now });
+                        else { userCoupon.Status = "used"; userCoupon.UsedAt = now; }
+                        if (_db.Database.IsRelational())
+                            await _db.Coupons.Where(c => c.Id == couponId).ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedCount, c => c.UsedCount + 1));
+                        else (await _db.Coupons.FindAsync(couponId))!.UsedCount += 1;
+                    }
+                    _db.Orders.Add(order);
+                    _db.OrderStatusHistories.Add(new OrderStatusHistory { Order = order, NewStatus = "pending", OperatorId = userId, OperatorName = "用户", Note = "订单创建", CreatedAt = now });
+                    foreach (var item in quoted.Cart)
+                    {
+                        var tracked = _db.CartItems.Local.FirstOrDefault(c => c.Id == item.Id);
+                        _db.CartItems.Remove(tracked ?? item);
+                    }
+                    await _db.SaveChangesAsync();
+                    orderId = order.Id;
                 }
-                catch (ArgumentException) { throw; }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "应用优惠券失败，订单创建已回滚");
-                    throw new InvalidOperationException("优惠券校验失败，请稍后重试", ex);
-                }
+                if (transaction is not null) await transaction.CommitAsync();
             }
-
-            var createdOrder = await _orderRepository.AddAsync(order);
-
-            if (createdOrder == null)
-            {
-                throw new InvalidOperationException("无法创建订单");
-            }
-            
-            await _orderStatusHistoryRepository.AddAsync(new OrderStatusHistory
-            {
-                OrderId = createdOrder.Id,
-                OldStatus = null,
-                NewStatus = "pending",
-                OperatorId = userId,
-                OperatorName = "用户",
-                Note = "订单创建",
-                CreatedAt = DateTime.UtcNow
-            });
-
-            // 创建订单项
-            foreach (var orderItem in orderItems)
-            {
-                orderItem.OrderId = createdOrder.Id;
-                await _orderItemRepository.AddAsync(orderItem);
-
-                // 更新产品库存
-                var product = await _productRepository.GetByIdAsync(orderItem.ProductId);
-                if (product != null)
-                {
-                    product.Stock -= orderItem.Quantity;
-                    await _productRepository.UpdateAsync(product);
-                }
-            }
-
-            // 清空购物车
-            foreach (var cartItem in userCartItems)
-            {
-                await _cartRepository.DeleteAsync(cartItem.Id);
-            }
-
-            // 清除相关缓存
-            await ClearUserOrderCache(userId);
-            
-            // 返回创建的订单详情
-            var createdOrderDto = await GetOrderByIdAsync(userId, createdOrder.Id);
-            if (createdOrderDto == null)
-            {
-                throw new InvalidOperationException("无法获取创建的订单详情");
-            }
-            
-            _logger.LogInformation("订单创建成功，订单ID: {OrderId}", createdOrder.Id);
-            return createdOrderDto;
+            await OrderCacheInvalidation.InvalidateAsync(_cacheService, userId, orderId);
+            return await GetOrderByIdAsync(userId, orderId) ?? throw new InvalidOperationException("无法获取创建的订单详情");
         }
 
         public async Task<OrderDto?> UpdateOrderStatusAsync(int userId, int orderId, string status)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId);
-            if (order == null || order.UserId != userId)
-            {
-                return null;
-            }
+            var order = await OrderWorkflow.ChangeStatusAsync(_db, _cacheService, orderId, status, userId, "用户");
+            return order is null ? null : await GetOrderByIdAsync(userId, orderId);
+        }
 
-            status = status?.Trim().ToLowerInvariant() ?? string.Empty;
-            var validStatuses = new[] { "pending", "processing", "shipped", "delivered", "cancelled" };
-            if (!validStatuses.Contains(status))
-            {
-                throw new ArgumentException("无效的订单状态");
-            }
-
-            // 仅允许单向状态流转，避免管理员误操作回退已完成订单。
-            var allowedTransitions = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["pending"] = new[] { "processing", "cancelled" },
-                ["processing"] = new[] { "shipped", "cancelled" },
-                ["shipped"] = new[] { "delivered" },
-                ["delivered"] = Array.Empty<string>(),
-                ["cancelled"] = Array.Empty<string>()
-            };
-            if (!string.Equals(order.Status, status, StringComparison.OrdinalIgnoreCase) &&
-                (!allowedTransitions.TryGetValue(order.Status ?? string.Empty, out var next) || !next.Contains(status)))
-                throw new InvalidOperationException($"订单不能从{order.Status}变更为{status}");
-
-            // 记录旧状态
-            string oldStatus = order.Status ?? "unknown";
-            order.Status = status;
-            order.UpdatedAt = DateTime.UtcNow;
-
-            await _orderRepository.UpdateAsync(order);
-            
-            // 创建订单状态历史记录
-            var history = new OrderStatusHistory
-            {
-                OrderId = orderId,
-                OldStatus = oldStatus,
-                NewStatus = status,
-                OperatorId = userId,
-                OperatorName = "用户",
-                Note = $"订单状态从{oldStatus}更新为{status}",
-                CreatedAt = DateTime.UtcNow
-            };
-            await _orderStatusHistoryRepository.CreateAsync(history);
-
-            // 清除相关缓存
-            await ClearOrderCache(userId, orderId);
-            await ClearUserOrderCache(userId);
-            await ClearUserOrderStatsCache(userId);
-            
-            _logger.LogInformation("订单状态更新成功，订单ID: {OrderId}，状态: {Status}", orderId, status);
-            return await GetOrderByIdAsync(userId, orderId);
+        public async Task<OrderDto?> UpdateOrderStatusAsAdminAsync(int orderId, string status, string operatorName)
+        {
+            var order = await OrderWorkflow.ChangeStatusAsync(_db, _cacheService, orderId, status, null, operatorName);
+            return order is null ? null : await GetOrderByIdAsync(order.UserId, orderId);
         }
 
         public async Task<bool> CancelOrderAsync(int userId, int orderId)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId);
-            if (order == null || order.UserId != userId)
+            try
             {
-                return false;
+                var order = await _db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
+                if (order is null || order.Status is not ("pending" or "processing")) return false;
+                return await OrderWorkflow.ChangeStatusAsync(_db, _cacheService, orderId, "cancelled", userId, "用户", "用户取消订单") is not null;
             }
-
-            // 只有待处理和已确认的订单可以取消
-            if (order.Status != "pending" && order.Status != "processing")
-            {
-                return false;
-            }
-
-            // 恢复产品库存
-            var orderItems = await _orderItemRepository.GetAllAsync();
-            var orderItemsForOrder = orderItems.Where(oi => oi.OrderId == order.Id);
-
-            foreach (var orderItem in orderItemsForOrder)
-            {
-                var product = await _productRepository.GetByIdAsync(orderItem.ProductId);
-                if (product != null)
-                {
-                    product.Stock += orderItem.Quantity;
-                    await _productRepository.UpdateAsync(product);
-                }
-            }
-
-            // 更新订单状态
-            order.Status = "cancelled";
-            order.UpdatedAt = DateTime.UtcNow;
-
-            await _orderRepository.UpdateAsync(order);
-
-            // 清除相关缓存
-            await ClearOrderCache(userId, orderId);
-            await ClearUserOrderCache(userId);
-            await ClearUserOrderStatsCache(userId);
-            
-            _logger.LogInformation("订单取消成功，订单ID: {OrderId}", orderId);
-            return true;
+            catch (ArgumentException) { return false; }
         }
 
-        // 支付相关方法实现
         public async Task<OrderDto?> UpdatePaymentStatusAsync(int userId, int orderId, string paymentStatus, string? paymentReference = null, string? paymentMethod = null)
         {
             try
@@ -659,9 +491,10 @@ namespace HuanyuFlowerShop.Services
                         order.PaymentReference = paymentReference;
                     }
                     
-                    if (string.IsNullOrWhiteSpace(order.PaymentReference))
+                    // 生成虚拟支付参考号（如果未提供）
+                    if (string.IsNullOrEmpty(order.PaymentReference))
                     {
-                        throw new InvalidOperationException("支付成功必须提供真实支付凭证号");
+                        order.PaymentReference = "VIRTUAL_" + DateTime.Now.ToString("yyyyMMddHHmmss") + "_" + orderId;
                     }
                     
                     // 详细的支付日志信息
@@ -706,18 +539,6 @@ namespace HuanyuFlowerShop.Services
                         await _orderStatusHistoryRepository.CreateAsync(paymentStatusHistory);
                     }
                 }
-                else if (paymentStatus == "refunded" || paymentStatus == "partial_refunded")
-                {
-                    // 退款状态必须同步退款金额，避免订单统计继续把全额计为收入。
-                    order.RefundedAmount = paymentStatus == "refunded"
-                        ? order.PaidAmount
-                        : Math.Min(order.PaidAmount, Math.Max(0m, order.RefundedAmount));
-                    if (oldPaymentStatus != paymentStatus)
-                    {
-                        _logger.LogInformation("支付状态变更: 从 {OldPaymentStatus} 变更为 {NewPaymentStatus}, 参考号={PaymentReference}",
-                            oldPaymentStatus, paymentStatus, paymentReference ?? "未提供");
-                    }
-                }
                 else if (oldPaymentStatus != paymentStatus)
                 {
                     // 记录其他支付状态变更
@@ -738,6 +559,15 @@ namespace HuanyuFlowerShop.Services
                     };
                     await _orderStatusHistoryRepository.CreateAsync(paymentStatusHistory);
                 }
+                else if (paymentStatus == "refunded" || paymentStatus == "partial_refunded")
+                {
+                    // 如果是退款状态，记录退款金额
+                    if (paymentStatus == "refunded")
+                    {
+                        order.RefundedAmount = order.PaidAmount;
+                    }
+                }
+
                 await _orderRepository.UpdateAsync(order);
                 
                 // 创建支付状态变更的历史记录
@@ -795,8 +625,7 @@ namespace HuanyuFlowerShop.Services
                 }
 
                 // 验证支付方式
-                paymentMethod = paymentMethod?.Trim().ToLowerInvariant() ?? string.Empty;
-                var validPaymentMethods = new[] { "cod", "online" };
+                var validPaymentMethods = new[] { "credit_card", "alipay", "wechat_pay", "bank_transfer", "cash_on_delivery" };
                 if (!validPaymentMethods.Contains(paymentMethod))
                 {
                     throw new ArgumentException("无效的支付方式");
@@ -824,12 +653,12 @@ namespace HuanyuFlowerShop.Services
                     throw new InvalidOperationException(paymentResult.ErrorMessage);
                 }
 
-                // 货到付款仅登记支付方式，签收前保持未支付；在线支付必须等待受信任网关回调。
-                order.PaymentStatus = "unpaid";
+                // 更新订单支付相关信息
+                order.PaymentStatus = "paid";
                 order.PaymentReference = paymentResult.PaymentReference;
-                order.PaidAmount = 0;
-                order.PaidAt = null;
-                order.Status = "pending";
+                order.PaidAmount = order.TotalAmount;
+                order.PaidAt = DateTime.UtcNow;
+                order.Status = "processing"; // 支付成功后更新为处理中
                 order.UpdatedAt = DateTime.UtcNow;
 
                 await _orderRepository.UpdateAsync(order);
@@ -839,10 +668,10 @@ namespace HuanyuFlowerShop.Services
                  {
                      OrderId = orderId,
                      OldStatus = "pending",
-                     NewStatus = "pending",
+                     NewStatus = "processing",
                      OperatorId = userId,
                      OperatorName = "系统",
-                     Note = "已登记货到付款，待收货时完成支付",
+                     Note = "订单支付成功，自动更新为处理中",
                      CreatedAt = DateTime.UtcNow
                  };
                 await _orderStatusHistoryRepository.CreateAsync(statusHistory);
@@ -950,8 +779,7 @@ namespace HuanyuFlowerShop.Services
 
         private static string GenerateOrderNumber()
         {
-            // Guid 后缀避免高并发下 Random/时间戳产生重复订单号。
-            return $"ORD{DateTime.UtcNow:yyyyMMddHHmmssfff}{Guid.NewGuid():N}"[..50];
+            return $"ORD{DateTime.Now:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
         }
 
         // 这个方法已经被PaymentService中的同名方法取代，但保留用于兼容性
@@ -959,7 +787,7 @@ namespace HuanyuFlowerShop.Services
         private async Task ClearOrderCache(int userId, int orderId)
         {
             string orderCacheKey = $"{ORDER_CACHE_KEY_PREFIX}{orderId}_{userId}";
-            string historyCacheKey = $"{ORDER_HISTORY_CACHE_KEY_PREFIX}{userId}_{orderId}";
+            string historyCacheKey = $"{ORDER_HISTORY_CACHE_KEY_PREFIX}{orderId}_{userId}";
             
             await _cacheService.RemoveAsync(orderCacheKey);
             await _cacheService.RemoveAsync(historyCacheKey);

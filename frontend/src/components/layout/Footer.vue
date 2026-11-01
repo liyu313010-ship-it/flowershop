@@ -1,6 +1,6 @@
 <template>
   <!-- 页脚组件 -->
-  <footer class="bg-gradient-to-r from-pink-50 to-pink-100 text-pink-800 mt-16 border-t border-pink-200 site-footer">
+  <footer class="bg-gradient-to-r from-pink-50 to-pink-100 text-pink-800 mt-16 border-t border-pink-200">
     <div class="container mx-auto px-4 py-12">
       
       <!-- 页脚主要内容 -->
@@ -11,7 +11,7 @@
           <div class="flex items-center space-x-2 mb-4">
             <!-- 品牌Logo -->
             <img 
-              src="/images/huanyu-flower-mark.svg"
+              src="/images/logo.png" 
               alt="欢雨鲜花Logo" 
               class="w-10 h-10 rounded-full object-cover"
             >
@@ -22,55 +22,26 @@
           </p>
           
           <!-- 社交媒体链接 -->
-          <div class="social-links" aria-label="关注欢雨flower">
-            <!-- 微信 -->
-            <div class="social-item group">
-              <button type="button" class="social-link" aria-label="微信二维码，悬停或点击查看">
-                <span class="social-icon social-icon-wechat"><img src="/images/微信.svg" alt="" /></span>
-                <span class="social-label">微信</span>
-                <span class="social-arrow" aria-hidden="true">↗</span>
-              </button>
-              <!-- 微信预览图片 -->
-              <div class="social-popover" role="tooltip">
-                <span class="popover-kicker">扫码添加微信</span>
-                <div class="popover-image"><img src="/images/微信.png" alt="微信二维码" /></div>
-                <span class="popover-tip">长按保存二维码</span>
-              </div>
-            </div>
-            <!-- 抖音 -->
-            <div class="social-item group">
-              <button type="button" class="social-link" aria-label="抖音二维码，悬停或点击查看">
-                <span class="social-icon social-icon-douyin"><img src="/images/抖音.svg" alt="" /></span>
-                <span class="social-label">抖音</span>
-                <span class="social-arrow" aria-hidden="true">↗</span>
-              </button>
-              <!-- 抖音预览图片 -->
-              <div class="social-popover" role="tooltip">
-                <span class="popover-kicker">关注抖音账号</span>
-                <div class="popover-image"><img src="/images/抖音.png" alt="抖音二维码" /></div>
-                <span class="popover-tip">长按保存二维码</span>
-              </div>
-            </div>
-            <!-- 邮箱 -->
-            <div class="social-item group">
-              <a href="mailto:2784107771@qq.com" class="social-link" aria-label="发送邮件">
-                <span class="social-icon social-icon-email"><img src="/images/邮箱.svg" alt="" /></span>
-                <span class="social-label">邮件</span>
-                <span class="social-arrow" aria-hidden="true">↗</span>
+          <div class="flex justify-start space-x-4">
+            <div v-for="item in socialLinks" :key="item.name" class="relative group">
+              <a 
+                :href="item.link" 
+                class="w-10 h-10 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-pink-400 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1" 
+                :title="item.name"
+              >
+                <img :src="item.icon" :alt="item.name" class="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-hover:brightness-200" />
               </a>
-            </div>
-            <!-- 小红书 -->
-            <div class="social-item group">
-              <button type="button" class="social-link" aria-label="小红书二维码，悬停或点击查看">
-                <span class="social-icon social-icon-redbook"><img src="/images/小红书.svg" alt="" /></span>
-                <span class="social-label">小红书</span>
-                <span class="social-arrow" aria-hidden="true">↗</span>
-              </button>
-              <!-- 小红书预览图片 -->
-              <div class="social-popover" role="tooltip">
-                <span class="popover-kicker">关注小红书账号</span>
-                <div class="popover-image"><img src="/images/小红书.png" alt="小红书二维码" /></div>
-                <span class="popover-tip">长按保存二维码</span>
+              
+              <!-- 悬浮预览 -->
+              <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 translate-y-2 group-hover:translate-y-0">
+                <div v-if="item.type === 'image'" class="w-40 h-40 bg-white rounded-lg shadow-xl border-2 border-pink-100 overflow-hidden p-2">
+                  <img :src="item.qrCode" :alt="item.name + '二维码'" class="w-full h-full object-contain" />
+                </div>
+                <div v-else class="bg-white text-pink-800 px-4 py-2 rounded-lg shadow-xl border border-pink-100 whitespace-nowrap font-medium">
+                  {{ item.content }}
+                </div>
+                <!-- 小箭头 -->
+                <div class="w-3 h-3 bg-white border-b border-r border-pink-100 transform rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1.5 shadow-sm"></div>
               </div>
             </div>
           </div>
@@ -94,7 +65,6 @@
             <li><a href="/shipping" class="text-pink-600 hover:text-pink-800 transition-colors">配送说明</a></li>
             <li><a href="/returns" class="text-pink-600 hover:text-pink-800 transition-colors">退换货政策</a></li>
             <li><a href="/faq" class="text-pink-600 hover:text-pink-800 transition-colors">常见问题</a></li>
-            <li><a href="/terms" class="text-pink-600 hover:text-pink-800 transition-colors">服务条款</a></li>
             <li><a href="/privacy" class="text-pink-600 hover:text-pink-800 transition-colors">隐私政策</a></li>
           </ul>
         </div>
@@ -136,7 +106,7 @@
       <!-- 版权信息 -->
       <div class="border-t border-pink-300 mt-8 pt-8 text-center">
         <p class="text-pink-600">
-          © {{ currentYear }} 欢雨flower. All rights reserved. |
+          © 2025 欢雨flower. All rights reserved. | 
           <a href="/terms" class="hover:text-pink-800 transition-colors">服务条款</a> | 
           <a href="/privacy" class="hover:text-pink-800 transition-colors">隐私政策</a>
         </p>
@@ -149,39 +119,64 @@
 </template>
 
 <script setup>
-const currentYear = new Date().getFullYear()
+// 页脚组件 - 主要展示品牌信息和联系方式
+
+const socialLinks = [
+  {
+    name: '微信',
+    icon: '/images/微信.svg',
+    qrCode: '/images/微信.png',
+    link: '#',
+    type: 'image'
+  },
+  {
+    name: '抖音',
+    icon: '/images/抖音.svg',
+    qrCode: '/images/抖音.png',
+    link: '#',
+    type: 'image'
+  },
+  {
+    name: '邮箱',
+    icon: '/images/邮箱.svg',
+    content: '2784107771@qq.com',
+    link: 'mailto:service@huanyu.com',
+    type: 'text'
+  },
+  {
+    name: '小红书',
+    icon: '/images/小红书.svg',
+    qrCode: '/images/小红书.png',
+    link: '#',
+    type: 'image'
+  }
+]
 </script>
 
 <style scoped>
 /* 页脚样式增强 */
-.social-links { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1.25rem; }
-.social-item { position: relative; }
-.social-link {
-  position: relative; display: inline-flex; align-items: center; gap: .55rem; min-width: 5.6rem;
-  padding: .48rem .72rem .48rem .48rem; border: 1px solid rgba(255,255,255,.13); border-radius: 999px;
-  background: rgba(255,255,255,.58); color: var(--ink); cursor: pointer; text-decoration: none;
-  transition: transform .25s ease, background .25s ease, border-color .25s ease, box-shadow .25s ease;
+ul a {
+  display: inline-block;
+  transition: all 0.3s ease;
 }
-.social-link:hover, .social-link:focus-visible { transform: translateY(-3px); background: #fff; border-color: rgba(211,112,151,.46); box-shadow: 0 10px 22px rgba(169,79,120,.16); outline: none; }
-.social-icon { width: 1.9rem; height: 1.9rem; display: grid; place-items: center; border-radius: 50%; background: #fffaf5; box-shadow: 0 3px 8px rgba(0,0,0,.12); }
-.social-icon img { width: 1.15rem; height: 1.15rem; object-fit: contain; background: transparent; }
-.social-icon-douyin img { width: 1.25rem; height: 1.25rem; }
-.social-icon-email img { width: 1.18rem; height: 1.18rem; }
-.social-label { color: var(--ink); font-size: .8rem; font-weight: 600; letter-spacing: .03em; }
-.social-arrow { color: var(--plum); font-size: .85rem; line-height: 1; opacity: .75; }
-.social-popover { position: absolute; z-index: 20; left: 50%; bottom: calc(100% + .8rem); width: 10.5rem; padding: .65rem; border: 1px solid #f0c7b9; border-radius: 1rem; background: #fffaf5; box-shadow: 0 18px 42px rgba(24,10,18,.28); text-align: center; opacity: 0; visibility: hidden; transform: translate(-50%, .5rem); transition: opacity .22s ease, visibility .22s ease, transform .22s ease; pointer-events: none; }
-.social-popover::after { content: ''; position: absolute; left: 50%; bottom: -.38rem; width: .75rem; height: .75rem; background: #fffaf5; border-right: 1px solid #f0c7b9; border-bottom: 1px solid #f0c7b9; transform: translateX(-50%) rotate(45deg); }
-.social-item:hover .social-popover, .social-item:focus-within .social-popover { opacity: 1; visibility: visible; transform: translate(-50%, 0); pointer-events: auto; }
-.popover-kicker { display: block; color: #4a2335; font-size: .72rem; font-weight: 700; margin-bottom: .4rem; }
-.popover-image { width: 8.5rem; height: 8.5rem; margin: auto; padding: .35rem; border-radius: .65rem; background: #fff; }
-.popover-image img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
-.popover-tip { display: block; color: #9a6c78; font-size: .65rem; margin-top: .35rem; }
 
-@media (max-width: 640px) {
-  .social-links { gap: .5rem; }
-  .social-link { min-width: 5.1rem; padding-right: .6rem; }
-  .social-popover { left: 0; transform: translate(0, .5rem); }
-  .social-item:hover .social-popover, .social-item:focus-within .social-popover { transform: translate(0, 0); }
-  .social-popover::after { left: 2rem; }
+ul a:hover {
+  transform: translateX(2px);
+}
+
+/* 预览功能样式 */
+.group .absolute {
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* 预览图片样式优化 */
+.group img {
+  object-fit: contain;
+  background-color: white;
+}
+
+/* 预览内容居中对齐 */
+.group .transform {
+  text-align: center;
 }
 </style>

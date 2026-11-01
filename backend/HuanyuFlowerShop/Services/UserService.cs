@@ -226,7 +226,15 @@ namespace HuanyuFlowerShop.Services
             
             if (!string.IsNullOrEmpty(updateUserDto.Gender))
             {
-                user.Gender = updateUserDto.Gender;
+                var g = updateUserDto.Gender.Trim();
+                var gl = g.ToLowerInvariant();
+                user.Gender = gl switch
+                {
+                    "male" => "男",
+                    "female" => "女",
+                    "other" => "其他",
+                    _ => (g == "男" || g == "女" || g == "其他") ? g : g
+                };
             }
             
             if (!string.IsNullOrEmpty(updateUserDto.Avatar))

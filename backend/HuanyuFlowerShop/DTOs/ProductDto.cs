@@ -11,6 +11,9 @@ namespace HuanyuFlowerShop.DTOs
         public bool IsFeatured { get; set; }
         public bool IsActive { get; set; }
         public int SalesCount { get; set; }
+        public int Popularity { get; set; }
+        public double AverageRating { get; set; }
+        public int ReviewCount { get; set; }
         public string Size { get; set; } = string.Empty;
         public string Material { get; set; } = string.Empty;
         public string Occasion { get; set; } = string.Empty;
@@ -29,6 +32,7 @@ namespace HuanyuFlowerShop.DTOs
         public int Stock { get; set; }
         public bool IsFeatured { get; set; }
         public bool IsActive { get; set; }
+        public int Popularity { get; set; } = 0;
         public string Size { get; set; } = string.Empty;
         public string Material { get; set; } = string.Empty;
         public string Occasion { get; set; } = string.Empty;
@@ -44,6 +48,7 @@ namespace HuanyuFlowerShop.DTOs
         public int? Stock { get; set; }
         public bool? IsFeatured { get; set; }
         public bool? IsActive { get; set; }
+        public int? Popularity { get; set; }
         public string? Size { get; set; }
         public string? Material { get; set; }
         public string? Occasion { get; set; }

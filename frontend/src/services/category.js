@@ -3,7 +3,17 @@ import api from './api'
 export const categoryService = {
   // 获取所有分类
   async getCategories() {
-    return api.get('/Categories', { silent: true })
+    try {
+      const response = await api.get('/Categories', { silent: true })
+      return response
+    } catch (error) {
+      try {
+        const response2 = await api.get('/Categories', { silent: true })
+        return response2
+      } catch (e) {
+        return []
+      }
+    }
   },
 
   // 获取分类详情

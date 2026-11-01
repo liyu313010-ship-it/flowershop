@@ -133,15 +133,15 @@ public class MemoryCacheService : ICacheService
     {
         try
         {
-            // 由于MemoryCache不支持模式匹配，这里实现为清空所有缓存
-            // 在生产环境中可以考虑使用Redis等支持模式匹配的缓存
             if (pattern == "*")
             {
                 await ClearAsync();
             }
-            else
+            else if (_cache is MemoryCache memoryCache)
             {
-                _logger.LogWarning("MemoryCache不支持模式匹配，仅支持通配符'*'清空所有缓存: {Pattern}", pattern);
+                var expression = "^" + System.Text.RegularExpressions.Regex.Escape(pattern).Replace("\\*", ".*") + "$";
+                foreach (var key in memoryCache.Keys.OfType<string>().ToArray())
+                    if (System.Text.RegularExpressions.Regex.IsMatch(key, expression)) _cache.Remove(key);
             }
         }
         catch (Exception ex)

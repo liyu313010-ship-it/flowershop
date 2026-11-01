@@ -3,135 +3,18 @@ using Microsoft.AspNetCore.Authorization;
 
 using HuanyuFlowerShop.Services;
 using HuanyuFlowerShop.Interfaces;
-using Microsoft.Extensions.Logging;
 using HuanyuFlowerShop.DTOs;
-using HuanyuFlowerShop.Data;
-using HuanyuFlowerShop.Entities;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
-using BCrypt.Net;
-using HuanyuFlowerShop.Options;
-using Microsoft.Extensions.Options;
 
 namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    public class AuthController(IAuthService authService, IOrderService orderService, IWebHostEnvironment environment, ILogger<AuthController> logger) : ControllerBase
     {
-        private const string USER_ORDER_STATS_CACHE_KEY_PREFIX = "user_order_stats_";
-        private readonly IAuthService _authService;
-        private readonly IOrderService _orderService;
-        private readonly IWebHostEnvironment _environment;
-        private readonly ILogger<AuthController> _logger;
-        private readonly ApplicationDbContext _db;
-        private readonly IEmailService _email;
-        private readonly StorageOptions _storageOptions;
-
-        public AuthController(IAuthService authService, IOrderService orderService, IWebHostEnvironment environment, ILogger<AuthController> logger, ApplicationDbContext db, IEmailService email, IOptions<StorageOptions> storageOptions)
-        {
-            _authService = authService;
-            _orderService = orderService;
-            _environment = environment;
-            _logger = logger;
-            _db = db;
-            _email = email;
-            _storageOptions = storageOptions.Value;
-        }
-
-        [AllowAnonymous]
-        [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
-        {
-            if (!ModelState.IsValid) return BadRequest(new { message = "邮箱格式不正确" });
-            var generic = new { message = "如果该邮箱已注册，密码重置邮件将在几分钟内送达" };
-            var email = request.Email.Trim().ToLowerInvariant();
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email && u.Status == "active");
-            if (user == null || !_email.IsEnabled) return Ok(generic);
-
-            var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).Replace('+', '-').Replace('/', '_').TrimEnd('=');
-            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
-            var oldTokens = await _db.PasswordResetTokens.Where(t => t.UserId == user.Id && t.UsedAt == null).ToListAsync();
-            foreach (var old in oldTokens) old.UsedAt = DateTime.UtcNow;
-            _db.PasswordResetTokens.Add(new PasswordResetToken { UserId = user.Id, TokenHash = hash, ExpiresAt = DateTime.UtcNow.AddMinutes(30) });
-            await _db.SaveChangesAsync();
-            var resetUrl = $"{Request.Scheme}://{Request.Host}/auth?resetToken={Uri.EscapeDataString(rawToken)}";
-            await _email.SendAsync(user.Email, "欢雨鲜花密码重置", $"您好，您的密码重置链接（30分钟内有效）：\n{resetUrl}\n如果不是您本人操作，请忽略此邮件。", HttpContext.RequestAborted);
-            return Ok(generic);
-        }
-
-        [AllowAnonymous]
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
-        {
-            if (!ModelState.IsValid) return BadRequest(new { message = "密码格式不正确" });
-            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Token.Trim())));
-            var token = await _db.PasswordResetTokens.Include(t => t.User)
-                .FirstOrDefaultAsync(t => t.TokenHash == hash && t.UsedAt == null && t.ExpiresAt > DateTime.UtcNow);
-            if (token?.User == null) return BadRequest(new { message = "重置链接无效或已过期" });
-            token.User.Password = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            token.User.UpdatedAt = DateTime.UtcNow;
-            token.UsedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-            return Ok(new { success = true, message = "密码重置成功，请重新登录" });
-        }
-
-        [Authorize]
-        [HttpPost("send-verification")]
-        public async Task<IActionResult> SendVerification()
-        {
-            var userId = GetCurrentUserId();
-            var user = await _db.Users.FindAsync(userId);
-            if (user is null) return NotFound(new { message = "用户不存在" });
-            if (user.EmailVerified) return Ok(new { success = true, message = "邮箱已验证" });
-            if (!_email.IsEnabled) return Conflict(new { message = "邮件服务暂未配置" });
-
-            var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).Replace('+', '-').Replace('/', '_').TrimEnd('=');
-            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
-            var oldTokens = await _db.EmailVerificationTokens.Where(t => t.UserId == user.Id && t.UsedAt == null).ToListAsync();
-            foreach (var old in oldTokens) old.UsedAt = DateTime.UtcNow;
-            _db.EmailVerificationTokens.Add(new EmailVerificationToken { UserId = user.Id, TokenHash = hash, ExpiresAt = DateTime.UtcNow.AddHours(24) });
-            await _db.SaveChangesAsync();
-            var verifyUrl = $"{Request.Scheme}://{Request.Host}/auth?verifyToken={Uri.EscapeDataString(rawToken)}";
-            await _email.SendAsync(user.Email, "欢雨鲜花邮箱验证", $"您好，请在24小时内点击链接验证邮箱：\n{verifyUrl}", HttpContext.RequestAborted);
-            return Ok(new { success = true, message = "验证邮件已发送" });
-        }
-
-        [AllowAnonymous]
-        [HttpPost("verify-email")]
-        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto request)
-        {
-            if (string.IsNullOrWhiteSpace(request.Token)) return BadRequest(new { message = "验证令牌不能为空" });
-            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Token.Trim())));
-            var token = await _db.EmailVerificationTokens.Include(t => t.User)
-                .FirstOrDefaultAsync(t => t.TokenHash == hash && t.UsedAt == null && t.ExpiresAt > DateTime.UtcNow);
-            if (token?.User is null) return BadRequest(new { message = "验证链接无效或已过期" });
-            token.User.EmailVerified = true;
-            token.User.UpdatedAt = DateTime.UtcNow;
-            token.UsedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-            return Ok(new { success = true, message = "邮箱验证成功" });
-        }
-
-        [Authorize]
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            var userId = GetCurrentUserId();
-            var user = await _db.Users.FindAsync(userId);
-            if (user is null) return NotFound(new { message = "用户不存在" });
-            user.TokenVersion++;
-            user.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-            return Ok(new { success = true, message = "已退出登录" });
-        }
-
-        private int GetCurrentUserId()
-        {
-            var value = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            return int.TryParse(value, out var id) && id > 0 ? id : throw new UnauthorizedAccessException("登录状态已失效");
-        }
+        private readonly IAuthService _authService = authService;
+        private readonly IOrderService _orderService = orderService;
+        private readonly IWebHostEnvironment _environment = environment;
+        private readonly ILogger<AuthController> _logger = logger;
 
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginDto loginDto)
@@ -149,9 +32,7 @@ namespace HuanyuFlowerShop.Controllers
             
             if (!result.Success)
             {
-                return result.Message == "登录服务暂不可用，请稍后重试"
-                    ? StatusCode(StatusCodes.Status503ServiceUnavailable, result)
-                    : Unauthorized(result);
+                return BadRequest(result);
             }
 
             return Ok(result);
@@ -252,7 +133,7 @@ namespace HuanyuFlowerShop.Controllers
                 
                 if (!result.Success)
                 {
-                    return BadRequest(new { Success = false, Message = result.Message });
+                    return BadRequest(new { Success = false, result.Message });
                 }
 
                 return Ok(result);
@@ -286,7 +167,7 @@ namespace HuanyuFlowerShop.Controllers
 
         [HttpPost("addresses")]
         [Authorize]
-        public async Task<IActionResult> AddAddress([FromBody] HuanyuFlowerShop.DTOs.CreateAddressDto createAddressDto)
+        public async Task<IActionResult> AddAddress([FromBody] CreateAddressDto createAddressDto)
         {
             if (!ModelState.IsValid)
             {
@@ -302,7 +183,7 @@ namespace HuanyuFlowerShop.Controllers
             try
             {
                 // 转换CreateAddressDto到AddressDto
-                var addressDto = new HuanyuFlowerShop.DTOs.AddressDto
+                var addressDto = new AddressDto
                 {
                     RecipientName = createAddressDto.RecipientName,
                     PhoneNumber = createAddressDto.PhoneNumber,
@@ -325,7 +206,7 @@ namespace HuanyuFlowerShop.Controllers
 
         [HttpPut("addresses/{addressId}")]
         [Authorize]
-        public async Task<IActionResult> UpdateAddress(int addressId, [FromBody] HuanyuFlowerShop.DTOs.AddressDto addressDto)
+        public async Task<IActionResult> UpdateAddress(int addressId, [FromBody] AddressDto addressDto)
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
@@ -363,6 +244,15 @@ namespace HuanyuFlowerShop.Controllers
             {
                 return StatusCode(500, new { message = $"删除地址失败: {ex.Message}" });
             }
+        }
+
+        [HttpPost("logout")]
+        [Authorize]
+        public ActionResult Logout()
+        {
+            // 在实际应用中，可以在这里实现token黑名单机制
+            // 目前只是返回成功响应
+            return Ok(new { Success = true, Message = "退出登录成功" });
         }
 
         [Authorize]
@@ -446,28 +336,10 @@ namespace HuanyuFlowerShop.Controllers
                 return BadRequest(new { Success = false, Message = "图片大小不能超过5MB" });
             }
 
-            await using (var input = file.OpenReadStream())
-            {
-                var header = new byte[12];
-                var read = await input.ReadAsync(header.AsMemory(0, header.Length));
-                var validHeader = fileExtension switch
-                {
-                    ".jpg" or ".jpeg" => read >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF,
-                    ".png" => read >= 8 && header.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
-                    ".gif" => read >= 6 && (header.AsSpan(0, 6).SequenceEqual("GIF87a"u8) || header.AsSpan(0, 6).SequenceEqual("GIF89a"u8)),
-                    ".webp" => read >= 12 && header.AsSpan(0, 4).SequenceEqual("RIFF"u8) && header.AsSpan(8, 4).SequenceEqual("WEBP"u8),
-                    _ => false
-                };
-                if (!validHeader) return BadRequest(new { Success = false, Message = "文件内容不是有效的图片" });
-            }
-
             try
             {
                 // 创建上传目录
-                var rootPath = Path.IsPathRooted(_storageOptions.RootPath)
-                    ? _storageOptions.RootPath
-                    : Path.Combine(_environment.ContentRootPath, _storageOptions.RootPath);
-                var uploadsFolder = Path.Combine(rootPath, "avatars");
+                var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "avatars");
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);
@@ -495,7 +367,7 @@ namespace HuanyuFlowerShop.Controllers
                     {
                         System.IO.File.Delete(filePath);
                     }
-                    return BadRequest(new { Success = false, Message = updateResult.Message });
+                    return BadRequest(new { Success = false, updateResult.Message });
                 }
 
                 // 返回完整的URL，与产品图片保持一致
@@ -513,9 +385,4 @@ namespace HuanyuFlowerShop.Controllers
             }
         }
     }
-}
-
-public sealed class VerifyEmailDto
-{
-    public string Token { get; set; } = string.Empty;
 }

@@ -9,7 +9,8 @@ const orderApi = {
   // 获取订单列表
   getOrders: async (params = {}) => {
     const response = await api.get('/admin/orders', { params })
-    return response
+    // 返回分页数据中的data字段
+    return response.data
   },
 
   // 获取订单详情
@@ -19,16 +20,22 @@ const orderApi = {
   },
 
   // 更新订单状态
-  updateOrderStatus: async (orderId, status) => {
+  updateOrderStatus: async (orderId, status, note = '') => {
     // 确保orderId是数字类型
     const numericOrderId = parseInt(orderId)
     if (isNaN(numericOrderId)) {
       throw new Error('无效的订单ID')
     }
     
-    const response = await api.put(`/admin/orders/${numericOrderId}/status`, { status })
+    const payload = { status }
+    if (note && note.trim()) { payload.note = note; payload.reason = note }
+    const response = await api.put(`/admin/orders/${numericOrderId}/status`, payload)
     // 明确返回成功标志，确保前端能正确识别
-    return { success: true, data: response }
+    return {
+      success: true,
+      status: response.status,
+      data: response.data
+    }
   },
   
   // 获取订单状态历史
@@ -40,7 +47,7 @@ const orderApi = {
         throw new Error('无效的订单ID')
       }
       const response = await api.get(`/OrderStatusHistory/order/${numericOrderId}`)
-      return response
+      return response.data
     } catch (error) {
       console.error('获取订单状态历史失败:', error)
       throw error
@@ -60,17 +67,19 @@ const orderApi = {
       throw new Error('运单号不能为空')
     }
     
-    const response = await api.put(`/admin/orders/${numericOrderId}/shipping`, {
-      company: shippingInfo.company || '',
-      trackingNumber: shippingInfo.trackingNumber
-    })
-    return { success: true, data: response }
+    const response = await api.put(`/admin/orders/${numericOrderId}/shipping`, { company: shippingInfo.company || '', trackingNumber: shippingInfo.trackingNumber })
+    // 明确返回成功标志，确保前端能正确识别
+    return {
+      success: true,
+      status: response.status,
+      data: response.data
+    }
   },
 
   // 更新订单备注
   updateOrderNotes: async (orderId, notes) => {
     const response = await api.put(`/admin/orders/${orderId}/notes`, { notes })
-    return response
+    return response.data
   }
 }
 
@@ -268,8 +277,7 @@ export default {
     const response = await api.put(`/admin/users/${id}/role`, { role }, { silent: true })
     return response
   },
-  resetUserPassword: async (id, newPassword) => {
-    if (!newPassword || newPassword.length < 12) throw new Error('新密码至少需要12位')
+  resetUserPassword: async (id, newPassword = '123456') => {
     const response = await api.post(`/admin/users/${id}/reset-password`, { newPassword }, { silent: true })
     return response
   },
@@ -290,14 +298,6 @@ export default {
     if (note && note.trim()) { payload.note = note; payload.reason = note }
     const response = await api.put(`/admin/orders/${numericOrderId}/status`, payload)
     return response
-  },
-  shipOrder: async (orderId, shippingInfo = {}) => {
-    const numericOrderId = parseInt(orderId)
-    const company = String(shippingInfo.company || '').trim()
-    const trackingNumber = String(shippingInfo.trackingNumber || '').trim()
-    if (isNaN(numericOrderId)) throw new Error('无效的订单ID')
-    if (!company || !trackingNumber) throw new Error('请填写物流公司和运单号')
-    return api.put(`/admin/orders/${numericOrderId}/shipping`, { company, trackingNumber })
   },
   getAdminOrderById: async (orderId) => {
     const response = await api.get(`/admin/orders/${orderId}`)

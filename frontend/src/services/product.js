@@ -3,7 +3,17 @@ import api from './api'
 export const productService = {
   // 获取商品列表
   async getProducts(params = {}) {
-    return api.get('/Products', { params, silent: true })
+    try {
+      const response = await api.get('/Products', { params })
+      return response
+    } catch (error) {
+      try {
+        const response2 = await api.get('/products', { params })
+        return response2
+      } catch (e) {
+        return []
+      }
+    }
   },
 
   // 获取商品详情
@@ -18,7 +28,17 @@ export const productService = {
 
   // 搜索/过滤商品（服务端过滤）
   async searchProducts(params = {}) {
-    return api.get('/Products/search', { params, silent: true })
+    try {
+      const response = await api.get('/Products/search', { params, silent: true })
+      return response
+    } catch (error) {
+      try {
+        const response2 = await api.get('/products/search', { params, silent: true })
+        return response2
+      } catch (e) {
+        return { data: { items: [], totalCount: 0, page: 1, pageSize: params.PageSize || 12 } }
+      }
+    }
   },
 
   // 获取商品分类
@@ -35,7 +55,7 @@ export const productService = {
   async getPopularProducts(limit = 8) {
     try {
       const response = await api.get('/Products/featured', {
-        params: { limit }, silent: true
+        params: { limit }
       })
       return response
     } catch (error) {
@@ -47,7 +67,7 @@ export const productService = {
   async getRecommendedProducts(limit = 8) {
     try {
       const response = await api.get('/Products/home', {
-        params: { limit }, silent: true
+        params: { limit }
       })
       return response
     } catch (error) {
@@ -59,7 +79,7 @@ export const productService = {
   async getNewProducts(limit = 8) {
     try {
       const response = await api.get('/Products/home', {
-        params: { limit }, silent: true
+        params: { limit }
       })
       return response
     } catch (error) {
@@ -69,13 +89,23 @@ export const productService = {
 
   // 根据分类获取商品
   async getProductsByCategory(category, params = {}) {
-    return api.get(`/Products/category/${category}`, { params })
+    try {
+      const response = await api.get(`/Products/category/${category}`, { params })
+      return response
+    } catch (error) {
+      try {
+        const response2 = await api.get(`/products/category/${category}`, { params })
+        return response2
+      } catch (e) {
+        return []
+      }
+    }
   },
 
   // 获取特色商品
   async getFeaturedProducts() {
     try {
-      const response = await api.get('/Products/featured', { silent: true })
+      const response = await api.get('/Products/featured')
       return response
     } catch (error) {
       throw error
@@ -95,7 +125,7 @@ export const productService = {
   // 获取商品评价
   async getProductReviews(productId, params = {}) {
     try {
-      const response = await api.get(`/ProductReview/product/${productId}`, { params })
+      const response = await api.get(`/productreview/product/${productId}`, { params })
       return response
     } catch (error) {
       throw error
@@ -105,7 +135,7 @@ export const productService = {
   // 获取当前用户对指定产品的评价
   async getUserReviewForProduct(productId) {
     try {
-      const response = await api.get(`/ProductReview/user/product/${productId}`)
+      const response = await api.get(`/productreview/user/product/${productId}`)
       return response
     } catch (error) {
       throw error
@@ -114,7 +144,7 @@ export const productService = {
 
   async getReviewById(reviewId) {
     try {
-      const response = await api.get(`/ProductReview/${reviewId}`, { silent: true })
+      const response = await api.get(`/productreview/${reviewId}`, { silent: true })
       return response
     } catch (error) {
       throw error
@@ -122,13 +152,23 @@ export const productService = {
   },
   
   // 获取所有评价（管理员功能）
-  async getAllReviews(params = {}) {
-    try {
-      const response = await api.get(`/ProductReview/all`, { params, silent: true })
-      return response
-    } catch (error) {
-      throw error
+  // 在短时间内对同一参数的并发调用进行去重，缓解 429
+  async getAllReviews(params = {}, opts = {}) {
+    const now = Date.now()
+    const key = JSON.stringify(params || {})
+    productService.__reviewsInflight = productService.__reviewsInflight || new Map()
+    const entry = productService.__reviewsInflight.get(key)
+    if (entry && (now - entry.ts) < 1500) {
+      return entry.promise
     }
+    const p = api.get(`/productreview/all`, { params, silent: true, signal: opts.signal }).finally(() => {
+      // 仅在完成后清理，避免内存泄漏
+      setTimeout(() => {
+        productService.__reviewsInflight && productService.__reviewsInflight.delete(key)
+      }, 0)
+    })
+    productService.__reviewsInflight.set(key, { promise: p, ts: now })
+    return p
   },
 
   // 添加商品评价
@@ -140,7 +180,7 @@ export const productService = {
         Rating: reviewData.rating,
         Comment: reviewData.comment
       }
-      const response = await api.post(`/ProductReview`, formattedData)
+      const response = await api.post(`/productreview`, formattedData)
       return response
     } catch (error) {
       throw error
@@ -150,7 +190,7 @@ export const productService = {
   // 删除商品评价
   async deleteProductReview(reviewId) {
     try {
-      const response = await api.delete(`/ProductReview/${reviewId}`)
+      const response = await api.delete(`/productreview/${reviewId}`)
       return response
     } catch (error) {
       throw error

@@ -15,6 +15,15 @@ namespace HuanyuFlowerShop.Entities
         [StringLength(50)]
         [Column(TypeName = "varchar(50)")]
         public string OrderNumber { get; set; } = string.Empty;
+        [StringLength(64)] public string? ClientRequestId { get; set; }
+        [StringLength(64)] public string? RequestFingerprint { get; set; }
+        public int? CouponId { get; set; }
+        public DateTime? DeliveryDate { get; set; }
+        [StringLength(30)] public string ShippingMethod { get; set; } = "standard";
+        [StringLength(50)] public string? SenderName { get; set; }
+        [StringLength(500)] public string? CardMessage { get; set; }
+        public bool IsAnonymous { get; set; }
+        [StringLength(30)] public string SubstitutionPreference { get; set; } = "contact_me";
 
         [Required]
         public int UserId { get; set; }
@@ -91,22 +100,6 @@ namespace HuanyuFlowerShop.Entities
         [StringLength(100)]
         [Column(TypeName = "varchar(100)")]
         public string? DeliveryTime { get; set; }
-
-        public DateTime? DeliveryDate { get; set; }
-
-        [StringLength(30)]
-        public string ShippingMethod { get; set; } = "standard";
-
-        [StringLength(50)]
-        public string? SenderName { get; set; }
-
-        [StringLength(500)]
-        public string? CardMessage { get; set; }
-
-        public bool IsAnonymous { get; set; }
-
-        [StringLength(30)]
-        public string SubstitutionPreference { get; set; } = "contact_me";
 
         /// <summary>
         /// 留言

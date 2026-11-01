@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using System.Text;
 using HuanyuFlowerShop.Interfaces;
 using System.Security.Claims;
@@ -11,31 +10,29 @@ namespace HuanyuFlowerShop.Middleware
     public class AuditLogMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IAuditLogService _auditLogService;
         private readonly ILogger<AuditLogMiddleware> _logger;
 
         // 需要记录的敏感操作
-        private readonly List<string> _sensitiveMethods = new List<string> { "POST", "PUT", "DELETE", "PATCH" };
+        private readonly List<string> _sensitiveMethods = ["POST", "PUT", "DELETE", "PATCH"];
         
         // 需要跳过记录的路径
-        private readonly List<string> _skipPaths = new List<string>
-        {
+        private readonly List<string> _skipPaths =
+        [
             "/swagger", "/health", "/favicon.ico", "/uploads"
-        };
+        ];
 
-        public AuditLogMiddleware(RequestDelegate next, IAuditLogService auditLogService, ILogger<AuditLogMiddleware> logger)
+        public AuditLogMiddleware(RequestDelegate next, ILogger<AuditLogMiddleware> logger)
         {
             _next = next;
-            _auditLogService = auditLogService;
             _logger = logger;
         }
 
-        public async Task InvokeAsync(HttpContext context)
+        public async Task InvokeAsync(HttpContext context, IAuditLogService auditLogService)
         {
             var path = context.Request.Path.Value ?? string.Empty;
             
             // 跳过不需要记录的路径
-            if (_skipPaths.Any(p => path.StartsWith(p))) {
+            if (_skipPaths.Any(path.StartsWith)) {
                 await _next(context);
                 return;
             }
@@ -45,11 +42,9 @@ namespace HuanyuFlowerShop.Middleware
             if (_sensitiveMethods.Contains(context.Request.Method))
             {
                 context.Request.EnableBuffering();
-                using (var reader = new StreamReader(context.Request.Body, Encoding.UTF8, true, 1024, true))
-                {
-                    requestBody = await reader.ReadToEndAsync();
-                    context.Request.Body.Position = 0; // 重置流位置
-                }
+                using var reader = new StreamReader(context.Request.Body, Encoding.UTF8, true, 1024, true);
+                requestBody = await reader.ReadToEndAsync();
+                context.Request.Body.Position = 0;
             }
 
             // 保存原始响应流
@@ -67,7 +62,7 @@ namespace HuanyuFlowerShop.Middleware
                 // 记录审计日志（针对敏感操作）
                 if (_sensitiveMethods.Contains(context.Request.Method))
                 {
-                    await LogAuditEntry(context, path, requestBody);
+                    await LogAuditEntry(context, path, requestBody, auditLogService);
                 }
 
                 // 复制响应到原始流
@@ -77,7 +72,7 @@ namespace HuanyuFlowerShop.Middleware
             }
         }
 
-        private async Task LogAuditEntry(HttpContext context, string path, string? requestBody)
+        private async Task LogAuditEntry(HttpContext context, string path, string? requestBody, IAuditLogService auditLogService)
         {
             try
             {
@@ -93,7 +88,7 @@ namespace HuanyuFlowerShop.Middleware
                 }
 
                 // 提取资源信息
-                var (resource, resourceId) = ExtractResourceInfo(path, context.Request.Method);
+                var (resource, resourceId) = ExtractResourceInfo(path);
                 
                 // 构建详细信息
                 var details = new StringBuilder();
@@ -110,7 +105,7 @@ namespace HuanyuFlowerShop.Middleware
                 var clientIpAddress = GetClientIpAddress(context);
                 
                 // 记录审计日志
-                await _auditLogService.LogAsync(
+                await auditLogService.LogAsync(
                     userId: userId,
                     action: MapActionType(context.Request.Method),
                     resource: resource ?? "unknown",
@@ -125,7 +120,7 @@ namespace HuanyuFlowerShop.Middleware
             }
         }
 
-        private (string resource, string? resourceId) ExtractResourceInfo(string path, string method)
+        private static (string resource, string? resourceId) ExtractResourceInfo(string path)
         {
             // 解析路径，提取资源类型和ID
             var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -145,7 +140,7 @@ namespace HuanyuFlowerShop.Middleware
             return ("unknown", null);
         }
 
-        private string MapActionType(string method)
+        private static string MapActionType(string method)
         {
             return method switch
             {
@@ -157,21 +152,21 @@ namespace HuanyuFlowerShop.Middleware
             };
         }
 
-        private string GetClientIpAddress(HttpContext context)
+        private static string GetClientIpAddress(HttpContext context)
         {
             // 尝试从各种HTTP头获取真实IP
             var headers = context.Request.Headers;
             
-            if (headers.ContainsKey("X-Forwarded-For"))
+            if (headers.TryGetValue("X-Forwarded-For", out var forwarded))
             {
-                var forwardedIps = headers["X-Forwarded-For"].ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
+                var forwardedIps = forwarded.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
                 if (forwardedIps.Length > 0)
                     return forwardedIps[0].Trim();
             }
             
-            if (headers.ContainsKey("X-Real-IP"))
+            if (headers.TryGetValue("X-Real-IP", out var realIp))
             {
-                return headers["X-Real-IP"].ToString().Trim();
+                return realIp.ToString().Trim();
             }
             
             return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";

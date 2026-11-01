@@ -2,12 +2,7 @@
   <div class="chat-window">
     <!-- 聊天头部 -->
     <div class="chat-header">
-      <div>
-        <h3 class="text-lg font-semibold">{{ chatTitle }}</h3>
-        <p class="connection-status" :class="chatStore.isConnected ? 'online' : 'offline'">
-          {{ chatStore.isConnected ? '实时连接中' : '连接中断，消息仍会保存' }}
-        </p>
-      </div>
+      <h3 class="text-lg font-semibold">{{ chatTitle }}</h3>
       <button 
         class="text-gray-500 hover:text-gray-700" 
         @click="onCloseClick"
@@ -27,7 +22,6 @@
           <span class="ml-2 text-sm text-gray-500">加载消息中...</span>
         </div>
       </div>
-      <div v-if="chatStore.error" class="error-message">{{ chatStore.error }}</div>
       <div>
         <div 
           v-for="message in sortedCurrentMessages" 
@@ -36,8 +30,7 @@
           :class="message.senderId === currentUserId ? 'sent' : 'received'"
         >
           <div class="message-content">
-            <ChatAttachment v-if="message.attachmentName" :message="message" />
-            <div v-if="shouldShowText(message)" class="message-text">{{ message.content }}</div>
+            <div class="message-text">{{ message.content }}</div>
             <div class="message-meta">
               <span class="text-xs text-gray-400">{{ formatTime(message.createdAt) }}</span>
               <span v-if="message.isRead && message.senderId === currentUserId" class="ml-2 text-xs text-blue-400">已读</span>
@@ -51,37 +44,20 @@
     </div>
 
     <!-- 消息输入区域 -->
-    <div v-if="selectedFile" class="selected-attachment">
-      <div>
-        <strong>{{ selectedFile.name }}</strong>
-        <span>{{ formatFileSize(selectedFile.size) }}<template v-if="uploadProgress"> · {{ uploadProgress }}%</template></span>
-      </div>
-      <button type="button" aria-label="移除附件" :disabled="isSending" @click="clearSelectedFile">×</button>
-      <div v-if="isSending" class="upload-progress"><span :style="{ width: `${uploadProgress}%` }"></span></div>
-    </div>
-    <div class="chat-input-area" @dragover.prevent @drop.prevent="handleDrop">
-      <input ref="fileInput" class="sr-only" type="file" :accept="acceptedFileTypes" @change="handleFileInput" />
-      <button type="button" class="attachment-button" :disabled="isClosed || isSending" title="发送图片或文件" aria-label="选择图片或文件" @click="fileInput?.click()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-          <path d="M21.4 11.6l-8.9 8.9a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5" />
-        </svg>
-      </button>
+    <div class="chat-input-area">
       <textarea
         v-model="messageText"
         class="message-input"
         placeholder="输入消息..."
-        maxlength="2000"
-        :disabled="isClosed"
         rows="1"
         @keydown.enter.exact="sendMessage"
         @keydown.enter.shift="handleShiftEnter"
         @input="autoResizeTextarea($event)"
-        @paste="handlePaste"
       ></textarea>
       <button 
         class="send-button" 
         @click="sendMessage"
-        :disabled="(!messageText.trim() && !selectedFile) || isSending || isClosed"
+        :disabled="!messageText.trim() || isSending"
       >
         <svg v-if="isSending" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -91,7 +67,6 @@
         </svg>
       </button>
     </div>
-    <div v-if="isClosed" class="closed-message">本次客服会话已结束，重新打开客服可发起新会话。</div>
   </div>
 </template>
 
@@ -100,7 +75,6 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import chatService from '@/services/chat'
 import { useUserStore } from '@/stores/user'
-import ChatAttachment from './ChatAttachment.vue'
 
 // Props
 const props = defineProps({
@@ -121,12 +95,6 @@ const userStore = useUserStore()
 const messageText = ref('')
 const isSending = ref(false)
 const messagesContainer = ref(null)
-const fileInput = ref(null)
-const selectedFile = ref(null)
-const uploadProgress = ref(0)
-const maxAttachmentSize = 10 * 1024 * 1024
-const acceptedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'txt', 'doc', 'docx', 'xls', 'xlsx']
-const acceptedFileTypes = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx'
 
 // Computed properties
 const isLoading = computed(() => chatStore.isLoading)
@@ -137,10 +105,9 @@ const chatTitle = computed(() => {
   const c = chatStore.currentConversation
   if (!c) return '聊天'
   const isAdmin = userStore.isAdmin
-  const otherName = isAdmin ? c.userName : c.adminName
-  return otherName || (isAdmin ? '用户' : '欢雨在线客服')
+  const otherName = isAdmin ? (c.UserName || c.userName) : (c.AdminName || c.adminName)
+  return otherName || (isAdmin ? '用户' : '联系管理员')
 })
-const isClosed = computed(() => chatStore.currentConversation?.status === 'closed')
 
 // Methods
 const formatTime = (dateString) => {
@@ -149,17 +116,33 @@ const formatTime = (dateString) => {
 }
 
 const sendMessage = async () => {
-  if ((!messageText.value.trim() && !selectedFile.value) || isSending.value) return
+  if (!messageText.value.trim() || isSending.value) return
 
   try {
     isSending.value = true
-    chatStore.error = null
-    if (selectedFile.value) {
-      await chatStore.sendAttachment(selectedFile.value, messageText.value, value => { uploadProgress.value = value })
-      clearSelectedFile()
-    } else {
-      await chatStore.sendMessage(messageText.value)
+    let c = chatStore.currentConversation || {}
+    if ((!c.UserId && !c.AdminId) && props.conversationId) {
+      c = (chatStore.conversations || []).find(cv => cv.id === props.conversationId) || c
+      if (!c.UserId && !c.AdminId) {
+        try {
+          const fresh = await chatService.getConversation(props.conversationId)
+          c = fresh || c
+          if (fresh) chatStore.setCurrentConversation(fresh)
+        } catch {}
+      }
     }
+    const isAdmin = userStore.isAdmin
+    // 优先使用后端返回的 AdminId/UserId，如果是本地占位符则使用 adminId/userId
+    // 对于普通用户，接收者是管理员 (AdminId)
+    // 对于管理员，接收者是用户 (UserId)
+    const receiverId = isAdmin 
+      ? ((c.UserId ?? c.userId) || 0) 
+      : ((c.AdminId ?? c.adminId) || 1) // 默认为1 (管理员)
+      
+    if (!receiverId) throw new Error('缺少接收者ID')
+    
+    console.log('Sending message to:', receiverId, 'Conversation:', c.id)
+    await chatStore.sendMessage(messageText.value, receiverId)
     messageText.value = ''
     
     // 触发消息发送事件
@@ -169,60 +152,21 @@ const sendMessage = async () => {
     await nextTick()
     scrollToBottom()
   } catch (error) {
-    chatStore.error = error?.response?.data?.message || error.message || '消息发送失败，请重试'
+    console.error('发送消息失败:', error)
   } finally {
     isSending.value = false
   }
 }
 
-const validateAndSelectFile = file => {
-  if (!file) return
-  const extension = file.name.split('.').pop()?.toLowerCase() || ''
-  if (!acceptedExtensions.includes(extension)) {
-    chatStore.error = '仅支持图片、PDF、TXT、Word 和 Excel 文件'
-    return
-  }
-  if (file.size > maxAttachmentSize) {
-    chatStore.error = '文件大小不能超过10MB'
-    return
-  }
-  if (file.size <= 0) {
-    chatStore.error = '不能发送空文件'
-    return
-  }
-  chatStore.error = null
-  selectedFile.value = file
-  uploadProgress.value = 0
-}
-
-const handleFileInput = event => validateAndSelectFile(event.target.files?.[0])
-const handleDrop = event => validateAndSelectFile(event.dataTransfer?.files?.[0])
-const handlePaste = event => {
-  const file = [...(event.clipboardData?.files || [])][0]
-  if (file) {
-    event.preventDefault()
-    validateAndSelectFile(file)
-  }
-}
-const clearSelectedFile = () => {
-  selectedFile.value = null
-  uploadProgress.value = 0
-  if (fileInput.value) fileInput.value.value = ''
-}
-const formatFileSize = size => size < 1024 * 1024
-  ? `${(size / 1024).toFixed(1)} KB`
-  : `${(size / 1024 / 1024).toFixed(1)} MB`
-const shouldShowText = message => message.messageType === 'text'
-  || (message.content && message.content !== message.attachmentName)
-
 const handleShiftEnter = (event) => {
-  // Shift+Enter 使用 textarea 默认换行行为。
-  autoResizeTextarea(event)
+  // 允许Shift+Enter换行
+  event.target.value += '\n'
+  event.preventDefault()
+  autoResizeTextarea()
 }
 
 const autoResizeTextarea = (e) => {
-  const textarea = e?.target
-  if (!textarea) return
+  const textarea = e.target
   textarea.style.height = 'auto'
   textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px' // 限制最大高度
 }
@@ -235,14 +179,22 @@ const scrollToBottom = () => {
 
 const onCloseClick = () => { emit('close') }
 
-// Watchers
-watch(() => props.conversationId, async (newId) => {
-  if (newId) {
-    let conversation = (chatStore.conversations || []).find(c => c.id === newId)
-    if (!conversation) conversation = await chatService.getConversation(newId)
-    await chatStore.setCurrentConversation(conversation)
+const fetchMessages = async () => {
+  try {
+    await chatStore.fetchMessages(props.conversationId)
     await nextTick()
     scrollToBottom()
+  } catch (error) {
+    console.error('获取消息失败:', error)
+  }
+}
+
+// Watchers
+watch(() => props.conversationId, (newId) => {
+  if (newId) {
+    const conv = (chatStore.conversations || []).find(c => c.id === newId) || { id: newId }
+    chatStore.setCurrentConversation(conv)
+    fetchMessages()
   }
 }, { immediate: true })
 
@@ -274,12 +226,8 @@ onMounted(async () => {
   align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #fff7fb, #fff);
+  background-color: #f9fafb;
 }
-
-.connection-status { margin-top: 2px; font-size: 11px; }
-.connection-status.online { color: #16a34a; }
-.connection-status.offline { color: #b45309; }
 
 .messages-container {
   flex: 1;
@@ -309,7 +257,7 @@ onMounted(async () => {
 }
 
 .message-item.sent .message-content {
-  background: linear-gradient(135deg, #ec4899, #db2777);
+  background-color: #3b82f6;
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -326,8 +274,6 @@ onMounted(async () => {
   line-height: 1.4;
   margin-bottom: 4px;
 }
-
-.chat-attachment + .message-text { margin-top: 7px; }
 
 .message-meta {
   display: flex;
@@ -350,41 +296,6 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.attachment-button {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  color: #be185d;
-  background: #fff1f7;
-  transition: background-color .2s ease, transform .2s ease;
-}
-
-.attachment-button:hover:not(:disabled) { background: #fce7f3; transform: translateY(-1px); }
-.attachment-button:disabled { cursor: not-allowed; opacity: .45; }
-.attachment-button svg { width: 20px; height: 20px; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-
-.selected-attachment {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 16px;
-  border-top: 1px solid #fce7f3;
-  color: #831843;
-  background: #fff7fb;
-}
-
-.selected-attachment div { min-width: 0; display: flex; flex-direction: column; }
-.selected-attachment strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.selected-attachment span { margin-top: 2px; color: #9d6a80; font-size: 10px; }
-.selected-attachment button { width: 26px; height: 26px; border-radius: 50%; color: #9f1239; background: #ffe4e6; }
-.upload-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: #fbcfe8; }
-.upload-progress span { display: block; height: 100%; background: #db2777; transition: width .15s ease; }
-
 .message-input {
   flex: 1;
   min-height: 36px;
@@ -400,8 +311,8 @@ onMounted(async () => {
 }
 
 .message-input:focus {
-  border-color: #ec4899;
-  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .send-button {
@@ -412,7 +323,7 @@ onMounted(async () => {
   height: 36px;
   border: none;
   border-radius: 50%;
-  background-color: #ec4899;
+  background-color: #3b82f6;
   color: #fff;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -420,16 +331,13 @@ onMounted(async () => {
 }
 
 .send-button:hover:not(:disabled) {
-  background-color: #db2777;
+  background-color: #2563eb;
 }
 
 .send-button:disabled {
-  background-color: #f9a8d4;
+  background-color: #93c5fd;
   cursor: not-allowed;
 }
-
-.error-message { margin: 8px 16px; padding: 8px 12px; border-radius: 10px; background: #fff1f2; color: #be123c; font-size: 13px; }
-.closed-message { padding: 8px 16px 12px; background: #fff7ed; color: #9a3412; text-align: center; font-size: 12px; }
 
 /* 滚动条样式 */
 .messages-container::-webkit-scrollbar {

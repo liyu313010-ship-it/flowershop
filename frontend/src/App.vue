@@ -1,11 +1,11 @@
 <template>
   <div id="app" class="min-h-screen">
     <!-- 导航栏组件 -->
-    <Navbar v-if="!isStandaloneRoute" />
-    <AdminNav v-if="isAdminRoute && !isStandaloneRoute" />
+    <Navbar />
+    <AdminNav v-if="isAdminRoute" />
     
     <!-- 主要内容区域 -->
-    <main :class="{ 'pt-16': !isStandaloneRoute }">
+    <main class="pt-16">
       <!-- 路由视图 - 根据路由显示不同页面 -->
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
@@ -15,8 +15,10 @@
     </main>
     
     <!-- 页脚组件 -->
-    <Footer v-if="!isStandaloneRoute && !isAdminRoute" />
-    <SupportChatLauncher v-if="!isStandaloneRoute && !isAdminRoute" />
+    <Footer />
+    
+    <!-- 返回顶部组件 -->
+    <BackToTop />
   </div>
 </template>
 
@@ -28,13 +30,12 @@ import { useCartStore } from '@/stores/cart'
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
-import SupportChatLauncher from '@/components/common/SupportChatLauncher.vue'
+import BackToTop from './components/BackToTop.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
-const isStandaloneRoute = computed(() => ['Auth', 'AdminLogin'].includes(route.name))
 
 // 应用初始化
 onMounted(async () => {
@@ -47,25 +48,6 @@ onMounted(async () => {
   }
   // 过滤开发环境中的中断错误，避免覆盖页面
   try {
-    const markImages = (root = document) => {
-      root.querySelectorAll?.('img').forEach((image) => {
-        if (image.closest('.hero-section, .site-nav')) {
-          image.setAttribute('decoding', 'async')
-          return
-        }
-        if (!image.hasAttribute('loading')) image.setAttribute('loading', 'lazy')
-        image.setAttribute('decoding', 'async')
-      })
-    }
-    markImages()
-    const imageObserver = new MutationObserver((records) => {
-      records.forEach((record) => record.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) markImages(node)
-      }))
-    })
-    imageObserver.observe(document.body, { childList: true, subtree: true })
-    window.addEventListener('beforeunload', () => imageObserver.disconnect(), { once: true })
-
     window.addEventListener('unhandledrejection', (e) => {
       const name = e?.reason?.name || ''
       if (name === 'AbortError' || name === 'CanceledError') {
@@ -78,9 +60,7 @@ onMounted(async () => {
         e.preventDefault()
       }
     })
-  } catch (error) {
-    console.warn('[app-init] 无法启用图片性能优化', error)
-  }
+  } catch {}
 })
 </script>
 

@@ -17,11 +17,6 @@ namespace HuanyuFlowerShop.DTOs
         public bool IsRead { get; set; } = false;
         public DateTime CreatedAt { get; set; }
         public int ConversationId { get; set; }
-        public string? AttachmentName { get; set; }
-        public string? AttachmentContentType { get; set; }
-        public long? AttachmentSize { get; set; }
-        public bool AttachmentAvailable { get; set; }
-        public string? AttachmentUrl { get; set; }
     }
 
     /// <summary>
@@ -29,18 +24,15 @@ namespace HuanyuFlowerShop.DTOs
     /// </summary>
     public class SendMessageRequest
     {
-        [Range(1, int.MaxValue, ErrorMessage = "会话编号无效")]
-        public int ConversationId { get; set; }
-
+        [Required]
+        public int ReceiverId { get; set; }
+        
         [Required(ErrorMessage = "消息内容不能为空")]
         [StringLength(2000, ErrorMessage = "消息内容不能超过2000个字符")]
         public string Content { get; set; } = string.Empty;
         
         [StringLength(20)]
         public string MessageType { get; set; } = "text";
-
-        [StringLength(64)]
-        public string? ClientMessageId { get; set; }
     }
 
     /// <summary>
@@ -52,12 +44,11 @@ namespace HuanyuFlowerShop.DTOs
         public int UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
         public string UserAvatar { get; set; } = string.Empty;
-        public int? AdminId { get; set; }
+        public int AdminId { get; set; }
         public string AdminName { get; set; } = string.Empty;
         public string LastMessage { get; set; } = string.Empty;
         public DateTime? LastMessageTime { get; set; }
         public int UnreadCount { get; set; } = 0;
-        public string Status { get; set; } = "waiting";
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

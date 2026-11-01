@@ -33,24 +33,17 @@ test -f "$STAGING/backend/HuanyuFlowerShop.dll"
 test -f "$STAGING/frontend/index.html"
 source "$ENV_FILE"
 
-# 保证公网健康检查不会被前端 SPA fallback 接管。
-NGINX_CONFIG="/etc/nginx/sites-available/flowershop"
-if [ -f "$NGINX_CONFIG" ] && ! grep -q 'location \^~ /health/' "$NGINX_CONFIG"; then
-  sed -i '/    location \/api\//i\    location ^~ /health/ {\n        proxy_pass http://127.0.0.1:5002;\n        proxy_set_header Host $host;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }' "$NGINX_CONFIG"
+if [ -f "$STAGING/legacy-restore" ]; then
+  BACKUP_DIR="/var/backups/flowershop/$(date +%Y%m%d-%H%M%S)"
+  install -d -m 700 "$BACKUP_DIR"
+  echo "Backing up the current production database and uploads to $BACKUP_DIR..."
+  mariadb-dump --protocol=socket \
+    --user="$FLOWERSHOP_DB_USER" --password="$FLOWERSHOP_DB_PASSWORD" \
+    --single-transaction --routines --triggers \
+    "$FLOWERSHOP_DB_NAME" > "$BACKUP_DIR/database.sql"
+  install -d "$BACKUP_DIR/uploads"
+  rsync -a "$UPLOAD_DIR/" "$BACKUP_DIR/uploads/"
 fi
-
-# 每次发布、尤其是执行迁移前都备份数据库和上传文件，保留最近 7 份。
-BACKUP_DIR="/var/backups/flowershop/$(date +%Y%m%d-%H%M%S)"
-install -d -m 700 "$BACKUP_DIR"
-echo "Backing up the current production database and uploads to $BACKUP_DIR..."
-mariadb-dump --protocol=socket \
-  --user="$FLOWERSHOP_DB_USER" --password="$FLOWERSHOP_DB_PASSWORD" \
-  --single-transaction --routines --triggers \
-  "$FLOWERSHOP_DB_NAME" > "$BACKUP_DIR/database.sql"
-install -d "$BACKUP_DIR/uploads"
-rsync -a "$UPLOAD_DIR/" "$BACKUP_DIR/uploads/"
-find /var/backups/flowershop -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
-  | sort -nr | tail -n +8 | cut -d' ' -f2- | xargs -r rm -rf
 
 APP_NEXT="${APP_DIR}.next"
 WEB_NEXT="${WEB_DIR}.next"
@@ -60,11 +53,6 @@ rm -rf "$APP_NEXT" "$WEB_NEXT"
 install -d "$APP_NEXT" "$WEB_NEXT" "$UPLOAD_DIR"
 cp -a "$STAGING/backend/." "$APP_NEXT/"
 cp -a "$STAGING/frontend/." "$WEB_NEXT/"
-# 保留当前版本的哈希资源，避免已打开页面在发布后懒加载旧 chunk 时失效。
-if [ -d "$WEB_DIR/assets" ]; then
-  install -d "$WEB_NEXT/assets"
-  rsync -a --ignore-existing "$WEB_DIR/assets/" "$WEB_NEXT/assets/"
-fi
 rm -rf "$APP_NEXT/uploads"
 ln -s "$UPLOAD_DIR" "$APP_NEXT/uploads"
 chown -R www-data:www-data "$UPLOAD_DIR"
@@ -104,9 +92,7 @@ systemctl reload nginx
 
 healthy=false
 for _ in $(seq 1 30); do
-  if curl --fail --silent http://127.0.0.1:5002/health/live >/dev/null \
-    && curl --fail --silent http://127.0.0.1:5002/health/ready >/dev/null \
-    && curl --fail --silent http://127.0.0.1:5002/api/Categories >/dev/null; then
+  if curl --fail --silent http://127.0.0.1:5002/api/Categories >/dev/null; then
     healthy=true
     break
   fi

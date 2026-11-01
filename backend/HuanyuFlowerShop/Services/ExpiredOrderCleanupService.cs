@@ -1,5 +1,6 @@
 using HuanyuFlowerShop.Data;
 using HuanyuFlowerShop.Entities;
+using HuanyuFlowerShop.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace HuanyuFlowerShop.Services;
@@ -35,45 +36,22 @@ public sealed class ExpiredOrderCleanupService : BackgroundService
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var cache = scope.ServiceProvider.GetRequiredService<ICacheService>();
             var now = DateTime.UtcNow;
             var orders = await db.Orders
-                .Include(o => o.OrderItems)
-                .Where(o => o.Status == "pending" && o.PaymentStatus == "unpaid" &&
+                .AsNoTracking()
+                .Where(o => o.Status == "pending" && o.PaymentStatus == "unpaid" && o.PaymentMethod == "online" &&
                             o.PaymentExpiresAt.HasValue && o.PaymentExpiresAt.Value <= now)
                 .Take(100)
                 .ToListAsync(cancellationToken);
 
             if (orders.Count == 0) return;
 
-            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             foreach (var order in orders)
             {
-                // 重新确认状态，避免与用户/管理员取消操作竞争。
-                var current = await db.Orders.FirstOrDefaultAsync(o => o.Id == order.Id, cancellationToken);
-                if (current is null || current.Status != "pending" || current.PaymentStatus != "unpaid") continue;
-
-                foreach (var item in order.OrderItems)
-                {
-                    var product = await db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId, cancellationToken);
-                    if (product is not null) product.Stock += item.Quantity;
-                }
-
-                var oldStatus = current.Status;
-                current.Status = "cancelled";
-                current.UpdatedAt = now;
-                db.OrderStatusHistories.Add(new OrderStatusHistory
-                {
-                    OrderId = current.Id,
-                    OldStatus = oldStatus,
-                    NewStatus = "cancelled",
-                    OperatorName = "system",
-                    Note = "支付超时，系统自动关闭订单并释放库存",
-                    CreatedAt = now
-                });
+                await OrderWorkflow.ChangeStatusAsync(db, cache, order.Id, "cancelled", null, "system",
+                    "支付超时，系统自动关闭订单并释放库存及优惠券", expiredOnly: true, cancellationToken: cancellationToken);
             }
-
-            await db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
             _logger.LogInformation("自动关闭支付超时订单 {Count} 个", orders.Count);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }

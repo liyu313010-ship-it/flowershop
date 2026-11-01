@@ -8,6 +8,8 @@ namespace HuanyuFlowerShop.DTOs
         public string ProductImage { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int Quantity { get; set; }
+        public int Stock { get; set; }
+        public bool IsActive { get; set; }
         public decimal TotalPrice { get; set; }
         public DateTime CreatedAt { get; set; }
     }

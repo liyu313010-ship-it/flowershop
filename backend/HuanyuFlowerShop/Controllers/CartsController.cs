@@ -2,27 +2,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
-using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-using HuanyuFlowerShop.Entities;
-using Microsoft.Extensions.Logging;
-using HuanyuFlowerShop.Exceptions;
 
 namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class CartsController : ControllerBase
+    public class CartsController(ICartService cartService, ILogger<CartsController> logger) : ControllerBase
     {
-        private readonly ICartService _cartService;
-        private readonly ILogger<CartsController> _logger;
-
-        public CartsController(ICartService cartService, ILogger<CartsController> logger)
-        {
-            _cartService = cartService;
-            _logger = logger;
-        }
+        private readonly ICartService _cartService = cartService;
+        private readonly ILogger<CartsController> _logger = logger;
 
         /// <summary>
         /// 获取当前用户的购物车商品列表

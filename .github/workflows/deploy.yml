@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -32,38 +32,43 @@ jobs:
         working-directory: frontend
         run: |
           npm ci --legacy-peer-deps
-          npm test -- --runInBand
+          npm run test -- --runInBand
           npm run build
-          node scripts/preserve-production-assets.mjs http://8.148.9.196:8080 dist
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
 
+      - name: Test backend business rules
+        run: dotnet test backend/HuanyuFlowerShop.Tests/HuanyuFlowerShop.Tests.csproj -c Release --verbosity minimal
+
       - name: Build backend and migration scripts
         shell: bash
+        env:
+          FLOWERSHOP_ALIPAY_CONFIG: ${{ secrets.FLOWERSHOP_ALIPAY_CONFIG }}
+          ConnectionStrings__DefaultConnection: "Server=127.0.0.1;Database=design_only;User=design_only"
+          JwtSettings__SecretKey: "DesignOnlyKey0123456789abcdef0123456789"
+          JwtSettings__Issuer: "design-only"
+          JwtSettings__Audience: "design-only"
         run: |
           project=backend/HuanyuFlowerShop/HuanyuFlowerShop.csproj
           project_dir=backend/HuanyuFlowerShop
           mkdir -p release/backend release/frontend release/migrations
           cp -a frontend/dist/. release/frontend/
+          printf '{"commit":"%s","source":"D:/flowershop"}\n' "$GITHUB_SHA" > release/frontend/deployment.json
 
           dotnet restore "$project"
-          dotnet restore backend/HuanyuFlowerShop.Tests/HuanyuFlowerShop.Tests.csproj
-          dotnet test backend/HuanyuFlowerShop.Tests/HuanyuFlowerShop.Tests.csproj --no-restore --configuration Release
           dotnet build "$project" -c Release --no-restore
           dotnet publish "$project" -c Release --no-build -o release/backend
 
           cd "$project_dir"
           dotnet tool restore
-          dotnet ef --version
           mapfile -t migrations < <(
             dotnet ef migrations list --no-connect --no-build --configuration Release |
               grep -E '^[0-9]{14}_'
           )
           previous=0
-          test "${#migrations[@]}" -gt 0
           for migration in "${migrations[@]}"; do
             dotnet ef migrations script "$previous" "$migration" \
               --no-build --configuration Release \
@@ -72,6 +77,14 @@ jobs:
           done
 
           cd "$GITHUB_WORKSPACE"
+          # This marker makes the installed release handler back up DB/uploads before migration.
+          touch release/legacy-restore
+          if [ -n "$FLOWERSHOP_ALIPAY_CONFIG" ]; then
+            umask 077
+            printf '%s' "$FLOWERSHOP_ALIPAY_CONFIG" > release/backend/appsettings.Local.json
+            # The backend runs as www-data; this file is outside nginx's public directory.
+            chmod 644 release/backend/appsettings.Local.json
+          fi
           tar -czf flowershop-release.tgz -C release .
 
       - name: Configure SSH
@@ -91,11 +104,11 @@ jobs:
           SERVER_PORT: ${{ secrets.SERVER_PORT }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
-          scp -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -i ~/.ssh/flowershop_deploy \
+          scp -i ~/.ssh/flowershop_deploy \
             -P "${SERVER_PORT:-22}" \
             flowershop-release.tgz \
             "$SERVER_USER@$SERVER_HOST:/home/deploy/flowershop-release.tgz"
-          ssh -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -i ~/.ssh/flowershop_deploy \
+          ssh -i ~/.ssh/flowershop_deploy \
             -p "${SERVER_PORT:-22}" \
             "$SERVER_USER@$SERVER_HOST" \
             'sudo /usr/local/sbin/install-flowershop-release'

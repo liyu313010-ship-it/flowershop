@@ -144,7 +144,10 @@
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                ¥{{ order.totalAmount }}
+                <div class="font-medium">¥{{ order.totalAmount }}</div>
+                <div v-if="order.discountAmount > 0" class="text-xs text-red-500">
+                  (已减 ¥{{ order.discountAmount }})
+                </div>
               </td>
               <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                 {{ order.user?.address || order.deliveryAddress || '无地址' }}
@@ -188,12 +191,7 @@
                 >
                   拒绝发货
                 </button>
-                <button 
-                  @click="openDeleteModal(order)"
-                  class="text-gray-600 hover:text-gray-900 ml-3"
-                >
-                  删除
-                </button>
+
               </td>
             </tr>
           </tbody>
@@ -269,7 +267,7 @@
               <div class="space-y-2 text-sm">
                 <div><span class="text-gray-600">收货人：</span>{{ selectedOrder.recipientName || selectedOrder.address?.name || '未知' }}</div>
                 <div><span class="text-gray-600">联系电话：</span>{{ selectedOrder.recipientPhone || selectedOrder.address?.phone || '未知' }}</div>
-                <div><span class="text-gray-600">收货地址：</span>{{ selectedOrder.user?.address || selectedOrder.deliveryAddress || '未知' }}</div>
+                <div><span class="text-gray-600">收货地址：</span>{{ selectedOrder.deliveryAddress || '未知' }}</div>
                 <div><span class="text-gray-600">配送时间：</span>{{ selectedOrder.address?.deliveryTime || '尽快配送' }}</div>
               </div>
             </div>
@@ -292,14 +290,14 @@
                   <tr v-for="item in (selectedOrder.orderItems || selectedOrder.items)" :key="item.id" class="border-t">
                     <td class="px-4 py-2">
                       <div class="flex items-center">
-                        <img 
-                          :src="getProductImageUrl(item.productImage || item.image || '')"
-                          :alt="item.productName || item.name" 
-                          class="w-12 h-12 object-cover rounded"
-                          @error="handleImageError"
-                        >
+                        <div class="w-12 h-12">
+                          <SmartImage :src="item.productImage || item.image || '/images/product-placeholder.svg'" :alt="item.productName || item.name" ratio="auto" strategy="auto" />
+                        </div>
                         <div class="ml-3">
                           <div class="text-sm font-medium">{{ item.productName || item.name }}</div>
+                          <div class="text-xs" :class="(item.stock !== undefined && item.quantity > item.stock) ? 'text-red-600' : 'text-gray-500'">
+                            库存：{{ getItemStockText(item) }}
+                          </div>
                           <div class="text-xs text-gray-500">{{ item.description || '精美花卉' }}</div>
                         </div>
                       </div>
@@ -316,7 +314,7 @@
                   </tr>
                   <tr>
                     <td colspan="3" class="px-4 py-2 text-right font-medium">配送费：</td>
-                    <td class="px-4 py-2">¥{{ selectedOrder.deliveryFee || 0 }}</td>
+                    <td class="px-4 py-2">¥{{ selectedOrder.shippingFee || 0 }}</td>
                   </tr>
                   <tr class="font-bold">
                     <td colspan="3" class="px-4 py-2 text-right">总计：</td>
@@ -385,30 +383,15 @@
       </div>
     </div>
 
-    <!-- 删除订单弹窗 -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">删除订单 #{{ deleteTargetOrder?.orderNumber }}</h3>
-          <button @click="closeDeleteModal" class="text-gray-400 hover:text-gray-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <p class="text-sm text-gray-700">确认删除该订单？此操作可能不可恢复。</p>
-        <div class="mt-6 flex justify-end space-x-3">
-          <button @click="closeDeleteModal" class="px-4 py-2 border rounded-lg hover:bg-gray-50">取消</button>
-          <button @click="submitDelete" class="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg">删除</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { getAvatarUrl, getProductImageUrl } from '@/utils/avatar.js'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { getAvatarUrl } from '@/utils/avatar.js'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import adminService from '@/services/adminService.js'
+import { productService } from '@/services/product'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 计算统计数据
@@ -456,7 +439,7 @@ const fetchOrders = async () => {
     loading.value = true
     const response = await adminService.getAdminOrders({
       page: currentPage.value,
-      limit: pageSize.value,
+      pageSize: pageSize.value,
       search: searchQuery.value,
       status: selectedStatus.value,
       startDate: dateRange.value,
@@ -464,7 +447,7 @@ const fetchOrders = async () => {
     })
     
     // 处理API响应数据结构
-    const responseData = response || {}
+    const responseData = response.data
     let newOrders = []
     
     if (responseData && responseData.data) {
@@ -515,7 +498,7 @@ const fetchOrders = async () => {
 // 更新统计数据
 const updateStatistics = () => {
   statistics.value.totalOrders = orders.value.length
-  statistics.value.pendingOrders = orders.value.filter(order => order.status === 'pending').length
+  statistics.value.pendingOrders = orders.value.filter(order => order.status === 'processing').length
   statistics.value.completedOrders = orders.value.filter(order => order.status === 'delivered').length
   statistics.value.totalRevenue = orders.value
     .filter(order => order.status !== 'cancelled')
@@ -542,6 +525,12 @@ const viewOrder = async (order) => {
       user: detailedOrder.user || {},
       address: detailedOrder.address || {}
     }
+    try {
+      const ids = (selectedOrder.value.orderItems || []).map(x => x.productId || x.ProductId).filter(Boolean)
+      const details = await Promise.all(ids.map(async pid => { try { const r = await productService.getProductById(pid); const p = r?.data || r; return { pid, stock: Number(p?.Stock ?? p?.stock ?? 0) } } catch { return { pid, stock: undefined } } }))
+      const stocks = Object.fromEntries(details.map(d => [d.pid, d.stock]))
+      selectedOrder.value.orderItems = (selectedOrder.value.orderItems || []).map(it => ({ ...it, stock: stocks[it.productId || it.ProductId] }))
+    } catch {}
 
     // 若订单未包含收货地址，则尝试从用户默认地址补全
     try {
@@ -621,6 +610,38 @@ const stopPolling = () => {
   }
 }
 
+let detailTimer = null
+const ORDER_DETAIL_POLL_MS = 5000
+const startDetailPolling = (orderId) => {
+  stopDetailPolling()
+  detailTimer = setInterval(async () => {
+    try {
+      const res = await adminService.getAdminOrderById(orderId)
+      const d = res?.data || res
+      if (d) {
+        selectedOrder.value = {
+          ...selectedOrder.value,
+          ...d,
+          orderItems: d.orderItems || d.items || [],
+          user: d.user || {},
+          address: d.address || {}
+        }
+        try {
+          const ids = (selectedOrder.value.orderItems || []).map(x => x.productId || x.ProductId).filter(Boolean)
+          const details = await Promise.all(ids.map(async pid => { try { const r = await productService.getProductById(pid); const p = r?.data || r; return { pid, stock: Number(p?.Stock ?? p?.stock ?? 0) } } catch { return { pid, stock: undefined } } }))
+          const stocks = Object.fromEntries(details.map(d => [d.pid, d.stock]))
+          selectedOrder.value.orderItems = (selectedOrder.value.orderItems || []).map(it => ({ ...it, stock: stocks[it.productId || it.ProductId] }))
+        } catch {}
+      }
+      const hist = await adminService.getLatestOrderHistory(orderId)
+      latestHistory.value = hist?.data || hist || latestHistory.value
+    } catch {}
+  }, ORDER_DETAIL_POLL_MS)
+}
+const stopDetailPolling = () => {
+  if (detailTimer) { clearInterval(detailTimer); detailTimer = null }
+}
+
 // 订单状态更新后的处理函数 - 确保与用户端同步
 const handleOrderStatusChange = async (orderId, newStatus, note) => {
   try {
@@ -628,7 +649,8 @@ const handleOrderStatusChange = async (orderId, newStatus, note) => {
     loading.value = true
     
     // 调用更新订单状态的API
-    await adminService.updateOrderStatus(orderId, newStatus, note)
+    const safeNote = (note || '').trim().slice(0, 480)
+    await adminService.updateOrderStatus(orderId, newStatus, safeNote)
     
     // 立即刷新订单列表，确保用户端能看到最新状态
     await fetchOrders()
@@ -665,21 +687,18 @@ const processOrder = async (orderId) => {
 
     // 处理后直接进入发货流程
     try {
-      const { value: tracking } = await ElMessageBox.prompt('请输入快递单号', '发货信息', {
+      const { value: tracking } = await ElMessageBox.prompt('请输入快递单号（可选）', '发货信息', {
         confirmButtonText: '下一步',
         cancelButtonText: '取消',
-        inputPlaceholder: '例如：SF1234567890',
-        inputValidator: value => value?.trim() ? true : '请输入运单号'
+        inputPlaceholder: '例如：SF1234567890'
       })
-      const { value: carrier } = await ElMessageBox.prompt('请输入快递公司', '发货信息', {
+      const { value: carrier } = await ElMessageBox.prompt('请输入快递公司（可选）', '发货信息', {
         confirmButtonText: '发货',
         cancelButtonText: '取消',
-        inputPlaceholder: '例如：顺丰/圆通/京东物流',
-        inputValidator: value => value?.trim() ? true : '请输入快递公司'
+        inputPlaceholder: '例如：顺丰/圆通/京东物流'
       })
-      await adminService.shipOrder(orderId, { company: carrier, trackingNumber: tracking })
-      await fetchOrders()
-      ElMessage.success('发货信息已保存')
+      const note = [`快递公司：${carrier || '未填写'}`, `单号：${tracking || '未填写'}`].join('；')
+      await handleOrderStatusChange(orderId, 'shipped', note)
     } catch (e) {
       // 用户取消发货信息填写则保留在处理中状态
       ElMessage.info('订单已标记为处理中，可稍后在“发货”按钮填写物流信息')
@@ -704,10 +723,10 @@ const submitProcess = async () => {
   if (actionLock.value) return
   try {
     actionLock.value = true
-    await handleOrderStatusChange(processTargetOrder.value.id, 'processing', processForm.value.note || '')
+    await handleOrderStatusChange(processTargetOrder.value.id, 'processing', (processForm.value.note || '').trim().slice(0, 480))
     if (processForm.value.shipNow) {
-      const carrier = processForm.value.carrier.trim()
-      const tracking = processForm.value.tracking.trim()
+      const carrier = (processForm.value.carrier || '').trim()
+      const tracking = (processForm.value.tracking || '').trim()
       if (!carrier || !tracking) throw new Error('请填写快递公司和运单号')
       await adminService.shipOrder(processTargetOrder.value.id, { company: carrier, trackingNumber: tracking })
       await fetchOrders()
@@ -725,21 +744,19 @@ const shipOrder = async (orderId) => {
   if (actionLock.value) return
   try {
     actionLock.value = true
-    const { value: tracking } = await ElMessageBox.prompt('请输入快递单号', '发货信息', {
+    const { value: tracking } = await ElMessageBox.prompt('请输入快递单号（可选）', '发货信息', {
       confirmButtonText: '下一步',
       cancelButtonText: '取消',
-      inputPlaceholder: '例如：SF1234567890',
-      inputValidator: value => value?.trim() ? true : '请输入运单号'
+      inputPlaceholder: '例如：SF1234567890'
     })
-    const { value: carrier } = await ElMessageBox.prompt('请输入快递公司', '发货信息', {
+    const { value: carrier } = await ElMessageBox.prompt('请输入快递公司（可选）', '发货信息', {
       confirmButtonText: '发货',
       cancelButtonText: '取消',
-      inputPlaceholder: '例如：顺丰/圆通/京东物流',
-      inputValidator: value => value?.trim() ? true : '请输入快递公司'
+      inputPlaceholder: '例如：顺丰/圆通/京东物流'
     })
-    await adminService.shipOrder(orderId, { company: carrier, trackingNumber: tracking })
+    if (!carrier?.trim() || !tracking?.trim()) { ElMessage.error('请填写快递公司和运单号'); return }
+    await adminService.shipOrder(orderId, { company: carrier.trim(), trackingNumber: tracking.trim() })
     await fetchOrders()
-    ElMessage.success('发货信息已保存')
   } catch (error) {
     // 用户取消操作或报错
   }
@@ -762,7 +779,7 @@ const rejectOrder = async (orderId) => {
         return true
       }
     })
-    await adminService.updateOrderStatus(orderId, 'cancelled', value.trim())
+    await adminService.updateOrderStatus(orderId, 'cancelled', value.trim().slice(0, 480))
     await fetchOrders()
     ElMessage.success('已拒绝发货并同步到用户订单')
   } catch (error) {
@@ -791,49 +808,12 @@ const submitReject = async () => {
     actionLock.value = true
     const reason = (rejectForm.value.reason || '').trim()
     if (!reason) { ElMessage.warning('请填写拒绝发货的理由'); actionLock.value = false; return }
-    await adminService.updateOrderStatus(rejectTargetOrder.value.id, 'cancelled', reason)
+    await adminService.updateOrderStatus(rejectTargetOrder.value.id, 'cancelled', reason.slice(0, 480))
     await fetchOrders()
     ElMessage.success('已拒绝发货并同步到用户订单')
     showRejectModal.value = false
   } catch (e) {
     ElMessage.error('提交失败，请重试')
-  } finally {
-    actionLock.value = false
-  }
-}
-
-// 删除订单弹窗状态
-const showDeleteModal = ref(false)
-const deleteTargetOrder = ref(null)
-
-const openDeleteModal = (order) => {
-  deleteTargetOrder.value = order
-  showDeleteModal.value = true
-}
-
-const closeDeleteModal = () => { showDeleteModal.value = false }
-
-const submitDelete = async () => {
-  if (actionLock.value) return
-  try {
-    actionLock.value = true
-    await adminService.deleteAdminOrder(deleteTargetOrder.value.id)
-    // 即时从本地列表移除，提高响应速度
-    const deletedId = deleteTargetOrder.value.id
-    orders.value = orders.value.filter(o => o.id !== deletedId)
-    updateStatistics()
-    // 如果详情正在打开且是该订单，关闭详情
-    if (showOrderDetail.value && selectedOrder.value && selectedOrder.value.id === deletedId) {
-      showOrderDetail.value = false
-      selectedOrder.value = null
-      latestHistory.value = null
-    }
-    // 再执行一次刷新以确保与后端一致
-    await fetchOrders()
-    ElMessage.success('订单已删除或标记为取消')
-    showDeleteModal.value = false
-  } catch (error) {
-    ElMessage.error('删除失败：' + (error.response?.data?.message || error.message))
   } finally {
     actionLock.value = false
   }
@@ -848,6 +828,12 @@ onMounted(() => {
 // 组件卸载时清除定时器
 onUnmounted(() => {
   stopPolling()
+  stopDetailPolling()
+})
+
+watch(() => showOrderDetail.value, (v) => {
+  if (v && selectedOrder.value?.id) startDetailPolling(selectedOrder.value.id)
+  else stopDetailPolling()
 })
 
 const getStatusClass = (status) => {
@@ -886,14 +872,15 @@ const getStatusText = (status) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return '未知时间'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  try {
+    return new Date(dateString).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Shanghai'
+    })
+  } catch {
+    return new Date(dateString).toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })
+  }
 }
 
 const handleImageError = (event) => {
@@ -921,3 +908,8 @@ const handleAvatarError = (event) => {
 }
 </style>
 
+const getItemStockText = (item) => {
+  const s = item?.stock
+  if (s === undefined || s === null || Number.isNaN(Number(s))) return '未知'
+  return Number(s)
+}

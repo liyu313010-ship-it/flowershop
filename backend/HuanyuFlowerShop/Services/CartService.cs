@@ -31,6 +31,7 @@ namespace HuanyuFlowerShop.Services
                     {
                         Id = cartItem.Id,
                         ProductId = cartItem.ProductId,
+                    Stock = product.Stock, IsActive = product.IsActive,
                         ProductName = product.Name ?? "",
                         ProductImage = product.ImageUrl ?? "",
                         Price = product.Price,
@@ -46,6 +47,7 @@ namespace HuanyuFlowerShop.Services
 
         public async Task<CartItemDto> AddToCartAsync(int userId, AddToCartDto addToCartDto)
         {
+            if (addToCartDto.Quantity is < 1 or > 99) throw new ArgumentException("商品数量必须在1到99之间");
             // 检查产品是否存在
             var product = await _productRepository.GetByIdAsync(addToCartDto.ProductId);
             if (product == null)
@@ -53,6 +55,7 @@ namespace HuanyuFlowerShop.Services
                 throw new ArgumentException("产品不存在");
             }
 
+            if (!product.IsActive) throw new ArgumentException("商品已下架");
             // 检查库存
             if (product.Stock < addToCartDto.Quantity)
             {
@@ -67,7 +70,7 @@ namespace HuanyuFlowerShop.Services
             {
                 // 更新数量
                 var newQuantity = existingCartItem.Quantity + addToCartDto.Quantity;
-                if (product.Stock < newQuantity)
+                if (newQuantity > 99 || product.Stock < newQuantity)
                 {
                     throw new ArgumentException("库存不足");
                 }
@@ -80,6 +83,7 @@ namespace HuanyuFlowerShop.Services
                 {
                     Id = existingCartItem.Id,
                     ProductId = existingCartItem.ProductId,
+                    Stock = product.Stock, IsActive = product.IsActive,
                     ProductName = product.Name ?? "",
                     ProductImage = product.ImageUrl ?? "",
                     Price = product.Price,
@@ -106,6 +110,7 @@ namespace HuanyuFlowerShop.Services
                 {
                     Id = createdCartItem.Id,
                     ProductId = createdCartItem.ProductId,
+                    Stock = product.Stock, IsActive = product.IsActive,
                     ProductName = product.Name ?? "",
                     ProductImage = product.ImageUrl ?? "",
                     Price = product.Price,
@@ -118,6 +123,7 @@ namespace HuanyuFlowerShop.Services
 
         public async Task<CartItemDto?> UpdateCartItemAsync(int userId, int cartItemId, UpdateCartItemDto updateCartItemDto)
         {
+            if (updateCartItemDto.Quantity is < 1 or > 99) throw new ArgumentException("商品数量必须在1到99之间");
             var cartItem = await _cartRepository.GetByIdAsync(cartItemId);
             if (cartItem == null || cartItem.UserId != userId)
             {
@@ -126,7 +132,7 @@ namespace HuanyuFlowerShop.Services
 
             // 检查产品库存
             var product = await _productRepository.GetByIdAsync(cartItem.ProductId);
-            if (product == null || product.Stock < updateCartItemDto.Quantity)
+            if (product == null || !product.IsActive || product.Stock < updateCartItemDto.Quantity)
             {
                 throw new ArgumentException("库存不足");
             }
@@ -144,6 +150,7 @@ namespace HuanyuFlowerShop.Services
             {
                 Id = cartItem.Id,
                 ProductId = cartItem.ProductId,
+                    Stock = product.Stock, IsActive = product.IsActive,
                 ProductName = product.Name ?? "",
                 ProductImage = product.ImageUrl ?? "",
                 Price = product.Price,

@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using HuanyuFlowerShop.Interfaces;
 using HuanyuFlowerShop.DTOs;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging;
-using HuanyuFlowerShop.Entities;
 // 使用System.UnauthorizedAccessException类型不需要using命名空间
 
 namespace HuanyuFlowerShop.Controllers
@@ -12,23 +10,21 @@ namespace HuanyuFlowerShop.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class OrdersController : ControllerBase
+    public class OrdersController(IOrderService orderService, IPaymentService paymentService, ILogger<OrdersController> logger) : ControllerBase
     {
-        private readonly IOrderService _orderService;
-        private readonly IPaymentService _paymentService;
-        private readonly ILogger<OrdersController> _logger;
+        private readonly IOrderService _orderService = orderService;
+        private readonly IPaymentService _paymentService = paymentService;
+        private readonly ILogger<OrdersController> _logger = logger;
 
-        public OrdersController(IOrderService orderService, IPaymentService paymentService, ILogger<OrdersController> logger)
+        [HttpPost("quote")]
+        public async Task<IActionResult> Quote([FromBody] OrderQuoteRequest request)
         {
-            _orderService = orderService;
-            _paymentService = paymentService;
-            _logger = logger;
+            try { return Ok(await _orderService.GetQuoteAsync(GetCurrentUserId(), request)); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         }
 
         // 更新支付状态
         [HttpPut("{orderId}/payment-status")]
-        // 支付状态只能由受信任的支付回调或管理员更新，客户端不能自行将订单标记为已支付。
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdatePaymentStatus(int orderId, [FromBody] PaymentStatusRequest request)
         {
             try
@@ -51,10 +47,6 @@ namespace HuanyuFlowerShop.Controllers
                 return Unauthorized();
             }
             catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }
@@ -89,10 +81,6 @@ namespace HuanyuFlowerShop.Controllers
             {
                 return BadRequest(ex.Message);
             }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "处理支付失败，订单ID: {OrderId}", orderId);
@@ -122,6 +110,11 @@ namespace HuanyuFlowerShop.Controllers
             {
                 return Unauthorized();
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "验证支付业务异常，订单ID: {OrderId}", orderId);
+                return BadRequest(new { success = false, message = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "验证支付失败，订单ID: {OrderId}", orderId);
@@ -142,16 +135,17 @@ namespace HuanyuFlowerShop.Controllers
                 var (paymentUrl, paymentReference) = await _paymentService.GeneratePaymentLinkAsync(userId, orderId);
                 
                 // 由于元组直接返回数据，默认为成功状态
-                return Ok(new { success = true, paymentLink = paymentUrl, paymentReference = paymentReference });
+                return Ok(new { success = true, paymentLink = paymentUrl, paymentReference });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "生成支付链接业务异常，订单ID: {OrderId}", orderId);
+                return BadRequest(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "生成支付链接失败，订单ID: {OrderId}", orderId);
-                if (ex is InvalidOperationException || ex is ArgumentException)
-                {
-                    return BadRequest(new { success = false, message = ex.Message });
-                }
-                return StatusCode(500, "生成支付链接时发生错误");
+                return StatusCode(500, new { message = "生成支付链接时发生错误" });
             }
         }
 
@@ -303,7 +297,7 @@ namespace HuanyuFlowerShop.Controllers
                 var success = await _orderService.CancelOrderAsync(userId, orderId);
                 if (!success)
                 {
-                    return StatusCode(500, "取消订单失败");
+                    return BadRequest("订单状态已变化，请刷新后重试");
                 }
 
                 // 返回更新后的订单
@@ -381,7 +375,7 @@ namespace HuanyuFlowerShop.Controllers
                 _logger.LogInformation("接收到订单状态更新请求，订单ID: {OrderId}, 新状态: {Status}", 
                     orderId, request.Status);
                 
-                var result = await _orderService.UpdateOrderStatusAsync(userId, orderId, request.Status);
+                var result = await _orderService.UpdateOrderStatusAsAdminAsync(orderId, request.Status, User.Identity?.Name ?? "admin");
                 
                 if (result == null)
                 {

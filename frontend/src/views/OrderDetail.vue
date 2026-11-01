@@ -42,7 +42,7 @@
         </div>
         <div class="status-actions">
           <button 
-            v-if="order.status === 'pending'" 
+            v-if="order.status === 'pending' || order.status === 'processing'"
             @click="cancelOrder" 
             class="btn btn-danger"
           >
@@ -103,7 +103,7 @@
       <!-- 商品列表 -->
       <div class="items-card">
         <h3>商品清单</h3>
-        <div class="items-list">
+            <div class="items-list">
           <div v-for="item in order.orderItems" :key="item.id" class="order-item">
             <img :src="getProductImageUrl(item.productImage || '')" :alt="item.productName" class="item-image">
             <div class="item-details">
@@ -162,12 +162,13 @@
       <div class="summary-card">
         <div class="summary-item">
           <span>商品总额：</span>
-          <span>¥{{ order.totalAmount }}</span>
+          <span>¥{{ order.subtotal }}</span>
         </div>
         <div class="summary-item">
           <span>运费：</span>
-          <span>¥0</span>
+          <span>¥{{ order.shippingFee }}</span>
         </div>
+        <div v-if="order.discountAmount > 0" class="summary-item"><span>优惠券：</span><span>-¥{{ order.discountAmount }}</span></div>
         <div class="summary-total">
           <span>订单总额：</span>
           <span class="total-amount">¥{{ order.totalAmount }}</span>
@@ -390,9 +391,10 @@ import orderService from '@/services/orderService'
 import { productService } from '@/services/product'
 
 import userService from '@/services/userService'
-import { notifySuccess, notifyError, notifyInfo } from '@/utils/notify'
+import { notifySuccess, notifyError } from '@/utils/notify'
 import { useUserStore } from '@/stores/user'
-import { getAvatarUrl, getProductImageUrl } from '@/utils/avatar.js'
+import { getAvatarUrl } from '@/utils/avatar.js'
+import { getProductImageUrl } from '@/utils/avatar.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -402,6 +404,7 @@ const error = ref('')
 let pollInterval = null
 const POLLING_INTERVAL = 8000
 const previousOrderStatus = ref(null)
+const isFetching = ref(false)
 
 const statusHistory = ref([])
 let lastOrderJson = ''
@@ -437,14 +440,11 @@ const loadOrderDetail = async (setLoading = true) => {
   try {
     const orderId = route.params.id
     if (setLoading) loading.value = true
-    if (currentController) {
-      try { currentController.abort() } catch {}
-    }
-    currentController = new AbortController()
-    const reqOptions = { signal: currentController.signal }
+    if (isFetching.value) return
+    isFetching.value = true
     const [orderResponse, historyResponse] = await Promise.all([
-      orderService.getOrderById(orderId, reqOptions),
-      orderService.getOrderStatusHistory(orderId, reqOptions)
+      orderService.getOrderById(orderId, { silent: true }),
+      orderService.getOrderStatusHistory(orderId, { silent: true })
     ])
     
     // 处理订单详情（仅在变更时更新以避免频闪）
@@ -504,72 +504,20 @@ const loadOrderDetail = async (setLoading = true) => {
     error.value = '加载订单详情失败，请稍后重试'
   } finally {
     loading.value = false
+    isFetching.value = false
   }
 }
 
-// 从数据库加载用户地址信息
-const loadUserAddresses = async () => {
-  isLoadingAddresses.value = true
-  try {
-    console.log('从数据库加载最新收货地址信息...')
-    const response = await userService.getAddresses()
-    
-    // 处理响应数据，确保格式统一
-    const addressList = response.data || response.Data || []
-    console.log('从数据库获取的地址列表:', addressList)
-    
-    // 格式化地址数据，确保字段名称一致性
-    userAddresses.value = Array.isArray(addressList) ? addressList.map(addr => ({
-      id: addr.id || addr.Id,
-      name: addr.name || addr.RecipientName || addr.recipientName || '',
-      phone: addr.phone || addr.PhoneNumber || addr.phoneNumber || '',
-      province: addr.province || addr.Province || '',
-      city: addr.city || addr.City || '',
-      district: addr.district || addr.District || '',
-      detailAddress: addr.detailAddress || addr.DetailAddress || '',
-      fullAddress: addr.fullAddress || `${addr.province || addr.Province || ''}${addr.city || addr.City || ''}${addr.district || addr.District || ''}${addr.detailAddress || addr.DetailAddress || ''}`,
-      isDefault: addr.isDefault || addr.IsDefault || false
-    })) : []
-    
-    console.log('地址加载完成，共加载', userAddresses.value.length, '个地址')
-  } catch (error) {
-    console.error('加载收货地址失败:', error)
-    userAddresses.value = []
-  } finally {
-    isLoadingAddresses.value = false
-  }
-}
-
-// 更新当前订单使用的地址信息
+// 历史订单始终使用下单时保存的收货信息，不读取当前地址簿覆盖它。
 const updateCurrentAddress = () => {
   if (!order.value) return
-  
-  // 优先使用用户地址列表中的默认地址，其次使用列表第一条
-  if (userAddresses.value.length > 0) {
-    const def = userAddresses.value.find(a => a.isDefault) || userAddresses.value[0]
-    if (def) {
-      currentAddress.value = def
-      return
-    }
-  }
-  
-  // 如果找不到匹配的地址，则使用订单中的地址信息作为后备
-  console.log('未找到匹配的地址，使用订单中的地址信息')
-  const orderRecipientName = order.value.recipientName || order.value.RecipientName || ''
-  const orderRecipientPhone = order.value.recipientPhone || order.value.Phone || ''
   currentAddress.value = {
-    id: 'order_default',
-    name: orderRecipientName || '未知收货人',
-    phone: orderRecipientPhone || '未知电话',
-    province: order.value.province || '',
-    city: order.value.city || '',
-    district: order.value.district || '',
-    detailAddress: order.value.deliveryAddress || order.value.detailAddress || '',
-    fullAddress: order.value.shippingAddress || order.value.fullAddress || 
-                `${order.value.province || ''}${order.value.city || ''}${order.value.district || ''}${order.value.deliveryAddress || order.value.detailAddress || ''}`,
-    isDefault: false
+    name: order.value.recipientName || order.value.RecipientName || '',
+    phone: order.value.phone || order.value.recipientPhone || order.value.Phone || '',
+    fullAddress: order.value.shippingAddress || order.value.deliveryAddress || order.value.ShippingAddress || ''
   }
 }
+const loadUserAddresses = async () => { updateCurrentAddress() }
 
 // 监听页面可见性变化，实现页面重新聚焦时自动刷新地址
 const handleVisibilityChange = async () => {
@@ -585,14 +533,14 @@ const goBack = () => {
 }
 
 const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  if (!dateString) return ''
+  try {
+    return new Date(dateString).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Shanghai'
+    })
+  } catch { return '' }
 }
 
 const getStatusClass = (status) => {
@@ -735,12 +683,13 @@ const cancelOrder = async () => {
   }
 
   try {
-    await orderService.cancelOrder(order.value.id)
+    const result = await orderService.cancelOrder(order.value.id)
+    if (result?.success === false) throw new Error(result.message || "取消订单失败")
     await loadOrderDetail()
     notifySuccess('订单已取消')
   } catch (error) {
     console.error('取消订单失败:', error)
-    alert('取消订单失败，请重试')
+    notifyError(error.response?.data?.message || error.response?.data || error.message || '取消订单失败，请重试')
   }
 }
 
@@ -903,18 +852,39 @@ const payOrder = async () => {
   
   try {
     loading.value = true
-    // 支付单必须由服务端创建，客户端不允许伪造 paid 状态
-    const result = await orderService.generatePaymentLink(order.value.id)
-    const paymentUrl = result?.data?.paymentLink || result?.data?.paymentUrl || result?.paymentLink || result?.paymentUrl
-    if (paymentUrl) {
-      window.location.assign(paymentUrl)
+    // 调用后端获取支付宝支付链接/表单
+    const res = await orderService.repayOrder(order.value.id)
+    
+    if (res.success && res.data) {
+      const paymentLink = res.data.paymentLink || res.data.PaymentLink
+      
+      if (paymentLink && paymentLink.startsWith('<form')) {
+        // 支付宝返回的是HTML表单，需要渲染并提交
+        const div = document.createElement('div')
+        div.innerHTML = paymentLink
+        document.body.appendChild(div)
+        // 提交表单
+        const form = div.querySelector('form')
+        if (form) {
+          form.submit()
+        } else {
+           notifyError('支付表单格式错误')
+           loading.value = false
+        }
+      } else if (paymentLink) {
+        // 普通URL跳转
+        window.location.href = paymentLink
+      } else {
+        notifyError('获取支付链接为空')
+        loading.value = false
+      }
     } else {
-      notifyInfo('在线支付服务暂未配置，请稍后重试')
+      notifyError('获取支付链接失败')
+      loading.value = false
     }
   } catch (error) {
     console.error('支付失败:', error);
-    notifyError(error?.response?.data?.message || '支付服务暂不可用，请稍后重试')
-  } finally {
+    notifyError('支付过程中出现错误')
     loading.value = false;
   }
 }
@@ -943,7 +913,57 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
   
   // 处理URL参数，如果有review=true则自动打开评价弹窗
-  const { review } = route.query
+  const { review, verify, out_trade_no } = route.query
+  
+  // 处理支付同步跳转验证
+  if (verify === 'true' || out_trade_no) {
+      console.log('检测到支付回调，开始验证支付状态...');
+      loading.value = true;
+      try {
+          // 等待一小会儿，确保支付宝那边数据已同步（虽然是同步跳转，但有时候查询太快会查不到）
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // 获取当前订单ID
+          const orderId = route.params.id;
+          
+          // 尝试验证支付
+          // 注意：这里需要后端提供一个 verify-payment 接口，或者直接查询订单状态
+          // 如果没有专门的 verify 接口，我们可以直接刷新订单详情，因为后端可能还没收到 notify
+          // 但我们可以调用后端的 verify-payment 接口主动去支付宝查
+          if (out_trade_no) {
+             await orderService.verifyPayment(orderId, { paymentReference: out_trade_no });
+          }
+          
+          // 刷新订单详情
+          await loadOrderDetail();
+          
+          if (order.value && order.value.paymentStatus === 'paid') {
+              notifySuccess('支付成功！');
+              // 清除 URL 参数
+              router.replace({ query: {} });
+          } else {
+              // 如果还没变更为 paid，可能需要轮询几次
+              let retryCount = 0;
+              const checkPay = setInterval(async () => {
+                  retryCount++;
+                  await loadOrderDetail(false);
+                  if (order.value.paymentStatus === 'paid') {
+                      clearInterval(checkPay);
+                      notifySuccess('支付成功！');
+                      router.replace({ query: {} });
+                  } else if (retryCount > 5) {
+                      clearInterval(checkPay);
+                      // 不报错，只是没查到，可能是延迟
+                  }
+              }, 2000);
+          }
+      } catch (err) {
+          console.error('支付验证失败', err);
+      } finally {
+          loading.value = false;
+      }
+  }
+
   if (review === 'true') {
     // 等待订单数据加载完成
     await new Promise(resolve => {
@@ -967,9 +987,6 @@ onMounted(async () => {
 onUnmounted(() => {
   stopPolling()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
-  if (currentController) {
-    try { currentController.abort() } catch {}
-  }
 })
 
 // 移除重复的 onMounted 监听，避免多次绑定

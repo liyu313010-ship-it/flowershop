@@ -16,6 +16,7 @@
     <!-- 添加 Entity Framework Core 测试支持 -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.9" />
     <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.9" />
   </ItemGroup>
 
   <!-- 添加对主项目的引用 -->

@@ -1,34 +1,22 @@
 using HuanyuFlowerShop.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 
 namespace HuanyuFlowerShop.Infrastructure;
 
-public sealed class DatabaseHealthCheck : IHealthCheck
+public sealed class DatabaseHealthCheck(IServiceScopeFactory scopeFactory) : IHealthCheck
 {
-    private readonly ApplicationDbContext _db;
-
-    public DatabaseHealthCheck(ApplicationDbContext db) => _db = db;
-
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         try
         {
-            if (!await _db.Database.CanConnectAsync(cancellationToken))
-                return HealthCheckResult.Unhealthy("database unavailable");
-
-            // 同时验证应用依赖的最新字段，防止“数据库能连接但迁移漏执行”。
-            await _db.Users.AsNoTracking()
-                .Select(u => new { u.Id, u.EmailVerified, u.Points, u.TokenVersion })
-                .Take(1)
-                .ToListAsync(cancellationToken);
-            return HealthCheckResult.Healthy("database reachable and schema current");
+            if (!await db.Database.CanConnectAsync(cancellationToken)) return HealthCheckResult.Unhealthy("Database unavailable");
+            await db.Users.AsNoTracking().Select(u => new { u.Id, u.TokenVersion }).Take(1).ToListAsync(cancellationToken);
+            await db.Orders.AsNoTracking().Select(o => new { o.Id, o.ClientRequestId }).Take(1).ToListAsync(cancellationToken);
+            return HealthCheckResult.Healthy();
         }
-        catch (Exception ex)
-        {
-            return HealthCheckResult.Unhealthy("database check failed", ex);
-        }
+        catch { return HealthCheckResult.Unhealthy("Database unavailable"); }
     }
 }

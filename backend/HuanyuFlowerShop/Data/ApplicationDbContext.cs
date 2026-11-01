@@ -28,10 +28,9 @@ namespace HuanyuFlowerShop.Data
         public DbSet<Coupon> Coupons { get; set; } = null!;
         public DbSet<UserCoupon> UserCoupons { get; set; } = null!;
         public DbSet<ProductRecommendation> ProductRecommendations { get; set; } = null!;
-        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
-        public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
-        public DbSet<SupportConversation> SupportConversations { get; set; } = null!;
-        public DbSet<SupportMessage> SupportMessages { get; set; } = null!;
+        public DbSet<Message> Messages { get; set; } = null!;
+        public DbSet<Conversation> Conversations { get; set; } = null!;
+        public DbSet<Video> Videos { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -50,74 +49,8 @@ namespace HuanyuFlowerShop.Data
                 entity.Property(e => e.Phone).HasMaxLength(20);
                 entity.Property(e => e.Address).HasMaxLength(200);
                 entity.Property(e => e.Gender).HasMaxLength(20);
-                entity.Property(e => e.EmailVerified).HasDefaultValue(false).IsRequired();
-                entity.Property(e => e.Points).HasDefaultValue(0).IsRequired();
-                entity.Property(e => e.TokenVersion).HasDefaultValue(0).IsRequired();
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
-            });
-
-            modelBuilder.Entity<PasswordResetToken>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.TokenHash).IsUnique();
-                entity.HasIndex(e => new { e.UserId, e.ExpiresAt });
-                entity.HasOne(e => e.User)
-                    .WithMany()
-                    .HasForeignKey(e => e.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            modelBuilder.Entity<EmailVerificationToken>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.TokenHash).IsUnique();
-                entity.HasIndex(e => new { e.UserId, e.ExpiresAt });
-                entity.HasOne(e => e.User)
-                    .WithMany()
-                    .HasForeignKey(e => e.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            modelBuilder.Entity<SupportConversation>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
-                entity.Property(e => e.LastMessage).HasMaxLength(500);
-                entity.Property(e => e.UserUnreadCount).HasDefaultValue(0);
-                entity.Property(e => e.AdminUnreadCount).HasDefaultValue(0);
-                entity.HasIndex(e => new { e.UserId, e.Status });
-                entity.HasIndex(e => new { e.AdminId, e.Status });
-                entity.HasIndex(e => e.LastMessageAt);
-                entity.HasOne(e => e.User)
-                    .WithMany()
-                    .HasForeignKey(e => e.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
-                entity.HasOne(e => e.Admin)
-                    .WithMany()
-                    .HasForeignKey(e => e.AdminId)
-                    .OnDelete(DeleteBehavior.SetNull);
-            });
-
-            modelBuilder.Entity<SupportMessage>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Content).HasMaxLength(2000).IsRequired();
-                entity.Property(e => e.MessageType).HasMaxLength(20).IsRequired();
-                entity.Property(e => e.ClientMessageId).HasMaxLength(64);
-                entity.Property(e => e.AttachmentName).HasMaxLength(255);
-                entity.Property(e => e.AttachmentStorageName).HasMaxLength(500);
-                entity.Property(e => e.AttachmentContentType).HasMaxLength(100);
-                entity.HasIndex(e => new { e.ConversationId, e.CreatedAt });
-                entity.HasIndex(e => new { e.SenderId, e.ClientMessageId }).IsUnique();
-                entity.HasOne(e => e.Conversation)
-                    .WithMany(e => e.Messages)
-                    .HasForeignKey(e => e.ConversationId)
-                    .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(e => e.Sender)
-                    .WithMany()
-                    .HasForeignKey(e => e.SenderId)
-                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // 配置Category实体
@@ -177,14 +110,13 @@ namespace HuanyuFlowerShop.Data
                 entity.Property(e => e.RecipientPhone).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.DeliveryAddress).HasMaxLength(200).IsRequired();
                 entity.Property(e => e.Message).HasMaxLength(500);
-                entity.Property(e => e.ShippingMethod).HasMaxLength(30).IsRequired();
-                entity.Property(e => e.SenderName).HasMaxLength(50);
-                entity.Property(e => e.CardMessage).HasMaxLength(500);
-                entity.Property(e => e.SubstitutionPreference).HasMaxLength(30).IsRequired();
                 entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.PaymentMethod).HasMaxLength(20).IsRequired();
                 entity.Property(e => e.PaymentStatus).HasMaxLength(20).IsRequired();
                 entity.HasIndex(e => e.OrderNumber).IsUnique();
+                entity.Property(e => e.ClientRequestId).HasMaxLength(64);
+                entity.Property(e => e.RequestFingerprint).HasMaxLength(64);
+                entity.HasIndex(e => new { e.UserId, e.ClientRequestId }).IsUnique();
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => e.Status);
                 entity.HasOne(e => e.User)

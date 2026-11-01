@@ -7,6 +7,8 @@ namespace HuanyuFlowerShop.Interfaces
         Task<IEnumerable<OrderDto>> GetUserOrdersAsync(int userId);
         Task<OrderDto?> GetOrderByIdAsync(int userId, int orderId);
         Task<OrderDto> CreateOrderAsync(int userId, CreateOrderDto createOrderDto);
+        Task<OrderQuoteDto> GetQuoteAsync(int userId, OrderQuoteRequest request);
+        Task<OrderDto?> UpdateOrderStatusAsAdminAsync(int orderId, string status, string operatorName);
         Task<OrderDto?> UpdateOrderStatusAsync(int userId, int orderId, string status);
         Task<bool> CancelOrderAsync(int userId, int orderId);
         Task<object> GetUserOrderStatsAsync(int userId);

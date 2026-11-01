@@ -18,22 +18,6 @@ class ChatService {
     return api.post('/chat/messages', messageData, { silent: true })
   }
 
-  async sendAttachment(formData, onUploadProgress) {
-    return api.post('/chat/messages/attachments', formData, {
-      silent: true,
-      timeout: 30000,
-      onUploadProgress
-    })
-  }
-
-  async getAttachment(messageId) {
-    return api.get(`/chat/messages/${messageId}/attachment`, {
-      responseType: 'blob',
-      silent: true,
-      timeout: 30000
-    })
-  }
-
   // 标记消息为已读
   async markAsRead(messageId) {
     return api.put(`/chat/messages/${messageId}/read`, null, { silent: true })
@@ -67,14 +51,6 @@ class ChatService {
   // 标记会话所有消息为已读
   async markConversationAsRead(conversationId) {
     return api.put(`/chat/conversations/${conversationId}/read`, null, { silent: true })
-  }
-
-  async assignConversation(conversationId) {
-    return api.put(`/chat/conversations/${conversationId}/assign`, null)
-  }
-
-  async closeConversation(conversationId) {
-    return api.put(`/chat/conversations/${conversationId}/close`, null)
   }
 }
 

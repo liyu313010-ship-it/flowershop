@@ -3,6 +3,8 @@ using HuanyuFlowerShop.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using HuanyuFlowerShop.Services;
 
 namespace HuanyuFlowerShop.Controllers
 {
@@ -18,13 +20,17 @@ namespace HuanyuFlowerShop.Controllers
         }
 
         [HttpGet("available")]
+        [Authorize]
         public IActionResult GetAvailable([FromQuery] decimal? minAmount)
         {
+            if (!int.TryParse(User?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
             var now = DateTime.UtcNow;
             var list = _db.Coupons.Where(c => c.Status == "active"
                 && (!c.StartAt.HasValue || c.StartAt <= now)
                 && (!c.EndAt.HasValue || c.EndAt >= now)
-                && (!minAmount.HasValue || c.MinOrderAmount <= minAmount.Value))
+                && (!minAmount.HasValue || c.MinOrderAmount <= minAmount.Value)
+                && (!c.UsageLimit.HasValue || c.UsedCount < c.UsageLimit.Value)
+                && !_db.UserCoupons.Any(u => u.UserId == userId && u.CouponId == c.Id && u.Status == "used"))
                 .OrderByDescending(c => c.Value)
                 .Select(c => new { c.Id, c.Code, c.DiscountType, c.Value, c.MinOrderAmount, c.MaxDiscount, c.UsageLimit, c.UsedCount, c.StartAt, c.EndAt })
                 .ToList();
@@ -42,6 +48,9 @@ namespace HuanyuFlowerShop.Controllers
             var now = DateTime.UtcNow;
             if ((coupon.StartAt.HasValue && coupon.StartAt > now) || (coupon.EndAt.HasValue && coupon.EndAt < now))
                 return BadRequest(new { message = "优惠券不在有效期" });
+            var existing = _db.UserCoupons.FirstOrDefault(x => x.UserId == userId && x.CouponId == couponId);
+            if (existing is not null) return existing.Status == "used"
+                ? BadRequest(new { message = "该优惠券已经使用" }) : Ok(new { message = "优惠券已在账户中", id = existing.Id });
             var userClaimCount = _db.UserCoupons.Count(x => x.UserId == userId && x.CouponId == couponId);
             if (coupon.UsageLimitPerUser.HasValue && userClaimCount >= coupon.UsageLimitPerUser.Value)
                 return BadRequest(new { message = "已达个人领取上限" });
@@ -54,25 +63,20 @@ namespace HuanyuFlowerShop.Controllers
         }
 
         [HttpPost("validate")]
+        [Authorize]
         public IActionResult Validate([FromBody] CouponValidateRequest req)
         {
-            var coupon = _db.Coupons.FirstOrDefault(c => c.Code == req.Code && c.Status == "active");
-            if (coupon == null) return NotFound(new { message = "优惠券无效" });
-            var now = DateTime.UtcNow;
-            if ((coupon.StartAt.HasValue && coupon.StartAt > now) || (coupon.EndAt.HasValue && coupon.EndAt < now))
-                return BadRequest(new { message = "优惠券不在有效期" });
-            if (req.OrderAmount < coupon.MinOrderAmount) return BadRequest(new { message = "未达到使用门槛" });
-            decimal discount = 0;
-            if ((coupon.DiscountType ?? "amount").ToLower() == "percent")
+            if (!int.TryParse(User?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            try
             {
-                discount = Math.Round(req.OrderAmount * (coupon.Value / 100m), 2);
-                if (coupon.MaxDiscount.HasValue) discount = Math.Min(discount, coupon.MaxDiscount.Value);
+                if (req.OrderAmount < 0) throw new ArgumentException("订单金额无效");
+                var code = req.Code.Trim().ToUpperInvariant();
+                var coupon = _db.Coupons.AsNoTracking().FirstOrDefault(c => c.Code.ToUpper() == code);
+                var reservation = coupon is null ? null : _db.UserCoupons.AsNoTracking().FirstOrDefault(u => u.UserId == userId && u.CouponId == coupon.Id);
+                var discount = OrderBusinessRules.CouponDiscount(coupon, reservation, req.OrderAmount, DateTime.UtcNow);
+                return Ok(new { discount });
             }
-            else
-            {
-                discount = coupon.Value;
-            }
-            return Ok(new { discount });
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         }
 
         // 管理端 CRUD

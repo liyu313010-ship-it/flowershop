@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
 using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Services;
@@ -8,7 +7,6 @@ namespace HuanyuFlowerShop.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "admin")]
     public class OrderStatusHistoryController : ControllerBase
     {
         private readonly IOrderStatusHistoryService _orderStatusHistoryService;
@@ -36,7 +34,10 @@ namespace HuanyuFlowerShop.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _orderStatusHistoryService.UpdateOrderStatusAsync(orderId, request);
+            request.Operator = User.Identity?.Name ?? "admin";
+            bool result;
+            try { result = await _orderStatusHistoryService.UpdateOrderStatusAsync(orderId, request); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
             if (!result)
             {
                 return NotFound(new { message = "订单不存在或更新失败" });

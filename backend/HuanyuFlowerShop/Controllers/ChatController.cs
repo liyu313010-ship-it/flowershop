@@ -1,170 +1,290 @@
-using System.Security.Claims;
 using HuanyuFlowerShop.DTOs;
 using HuanyuFlowerShop.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using HuanyuFlowerShop.Hubs;
+using System.Security.Claims;
 
-namespace HuanyuFlowerShop.Controllers;
-
-[ApiController]
-[Route("api/chat")]
-[Authorize]
-public class ChatController : ControllerBase
+namespace HuanyuFlowerShop.Controllers
 {
-    private readonly IChatService _chatService;
-    private readonly IChatAttachmentStorage _attachmentStorage;
-    private readonly IHubContext<ChatHub> _hub;
-
-    public ChatController(
-        IChatService chatService,
-        IChatAttachmentStorage attachmentStorage,
-        IHubContext<ChatHub> hub)
+    /// <summary>
+    /// 聊天控制器
+    /// </summary>
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class ChatController : ControllerBase
     {
-        _chatService = chatService;
-        _attachmentStorage = attachmentStorage;
-        _hub = hub;
-    }
+        private readonly IChatService _chatService;
+        private readonly ILogger<ChatController> _logger;
 
-    [HttpPost("conversations/admin")]
-    public async Task<ActionResult<ConversationDto>> GetOrCreateSupportConversation()
-    {
-        if (IsAdmin) return BadRequest(new { message = "管理员请从消息中心选择用户会话" });
-        var conversation = await _chatService.GetOrCreateSupportConversationAsync(UserId);
-        await _hub.Clients.Group("admins").SendAsync("ConversationUpdated", conversation);
-        return Ok(conversation);
-    }
-
-    [HttpGet("conversations")]
-    public async Task<ActionResult<IReadOnlyList<ConversationDto>>> GetConversations([FromQuery] string? status = null) =>
-        Ok(await _chatService.GetConversationsAsync(UserId, IsAdmin, status));
-
-    [HttpGet("conversations/{conversationId:int}")]
-    public async Task<ActionResult<ConversationDto>> GetConversation(int conversationId)
-    {
-        var conversation = await _chatService.GetConversationAsync(conversationId, UserId, IsAdmin);
-        return conversation is null ? NotFound() : Ok(conversation);
-    }
-
-    [HttpGet("messages")]
-    public async Task<ActionResult<IReadOnlyList<MessageDto>>> GetMessages(
-        [FromQuery] int conversationId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
-    {
-        if (!await _chatService.CanAccessConversationAsync(conversationId, UserId, IsAdmin)) return Forbid();
-        return Ok(await _chatService.GetMessagesAsync(conversationId, UserId, IsAdmin, page, pageSize));
-    }
-
-    [HttpPost("messages")]
-    public async Task<ActionResult<MessageDto>> SendMessage([FromBody] SendMessageRequest request)
-    {
-        if (!await _chatService.CanAccessConversationAsync(request.ConversationId, UserId, IsAdmin)) return Forbid();
-        var message = await _chatService.SendMessageAsync(UserId, IsAdmin, request);
-        await BroadcastMessageAsync(request.ConversationId, message);
-        return Ok(message);
-    }
-
-    [HttpPost("messages/attachments")]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(20 * 1024 * 1024)]
-    public async Task<ActionResult<MessageDto>> SendAttachment(
-        [FromForm] UploadChatAttachmentRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!await _chatService.CanAccessConversationAsync(request.ConversationId, UserId, IsAdmin)) return Forbid();
-
-        StoredChatAttachment? stored = null;
-        AttachmentMessageResult result;
-        try
+        public ChatController(IChatService chatService, ILogger<ChatController> logger)
         {
-            stored = await _attachmentStorage.SaveAsync(request.File, cancellationToken);
-            result = await _chatService.SendAttachmentMessageAsync(UserId, IsAdmin, request, stored);
+            _chatService = chatService;
+            _logger = logger;
         }
-        catch
+
+        #region 消息相关API
+        /// <summary>
+        /// 获取会话消息
+        /// </summary>
+        /// <param name="conversationId">会话ID</param>
+        /// <param name="page">页码</param>
+        /// <param name="pageSize">每页大小</param>
+        /// <returns>消息列表</returns>
+        [HttpGet("messages/{conversationId}")]
+        public async Task<IActionResult> GetMessages(int conversationId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
-            if (stored is not null)
-                await _attachmentStorage.DeleteAsync(stored.StorageName, cancellationToken);
-            throw;
+            try
+            {
+                int userId = GetCurrentUserId();
+                var messages = await _chatService.GetMessagesAsync(userId, conversationId, page, pageSize);
+                return Ok(messages);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取消息失败，会话ID: {ConversationId}", conversationId);
+                return StatusCode(500, new { message = "获取消息失败" });
+            }
         }
-        if (!result.Created)
-            await _attachmentStorage.DeleteAsync(stored.StorageName, cancellationToken);
-        await BroadcastMessageAsync(request.ConversationId, result.Message);
-        return Ok(result.Message);
-    }
 
-    [HttpGet("messages/{messageId:int}/attachment")]
-    public async Task<IActionResult> GetAttachment(
-        int messageId,
-        [FromQuery] bool download = false,
-        CancellationToken cancellationToken = default)
-    {
-        var attachment = await _chatService.GetAttachmentAsync(messageId, UserId, IsAdmin);
-        if (attachment is null) return NotFound();
-        var stream = await _attachmentStorage.OpenReadAsync(attachment.StorageName, cancellationToken);
-        if (stream is null) return NotFound(new { message = "附件文件已不存在" });
+        /// <summary>
+        /// 获取会话消息（查询参数形式）
+        /// </summary>
+        [HttpGet("messages")]
+        public async Task<IActionResult> GetMessagesByQuery([FromQuery] int conversationId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                var messages = await _chatService.GetMessagesAsync(userId, conversationId, page, pageSize);
+                return Ok(messages);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取消息失败，会话ID: {ConversationId}", conversationId);
+                return StatusCode(500, new { message = "获取消息失败" });
+            }
+        }
 
-        Response.Headers.CacheControl = "private, no-store";
-        Response.Headers["X-Content-Type-Options"] = "nosniff";
-        var inlineImage = attachment.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) && !download;
-        return inlineImage
-            ? File(stream, attachment.ContentType, enableRangeProcessing: true)
-            : File(stream, attachment.ContentType, attachment.OriginalName, enableRangeProcessing: true);
-    }
+        /// <summary>
+        /// 发送消息
+        /// </summary>
+        /// <param name="request">发送消息请求</param>
+        /// <returns>发送的消息</returns>
+        [HttpPost("messages")]
+        public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
-    [HttpPut("messages/{messageId:int}/read")]
-    public async Task<IActionResult> MarkMessageRead(int messageId) =>
-        await _chatService.MarkMessageReadAsync(messageId, UserId, IsAdmin) ? NoContent() : NotFound();
+                int userId = GetCurrentUserId();
+                var message = await _chatService.SendMessageAsync(userId, request);
+                return Ok(message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "发送消息失败");
+                return StatusCode(500, new { message = "发送消息失败" });
+            }
+        }
 
-    [HttpPut("conversations/{conversationId:int}/read")]
-    public async Task<IActionResult> MarkConversationRead(int conversationId)
-    {
-        if (!await _chatService.CanAccessConversationAsync(conversationId, UserId, IsAdmin)) return Forbid();
-        await _chatService.MarkConversationReadAsync(conversationId, UserId, IsAdmin);
-        return NoContent();
-    }
+        /// <summary>
+        /// 标记消息已读
+        /// </summary>
+        /// <param name="conversationId">会话ID</param>
+        /// <returns>操作结果</returns>
+        [HttpPut("messages/mark-as-read/{conversationId}")]
+        public async Task<IActionResult> MarkMessagesAsRead(int conversationId)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                bool result = await _chatService.MarkMessagesAsReadAsync(userId, conversationId);
+                return Ok(new { success = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "标记消息已读失败，会话ID: {ConversationId}", conversationId);
+                return StatusCode(500, new { message = "标记消息已读失败" });
+            }
+        }
 
-    [HttpPut("conversations/{conversationId:int}/assign")]
-    [Authorize(Roles = "admin")]
-    public async Task<ActionResult<ConversationDto>> AssignConversation(int conversationId)
-    {
-        var conversation = await _chatService.AssignConversationAsync(conversationId, UserId);
-        if (conversation is null) return NotFound();
-        await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ConversationUpdated", conversation);
-        await _hub.Clients.Group("admins").SendAsync("ConversationUpdated", conversation);
-        return Ok(conversation);
-    }
+        /// <summary>
+        /// 删除消息
+        /// </summary>
+        /// <param name="messageId">消息ID</param>
+        /// <returns>操作结果</returns>
+        [HttpDelete("messages/{messageId}")]
+        public async Task<IActionResult> DeleteMessage(int messageId)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                bool result = await _chatService.DeleteMessageAsync(userId, messageId);
+                return Ok(new { success = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "删除消息失败，消息ID: {MessageId}", messageId);
+                return StatusCode(500, new { message = "删除消息失败" });
+            }
+        }
+        #endregion
 
-    [HttpPut("conversations/{conversationId:int}/close")]
-    [Authorize(Roles = "admin")]
-    public async Task<ActionResult<ConversationDto>> CloseConversation(int conversationId)
-    {
-        var conversation = await _chatService.CloseConversationAsync(conversationId, UserId);
-        if (conversation is null) return NotFound();
-        await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ConversationUpdated", conversation);
-        await _hub.Clients.Group("admins").SendAsync("ConversationUpdated", conversation);
-        return Ok(conversation);
-    }
+        #region 会话相关API
+        /// <summary>
+        /// 获取用户会话列表
+        /// </summary>
+        /// <returns>会话列表</returns>
+        [HttpGet("conversations")]
+        public async Task<IActionResult> GetConversations()
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                var conversations = await _chatService.GetUserConversationsAsync(userId);
+                return Ok(conversations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取会话列表失败");
+                return StatusCode(500, new { message = "获取会话列表失败" });
+            }
+        }
 
-    [HttpGet("unread-count")]
-    public async Task<ActionResult<object>> GetUnreadCount() =>
-        Ok(new { unreadCount = await _chatService.GetUnreadCountAsync(UserId, IsAdmin) });
+        /// <summary>
+        /// 获取会话详情
+        /// </summary>
+        /// <param name="conversationId">会话ID</param>
+        /// <returns>会话详情</returns>
+        [HttpGet("conversations/{conversationId}")]
+        public async Task<IActionResult> GetConversation(int conversationId)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                var conversation = await _chatService.GetConversationAsync(userId, conversationId);
+                if (conversation == null)
+                {
+                    return NotFound(new { message = "会话不存在或无权访问" });
+                }
+                return Ok(conversation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取会话详情失败，会话ID: {ConversationId}", conversationId);
+                return StatusCode(500, new { message = "获取会话详情失败" });
+            }
+        }
 
-    private int UserId => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
-        ? id
-        : throw new UnauthorizedAccessException();
-    private bool IsAdmin => User.IsInRole("admin");
+        /// <summary>
+        /// 创建或获取与管理员的会话
+        /// </summary>
+        /// <returns>会话详情</returns>
+        [HttpPost("conversations/admin")]
+        public async Task<IActionResult> CreateOrGetAdminConversation()
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                var conversation = await _chatService.CreateOrGetAdminConversationAsync(userId);
+                if (conversation == null)
+                {
+                    return NotFound(new { message = "管理员会话不存在" });
+                }
+                return Ok(conversation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "创建或获取管理员会话失败");
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
 
-    private async Task BroadcastMessageAsync(int conversationId, MessageDto message)
-    {
-        var conversation = await _chatService.GetConversationAsync(conversationId, UserId, IsAdmin);
-        await _hub.Clients.Group($"conversation:{conversationId}").SendAsync("ReceiveMessage", message);
-        if (conversation is null) return;
+        /// <summary>
+        /// 获取会话未读消息数
+        /// </summary>
+        /// <param name="conversationId">会话ID</param>
+        /// <returns>未读消息数</returns>
+        [HttpGet("conversations/{conversationId}/unread-count")]
+        public async Task<IActionResult> GetUnreadCount(int conversationId)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                int count = await _chatService.GetUnreadCountAsync(userId, conversationId);
+                return Ok(new { unreadCount = count });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取未读消息数失败，会话ID: {ConversationId}", conversationId);
+                return StatusCode(500, new { message = "获取未读消息数失败" });
+            }
+        }
 
-        if (IsAdmin)
-            await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ReceiveMessage", message);
-        else
-            await _hub.Clients.Group("admins").SendAsync("ReceiveMessage", message);
-        await _hub.Clients.Group("admins").SendAsync("ConversationUpdated", conversation);
-        await _hub.Clients.Group($"user:{conversation.UserId}").SendAsync("ConversationUpdated", conversation);
+        /// <summary>
+        /// 标记会话消息已读（与前端路径兼容）
+        /// </summary>
+        [HttpPut("conversations/{conversationId}/read")]
+        public async Task<IActionResult> MarkConversationAsRead(int conversationId)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                bool result = await _chatService.MarkMessagesAsReadAsync(userId, conversationId);
+                return Ok(new { success = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "标记会话已读失败，会话ID: {ConversationId}", conversationId);
+                return StatusCode(500, new { message = "标记会话已读失败" });
+            }
+        }
+
+        /// <summary>
+        /// 获取用户所有未读消息总数
+        /// </summary>
+        /// <returns>未读消息总数</returns>
+        [HttpGet("unread-count")]
+        public async Task<IActionResult> GetAllUnreadCount()
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                int count = await _chatService.GetAllUnreadMessagesCountAsync(userId);
+                return Ok(new { unreadCount = count });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取所有未读消息数失败");
+                return StatusCode(500, new { message = "获取所有未读消息数失败" });
+            }
+        }
+        #endregion
+
+        #region 辅助方法
+        /// <summary>
+        /// 获取当前用户ID
+        /// </summary>
+        /// <returns>用户ID</returns>
+        private int GetCurrentUserId()
+        {
+            // 从JWT中获取用户ID
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                throw new UnauthorizedAccessException("无法获取用户ID");
+            }
+            return int.Parse(userIdClaim);
+        }
+        #endregion
     }
 }

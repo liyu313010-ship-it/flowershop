@@ -115,12 +115,6 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-    location ^~ /health/ {
-        proxy_pass http://127.0.0.1:5002;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
     location /uploads/ { proxy_pass http://127.0.0.1:5002; }
     location /hubs/ {
         proxy_pass http://127.0.0.1:5002;
@@ -132,19 +126,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-    location = /index.html {
-        add_header Cache-Control "no-store, no-cache, must-revalidate";
-        expires -1;
-    }
-    location ^~ /assets/ {
-        try_files $uri =404;
-        expires 1y;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-    }
-    location / {
-        try_files $uri $uri/ /index.html;
-        add_header Cache-Control "no-cache";
-    }
+    location / { try_files $uri $uri/ /index.html; }
 }
 NGINX
 ln -sfn /etc/nginx/sites-available/flowershop /etc/nginx/sites-enabled/flowershop

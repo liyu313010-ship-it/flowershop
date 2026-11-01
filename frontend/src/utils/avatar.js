@@ -81,44 +81,45 @@ export const getDefaultAvatarUrl = () => {
  * @param {string} imagePath - 产品图片路径
  * @returns {string} 完整的产品图片URL
  */
-export const appendAssetVersion = (assetPath) => {
-  if (!assetPath || typeof assetPath !== 'string') return assetPath
-  if (/^(?:https?:|blob:|data:)/i.test(assetPath)) return assetPath
-  if (/[?&]v=/.test(assetPath)) return assetPath
-
-  const version = globalThis.__APP_BUILD_ID__ || 'local'
-  const hashIndex = assetPath.indexOf('#')
-  const path = hashIndex >= 0 ? assetPath.slice(0, hashIndex) : assetPath
-  const hash = hashIndex >= 0 ? assetPath.slice(hashIndex) : ''
-  const separator = path.includes('?') ? '&' : '?'
-  return `${path}${separator}v=${encodeURIComponent(version)}${hash}`
-}
-
 export const getProductImageUrl = (imagePath) => {
   // 如果没有图片路径或无效，返回默认产品图片
   if (!imagePath || typeof imagePath !== 'string' || imagePath.trim() === '') {
-    return appendAssetVersion('/images/product-placeholder.svg')
+    return '/images/product-placeholder.svg'
   }
 
-  // 完整 URL（例如对象存储/CDN）直接使用
+  // 如果是完整URL，优先将 uploads 路径标准化为相对路径以走代理
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath
+    try {
+      const url = new URL(imagePath)
+      const path = url.pathname || ''
+      if (/\/uploads\/products\//i.test(path)) {
+        let normalized = path.startsWith('/') ? path : `/${path}`
+        return normalized
+      }
+      return imagePath
+    } catch {
+      return imagePath
+    }
   }
 
   let normalizedPath = imagePath.trim()
-
-  // 兼容旧管理端曾错误保存/拼接出的 /api/images 与 /api/uploads 地址。
-  // 图片属于静态资源，不应经过仅处理控制器请求的 /api 代理。
-  normalizedPath = normalizedPath.replace(/^\/api(?=\/(?:images|uploads)\/)/i, '')
-
-  // 只有文件名时按上传商品图处理
-  if (normalizedPath.includes('.') && !normalizedPath.includes('/')) {
-    normalizedPath = `/uploads/products/${normalizedPath}`
-  } else if (!normalizedPath.startsWith('/')) {
+  
+  // 处理产品图片路径
+  if (normalizedPath.startsWith('/uploads/products/')) {
+    if (!normalizedPath.startsWith('/')) {
+      normalizedPath = '/' + normalizedPath
+    }
+  }
+  // 确保有正确的前导斜杠
+  else if (!normalizedPath.startsWith('/')) {
     normalizedPath = '/' + normalizedPath
   }
+  // 对于产品图片文件名，添加uploads/products路径前缀和API代理前缀
+  else if (normalizedPath.includes('.') && !normalizedPath.includes('/')) {
+    normalizedPath = `/uploads/products/${normalizedPath}`
+  }
 
-  return appendAssetVersion(normalizedPath)
+  return normalizedPath
 }
 
 /**
@@ -216,6 +217,13 @@ export const handleAvatarError = (event, defaultAvatar = null) => {
       const failedUrl = new URL(element.src, window.location.origin).href
       const fallbackUrl = new URL(fallbackAvatar, window.location.origin).href
       
+      // 如果当前失败的URL已经是默认头像，说明默认头像也加载失败
+      // 使用内联Base64 SVG作为终极回退，避免重复请求和报错
+      if (failedUrl === fallbackUrl) {
+        element.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI1MCIgZmlsbD0iI2UzZTNUzIiLz48L3N2Zz4='
+        return
+      }
+
       if (failedUrl !== fallbackUrl) {
         element.src = fallbackAvatar
       }
