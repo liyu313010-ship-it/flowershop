@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { cartService } from '@/services/cart'
+import { isUsableToken } from '@/utils/session'
 
 // 购物车状态管理store
 export const useCartStore = defineStore('cart', () => {
@@ -32,12 +33,19 @@ export const useCartStore = defineStore('cart', () => {
   const formattedTotalPrice = computed(() => `¥${totalPrice.value.toFixed(2)}`)
   
   // 初始化购物车（向后兼容方法）
+  const reset = () => { cartItems.value = []; error.value = '' }
   const initializeCart = async () => {
     await fetchCart()
   }
   
   // 获取购物车列表
   const fetchCart = async () => {
+    const requestedToken = localStorage.getItem('token')
+    if (!isUsableToken(localStorage.getItem('token'))) {
+      cartItems.value = []
+      error.value = ''
+      return { items: [] }
+    }
     isLoading.value = true
     error.value = ''
 
@@ -48,6 +56,7 @@ export const useCartStore = defineStore('cart', () => {
       }
       
       const response = await cartService.getCart()
+      if (localStorage.getItem('token') !== requestedToken) return { items: [] }
       
       if (import.meta.env.DEV) {
         console.log('购物车数据获取成功:', response?.length || 0, '个商品')
@@ -197,6 +206,7 @@ export const useCartStore = defineStore('cart', () => {
     
     // 方法
     initializeCart,
+    reset,
     fetchCart,
     addToCart,
     updateQuantity,

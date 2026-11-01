@@ -2,6 +2,7 @@ import axios from 'axios'
 import { useUserStore } from '@/stores/user'
 import { notifyError, notifyInfo } from '@/utils/notify'
 import router from '@/router'
+import { isUsableToken, requiresSession, invalidateRejectedSession } from '@/utils/session'
 
 // 创建axios实例
 const runtimeBase = (typeof window !== 'undefined') ? (window.localStorage.getItem('apiBaseUrl') || '') : ''
@@ -18,8 +19,15 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // 从localStorage直接获取token，避免在请求拦截器中创建store实例
-    const token = localStorage.getItem('token')
-    if (token) {
+    let token = localStorage.getItem('token')
+    if (token && !isUsableToken(token)) {
+      useUserStore().clearSession()
+      token = null
+    }
+    if (!token && requiresSession(config.url) && !config.skipSessionHandling) {
+      throw new axios.CanceledError('登录已过期，请重新登录', config)
+    }
+    if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`
     }
     // 只在开发环境输出请求日志
@@ -59,7 +67,7 @@ api.interceptors.response.use(
     const isSilent = !!(error && error.config && error.config.silent)
     const isAborted = /ERR_ABORTED/i.test(error?.message || '') || error?.code === 'ERR_CANCELED'
     if (isAborted) {
-      return Promise.resolve({ aborted: true })
+      return Promise.reject(error)
     }
     // 只在开发环境输出详细的错误日志；静默请求不输出控制台错误
     const statusForLog = error.response?.status
@@ -105,19 +113,15 @@ api.interceptors.response.use(
           if (!isSilent) notifyError('请求过于频繁，请稍后再试')
           return Promise.reject(error)
         }
-        case 401:
-          // 未授权：静默请求不触发跳转，避免导航中断导致的 ERR_ABORTED
-          if (isSilent) {
-            return Promise.reject(error)
-          }
-          userStore.logout()
-          notifyInfo('请先登录')
-          try {
-            router.push({ path: '/auth', query: { redirect: window.location.pathname + window.location.search } })
-          } catch {
-            window.location.href = '/auth'
+        case 401: {
+          const cleared = invalidateRejectedSession(error.config, localStorage.getItem('token'), userStore.clearSession)
+          // Silent calls still expire the session, but do not interrupt public pages.
+          if (cleared && !isSilent && router.currentRoute.value.path !== '/auth') {
+            notifyInfo('登录已过期，请重新登录')
+            router.push({ path: '/auth', query: { redirect: window.location.pathname + window.location.search } }).catch(() => {})
           }
           return Promise.reject(error)
+        }
         case 403:
           // 权限不足
           if (!isSilent) notifyError('权限不足')

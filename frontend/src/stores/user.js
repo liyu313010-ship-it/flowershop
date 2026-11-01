@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authService } from '@/services/auth'
 import userService from '@/services/userService.js'
+import { isUsableToken, endSession } from '@/utils/session'
 
 export const useUserStore = defineStore('user', () => {
   // 状态定义
@@ -19,13 +20,24 @@ export const useUserStore = defineStore('user', () => {
   const userName = computed(() => user.value?.username || '')
 
   // 初始化用户信息
+  const clearSession = () => {
+    token.value = ''
+    user.value = null
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+  }
+
   const initializeUser = () => {
+    if (!isUsableToken(token.value)) {
+      clearSession()
+      return
+    }
     const storedUser = localStorage.getItem('user')
     if (storedUser && token.value) {
       try {
         user.value = JSON.parse(storedUser)
       } catch (e) {
-        logout()
+        clearSession()
       }
     }
   }
@@ -166,9 +178,7 @@ export const useUserStore = defineStore('user', () => {
   // 登出功能
   const logout = async () => {
     try {
-      if (token.value) {
-        await authService.logout()
-      }
+      await endSession(token.value, clearSession, authService.logout)
     } catch (err) {
       // console.error('Logout error:', err)
     } finally {
@@ -191,6 +201,7 @@ export const useUserStore = defineStore('user', () => {
 
     isLoading.value = true
     error.value = ''
+    const requestedToken = token.value
 
     try {
       if (import.meta.env.DEV) {
@@ -198,6 +209,7 @@ export const useUserStore = defineStore('user', () => {
       }
       
       const userData = await authService.getCurrentUser()
+      if (token.value !== requestedToken) return null
       
       if (import.meta.env.DEV) {
         // console.log('用户信息获取成功')
@@ -221,6 +233,7 @@ export const useUserStore = defineStore('user', () => {
       localStorage.setItem('user', JSON.stringify(mappedUser))
       return mappedUser
     } catch (err) {
+      if (token.value !== requestedToken) return null
       // 优化错误处理和日志输出
       if (import.meta.env.DEV) {
         // console.warn('Fetch profile error:', err.message)
@@ -254,8 +267,7 @@ export const useUserStore = defineStore('user', () => {
         if (import.meta.env.DEV) {
           // console.log('Token无效，执行登出操作')
         }
-        logout()
-        ElMessage.error('登录已过期，请重新登录')
+        clearSession()
       } else if (import.meta.env.DEV) {
           // 在开发环境显示警告而不是错误
           ElMessage({ message: '使用临时游客模式，不会创建账号', type: 'warning' })
@@ -358,7 +370,7 @@ export const useUserStore = defineStore('user', () => {
       await fetchUserProfile()
     } catch (err) {
       // console.error('Check auth failed:', err)
-      logout()
+      clearSession()
     }
   }
 
@@ -384,6 +396,7 @@ export const useUserStore = defineStore('user', () => {
     login,
     register,
     logout,
+    clearSession,
     fetchUserProfile,
     fetchUserInfo, // 向后兼容
     updateProfile,

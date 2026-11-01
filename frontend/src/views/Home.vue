@@ -879,6 +879,7 @@ import PageTransition from '@/components/PageTransition.vue'
 import AutoLinkText from '@/components/AutoLinkText.vue'
 import api from '@/services/api'
 import { videoService } from '@/services/video'
+import { normalizeVideoPath } from '@/utils/mediaPath'
 
 // 路由和状态管理
 const router = useRouter()
@@ -925,7 +926,7 @@ const normalizeUploadsPath = (p) => {
     if (!s.startsWith('/')) s = '/' + s
     // 仅允许 /uploads 前缀资源
     if (s.startsWith('/uploads/')) return s
-    return s
+    return normalizeVideoPath(s)
   } catch { return p }
 }
 

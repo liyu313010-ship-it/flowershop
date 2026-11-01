@@ -23,10 +23,11 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
+import { useChatStore } from '@/stores/chat'
 import Navbar from './components/layout/Navbar.vue'
 import Footer from './components/layout/Footer.vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
@@ -34,6 +35,13 @@ import BackToTop from './components/BackToTop.vue'
 
 const userStore = useUserStore()
 const cartStore = useCartStore()
+const chatStore = useChatStore()
+watch(() => userStore.isAuthenticated, (authenticated) => {
+  if (!authenticated) {
+    cartStore.reset()
+    chatStore.reset()
+  }
+}, { flush: 'sync' })
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 

@@ -67,9 +67,13 @@ export const authService = {
   },
 
   // 退出登录
-  async logout() {
+  async logout(token) {
     try {
-      await api.post('/auth/logout')
+      await api.post('/auth/logout', null, {
+        headers: { Authorization: `Bearer ${token}` },
+        silent: true,
+        skipSessionHandling: true
+      })
     } catch (error) {
       // 即使退出登录失败，也清除本地token
     }
