@@ -201,8 +201,14 @@ export const useChatStore = defineStore('chat', {
 
     // 获取未读消息数量
     async fetchUnreadCount() {
+      if (!useUserStore().isAuthenticated) {
+        this.unreadCount = 0
+        return
+      }
       try {
+        const requestedToken = localStorage.getItem('token')
         const count = await chatService.getUnreadCount()
+        if (localStorage.getItem('token') !== requestedToken) return
         this.unreadCount = typeof count?.unreadCount === 'number' ? count.unreadCount : (count || 0)
       } catch (error) {
         console.warn('获取未读消息数量失败:', error?.message || error)
@@ -260,12 +266,14 @@ export const useChatStore = defineStore('chat', {
 
     // 连接SignalR Hub
     async connectHub() {
+      if (!useUserStore().isAuthenticated) return
       try {
         if (this.hubConnection) {
           return
         }
 
         const { HubConnectionBuilder } = await import('@microsoft/signalr')
+        if (!useUserStore().isAuthenticated) return
         const userStore = useUserStore()
 
         const hubUrl = `/hubs/chat`
